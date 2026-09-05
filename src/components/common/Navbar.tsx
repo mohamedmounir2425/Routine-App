@@ -79,7 +79,7 @@ export const Navbar: React.FC<Props> = ({
               }`}
             >
               <Calendar className="w-4 h-4" />
-              <span>جدول الأسبوع</span>
+              <span>خطة التمارين</span>
             </button>
 
             <button
@@ -187,7 +187,7 @@ export const Navbar: React.FC<Props> = ({
             }`}
           >
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>الجدول</span>
+            <span>خطة التمارين</span>
           </button>
 
           <button

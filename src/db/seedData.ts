@@ -1,4 +1,4 @@
-import { Exercise, Routine, UserSettings, WeeklyScheduleItem } from '../types';
+import { Exercise, Routine, UserSettings, WeeklyScheduleItem, PlanWeek, PlanLevel, PlanSession, ExercisePrescription } from '../types';
 
 export interface BackSafetyTip {
   id: number;
@@ -814,26 +814,489 @@ export const INITIAL_ROUTINES: Routine[] = [
   }
 ];
 
+// ============================================================
+// الخطة العلاجية للأربعة أسابيع المتكاملة (The 4-Week Comprehensive Plan)
+// المستخرجة من البرنامج التدريبي الطبي لحماية الغضروف والعمود الفقري
+// ============================================================
+export const FOUR_WEEK_PLAN: PlanWeek[] = [
+  {
+    weekNumber: 1,
+    title: 'الأسبوع الأول: تأسيس التثبيت وتحفيز الأعصاب العميقة',
+    description: 'التركيز على تنشيط عضلات البطن العميقة واستقرار القوس القطني دون أي إجهاد لأسفل الظهر.',
+    focus: 'تأسيس التثبيت وتحفيز عضلات الكورسيه العميق',
+    sessions: [
+      {
+        id: 'plan-w1-sA',
+        sessionCode: 'A',
+        title: 'الجلسة A: تفعيل الكورسيه والبلانك الركبي',
+        description: 'ماكجيل للبطن + بلانك جانبي على الركبتين + القطة والجمال + الجسر',
+        estimatedMinutes: 20,
+        dayOfWeek: 6, // السبت
+        dayNameAr: 'السبت',
+        routineId: 'routine-w1-sA',
+        prescriptions: [
+          { exerciseId: 'ab-mcgill-curlup', sets: 3, reps: 6, holdSeconds: 5, restSeconds: 45, notes: 'يدك تحت ظهرك لدعم القوس القطني' },
+          { exerciseId: 'obl-side-plank-knees', sets: 3, durationSeconds: 15, sides: 'each', restSeconds: 45, notes: 'ثبات 15 ثانية لكل جانب' },
+          { exerciseId: 'bk-gentle-cat-camel', sets: 2, reps: 6, restSeconds: 30, notes: 'حركة سلسة وبطيئة دون ضغط' },
+          { exerciseId: 'bk-glute-bridge', sets: 3, reps: 10, holdSeconds: 1, restSeconds: 45, notes: 'عصر خفيف لعضلات الألوية' }
+        ]
+      },
+      {
+        id: 'plan-w1-sB',
+        sessionCode: 'B',
+        title: 'الجلسة B: التنسيق العصبي وثبات الحوض',
+        description: 'الحشرة الميتة + تمرين المحار + الطائر والكلب + مد الظهر وقوفاً',
+        estimatedMinutes: 20,
+        dayOfWeek: 1, // الإثنين
+        dayNameAr: 'الاثنين',
+        routineId: 'routine-w1-sB',
+        prescriptions: [
+          { exerciseId: 'ab-dead-bug', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'التصاق أسفل الظهر بالأرض' },
+          { exerciseId: 'obl-clamshell', sets: 3, reps: 12, sides: 'each', restSeconds: 45, notes: 'تثبيت الحوض وتنشيط الألوية الوسطى' },
+          { exerciseId: 'bk-bird-dog', sets: 3, reps: 8, holdSeconds: 2, sides: 'each', restSeconds: 45, notes: 'ذراع وساق متعاكسان مع ثبات ثانيتين' },
+          { exerciseId: 'bk-standing-lumbar-extension', sets: 2, reps: 6, restSeconds: 30, notes: 'تفريغ فوري لضغط الغضاريف' }
+        ]
+      },
+      {
+        id: 'plan-w1-sC',
+        sessionCode: 'C',
+        title: 'الجلسة C: تفريغ البطن وانزلاق الكتفين',
+        description: 'تفريغ البطن مستلقياً + بلانك الحائط الجانبي + سوبرمان المعدل + انزلاق الحائط',
+        estimatedMinutes: 22,
+        dayOfWeek: 3, // الأربعاء
+        dayNameAr: 'الأربعاء',
+        routineId: 'routine-w1-sC',
+        prescriptions: [
+          { exerciseId: 'ab-stomach-vacuum', sets: 3, reps: 5, holdSeconds: 10, restSeconds: 45, notes: 'زفير كامل وشفط السرة نحو العمود الفقري' },
+          { exerciseId: 'obl-wall-side-plank', sets: 3, durationSeconds: 20, sides: 'each', restSeconds: 45, notes: 'ثبات 20 ثانية لكل جانب بالحائط' },
+          { exerciseId: 'bk-prone-arm-leg-lift', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'مع وسادة تحت الحوض لحماية الظهر' },
+          { exerciseId: 'bk-wall-angels', sets: 3, reps: 8, restSeconds: 30, notes: 'تحسين قوام أعلى الظهر ولوحي الكتف' }
+        ]
+      },
+      {
+        id: 'plan-w1-sD',
+        sessionCode: 'D',
+        title: 'الجلسة D: التثبيت متساوي القياس والكوبرا',
+        description: 'دفع الركبتين متساوي القياس + رفع الساق الجانبي + الكوبرا + سحب الحزام',
+        estimatedMinutes: 22,
+        dayOfWeek: 4, // الخميس
+        dayNameAr: 'الخميس',
+        routineId: 'routine-w1-sD',
+        prescriptions: [
+          { exerciseId: 'ab-isometric-knee-press', sets: 3, reps: 6, holdSeconds: 6, restSeconds: 45, notes: 'دفع متبادل 6 ثوانٍ مع تنفس سلس' },
+          { exerciseId: 'obl-side-lying-leg-lift', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'رفع مضبوط دون لف الحوض' },
+          { exerciseId: 'bk-prone-cobra', sets: 3, reps: 6, holdSeconds: 3, restSeconds: 45, notes: 'عصر لوحي الكتف للخلف' },
+          { exerciseId: 'bk-seated-band-row', sets: 3, reps: 10, restSeconds: 45, notes: 'سحب هادئ مع استقامة الجذع' }
+        ]
+      }
+    ]
+  },
+  {
+    weekNumber: 2,
+    title: 'الأسبوع الثاني: تعزيز التحمل وإدخال تمارين المقاومة الثابتة',
+    description: 'رفع كفاءة التحمل العضلي لمنع إجهاد الظهر أثناء الجلوس في العمل (8ص - 4ع).',
+    focus: 'بناء التحمل العضلي ومقاومة قوى الانحناء والدوران',
+    sessions: [
+      {
+        id: 'plan-w2-sA',
+        sessionCode: 'A',
+        title: 'الجلسة A: نقر الكعبين وحمل الحقيبة',
+        description: 'نقر الكعبين + حمل الحقيبة بيد واحدة + الجسر مع وسادة + الطائر والكلب',
+        estimatedMinutes: 22,
+        dayOfWeek: 6,
+        dayNameAr: 'السبت',
+        routineId: 'routine-w2-sA',
+        prescriptions: [
+          { exerciseId: 'ab-heel-taps', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'ملامسة خفيفة للأرض مع بقاء الظهر لاصقاً' },
+          { exerciseId: 'obl-suitcase-carry', sets: 3, durationSeconds: 30, sides: 'each', restSeconds: 45, notes: 'مشي بوزن 3-5 كجم مع استقامة تامة لمنع الميلان' },
+          { exerciseId: 'bk-glute-bridge-squeeze', sets: 3, reps: 10, restSeconds: 45, notes: 'ضم الوسادة لتفعيل العضلات المقربة وتثبيت الحوض' },
+          { exerciseId: 'bk-bird-dog', sets: 3, reps: 8, holdSeconds: 2, sides: 'each', restSeconds: 45, notes: 'ثبات ثانيتين في القمة' }
+        ]
+      },
+      {
+        id: 'plan-w2-sB',
+        sessionCode: 'B',
+        title: 'الجلسة B: البلانك المرتفع والبالوف بريس',
+        description: 'البلانك المرتفع + بالوف بريس بالحزام + سوبرمان المعدل + سحب الحزام',
+        estimatedMinutes: 24,
+        dayOfWeek: 1,
+        dayNameAr: 'الاثنين',
+        routineId: 'routine-w2-sB',
+        prescriptions: [
+          { exerciseId: 'ab-elevated-plank', sets: 3, durationSeconds: 25, restSeconds: 45, notes: 'على حافة أريكة/طاولة ثبات 25 ثانية' },
+          { exerciseId: 'obl-pallof-press', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'مقاومة دوران الجذع مع ثبات ثانيتين للأمام' },
+          { exerciseId: 'bk-prone-arm-leg-lift', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'مع وسادة تحت الحوض' },
+          { exerciseId: 'bk-seated-band-row', sets: 3, reps: 12, restSeconds: 45, notes: 'تقوية عضلات أعلى الظهر والوضعية' }
+        ]
+      },
+      {
+        id: 'plan-w2-sC',
+        sessionCode: 'C',
+        title: 'الجلسة C: ضغط الحائط والحريق الهيدروليكي',
+        description: 'الضغط على الحائط + تمرين Fire Hydrant + تمرين W إلى Y + الجسر',
+        estimatedMinutes: 22,
+        dayOfWeek: 3,
+        dayNameAr: 'الأربعاء',
+        routineId: 'routine-w2-sC',
+        prescriptions: [
+          { exerciseId: 'ab-wall-press-core', sets: 3, durationSeconds: 15, restSeconds: 45, notes: 'دفع اليدين في الحائط لتفعيل عضلات البطن العميقة' },
+          { exerciseId: 'obl-fire-hydrant', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'رفع الساق دون لف الحوض' },
+          { exerciseId: 'bk-prone-w-to-y', sets: 3, reps: 8, restSeconds: 45, notes: 'تثبيت اللوحين واستقامة الفقرات الصدرية' },
+          { exerciseId: 'bk-glute-bridge', sets: 3, reps: 12, restSeconds: 45, notes: 'صعود مضبوط' }
+        ]
+      },
+      {
+        id: 'plan-w2-sD',
+        sessionCode: 'D',
+        title: 'الجلسة D: تراجع الجذع والجسر الأحادي',
+        description: 'تراجع الجذع جالساً + الحشرة المتعارضة + الجسر برجل واحدة مدعومة + القطة والجمال',
+        estimatedMinutes: 22,
+        dayOfWeek: 4,
+        dayNameAr: 'الخميس',
+        routineId: 'routine-w2-sD',
+        prescriptions: [
+          { exerciseId: 'ab-seated-lean-back', sets: 3, reps: 8, holdSeconds: 2, restSeconds: 45, notes: 'ميلان خفيف للخلف مع الحفاظ على استقامة الظهر' },
+          { exerciseId: 'obl-contralateral-deadbug', sets: 3, reps: 6, sides: 'each', restSeconds: 45, notes: 'ضغط اليد العكسية على الركبة لثبات قوي' },
+          { exerciseId: 'obl-kickstand-bridge', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'دعم خفيف بكعب الساق الأخرى' },
+          { exerciseId: 'bk-gentle-cat-camel', sets: 2, reps: 6, restSeconds: 30, notes: 'استشفاء وتليين ختامي' }
+        ]
+      }
+    ]
+  },
+  {
+    weekNumber: 3,
+    title: 'الأسبوع الثالث: بناء الثبات الديناميكي ودمج تمارين المقاومة',
+    description: 'تطوير القوة التثبيتية الديناميكية وإتقان حركات الحزام المطاطي والدب الثابت.',
+    focus: 'ثبات ديناميكي متقدم ودمج الأطراف الأربعة',
+    sessions: [
+      {
+        id: 'plan-w3-sA',
+        sessionCode: 'A',
+        title: 'الجلسة A: الحشرة بالحزام وثبات الدوران',
+        description: 'الحشرة الميتة بالحزام + ثبات الدوران نصف راكع + الكوبرا + الجسر مع وسادة',
+        estimatedMinutes: 24,
+        dayOfWeek: 6,
+        dayNameAr: 'السبت',
+        routineId: 'routine-w3-sA',
+        prescriptions: [
+          { exerciseId: 'ab-banded-dead-bug', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'مقاومة مطاطية تزيد تفريغ الحمل عن الفقرات' },
+          { exerciseId: 'obl-half-kneeling-chop', sets: 3, durationSeconds: 15, sides: 'each', restSeconds: 45, notes: 'ثبات 15 ثانية ضد قوى الالتفاف' },
+          { exerciseId: 'bk-prone-cobra', sets: 3, reps: 8, holdSeconds: 4, restSeconds: 45, notes: 'ثبات 4 ثوانٍ مع عصر لوحي الكتف' },
+          { exerciseId: 'bk-glute-bridge-squeeze', sets: 3, reps: 12, restSeconds: 45, notes: 'تثبيت الحوض وتنشيط الألوية' }
+        ]
+      },
+      {
+        id: 'plan-w3-sB',
+        sessionCode: 'B',
+        title: 'الجلسة B: الدب الثابت وتحدي الطائر والكلب',
+        description: 'الدب الثابت + بلانك الركبتين الجانبي + الطائر والكلب (10 عدات) + انزلاق الحائط',
+        estimatedMinutes: 24,
+        dayOfWeek: 1,
+        dayNameAr: 'الاثنين',
+        routineId: 'routine-w3-sB',
+        prescriptions: [
+          { exerciseId: 'ab-bear-crawl-hold', sets: 3, durationSeconds: 18, restSeconds: 45, notes: 'ركبتيك مرتفعتين 2 سم فقط عن الأرض مع ثبات الظهر' },
+          { exerciseId: 'obl-side-plank-knees', sets: 3, durationSeconds: 22, sides: 'each', restSeconds: 45, notes: 'زيادة مدة الثبات إلى 22 ثانية' },
+          { exerciseId: 'bk-bird-dog', sets: 3, reps: 10, holdSeconds: 2, sides: 'each', restSeconds: 45, notes: 'تحكم كامل وبطء في الحركة' },
+          { exerciseId: 'bk-wall-angels', sets: 3, reps: 10, restSeconds: 30, notes: '10 عدات انزلاق كامل على الحائط' }
+        ]
+      },
+      {
+        id: 'plan-w3-sC',
+        sessionCode: 'C',
+        title: 'الجلسة C: ماكجيل المتقدم والجسر الأحادي',
+        description: 'ماكجيل للبطن (8 عدات) + المحار (15 عدة) + الجسر برجل واحدة مدعومة + سحب الحزام',
+        estimatedMinutes: 24,
+        dayOfWeek: 3,
+        dayNameAr: 'الأربعاء',
+        routineId: 'routine-w3-sC',
+        prescriptions: [
+          { exerciseId: 'ab-mcgill-curlup', sets: 3, reps: 8, holdSeconds: 5, restSeconds: 45, notes: 'ثبات 5 ثوانٍ لكل عدة' },
+          { exerciseId: 'obl-clamshell', sets: 3, reps: 15, sides: 'each', restSeconds: 45, notes: '15 عدة لكل جانب لتحمل الألوية الوسطى' },
+          { exerciseId: 'obl-kickstand-bridge', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: '10 عدات لكل جهة' },
+          { exerciseId: 'bk-seated-band-row', sets: 3, reps: 12, restSeconds: 45, notes: 'سحب الحزام مع عصر ثانية في الخلف' }
+        ]
+      },
+      {
+        id: 'plan-w3-sD',
+        sessionCode: 'D',
+        title: 'الجلسة D: الحشرة الميتة وحمل الحقيبة المطور',
+        description: 'الحشرة الميتة (10 عدات) + حمل الحقيبة 35 ثانية + تمرين W إلى Y + مد الظهر وقوفاً',
+        estimatedMinutes: 22,
+        dayOfWeek: 4,
+        dayNameAr: 'الخميس',
+        routineId: 'routine-w3-sD',
+        prescriptions: [
+          { exerciseId: 'ab-dead-bug', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: '10 عدات متقنة لكل جانب' },
+          { exerciseId: 'obl-suitcase-carry', sets: 3, durationSeconds: 35, sides: 'each', restSeconds: 45, notes: 'مشي 35 ثانية لكل يد مع منع أي ميلان' },
+          { exerciseId: 'bk-prone-w-to-y', sets: 3, reps: 8, restSeconds: 45, notes: 'تثبيت اللوحين' },
+          { exerciseId: 'bk-standing-lumbar-extension', sets: 3, reps: 6, restSeconds: 30, notes: '3 مجموعات خفيفة لتليين الفقرات' }
+        ]
+      }
+    ]
+  },
+  {
+    weekNumber: 4,
+    title: 'الأسبوع الرابع: تعزيز القوة الوظيفية والتكامل العضلي',
+    description: 'المرحلة الختامية لتدريب الظهر على مقاومة الحركات المفاجئة وحمل الأوزان اليومية بأمان تام.',
+    focus: 'تكامل الحزام العضلي ومنع الانتكاسات الحركية',
+    sessions: [
+      {
+        id: 'plan-w4-sA',
+        sessionCode: 'A',
+        title: 'الجلسة A: ثبات الدب والبالوف بريس المتقدم',
+        description: 'الدب الثابت (25 ثانية) + بالوف بريس (10 عدات) + سوبرمان المعدل + الجسر مع وسادة',
+        estimatedMinutes: 25,
+        dayOfWeek: 6,
+        dayNameAr: 'السبت',
+        routineId: 'routine-w4-sA',
+        prescriptions: [
+          { exerciseId: 'ab-bear-crawl-hold', sets: 3, durationSeconds: 25, restSeconds: 45, notes: 'ثبات 25 ثانية مع تنفس بطيء' },
+          { exerciseId: 'obl-pallof-press', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: '10 عدات لكل جانب مع ثبات ثانيتين للأمام' },
+          { exerciseId: 'bk-prone-arm-leg-lift', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'مع وسادة تحت الحوض' },
+          { exerciseId: 'bk-glute-bridge-squeeze', sets: 3, reps: 12, restSeconds: 45, notes: 'تحكم وثبات في القمة' }
+        ]
+      },
+      {
+        id: 'plan-w4-sB',
+        sessionCode: 'B',
+        title: 'الجلسة B: الحشرة المقاومة وثبات الطائر الكامل',
+        description: 'الحشرة بحزام المقاومة + ثبات الدوران نصف راكع + الطائر والكلب (ثبات 3 ثوانٍ) + الكوبرا',
+        estimatedMinutes: 25,
+        dayOfWeek: 1,
+        dayNameAr: 'الاثنين',
+        routineId: 'routine-w4-sB',
+        prescriptions: [
+          { exerciseId: 'ab-banded-dead-bug', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'ثبات البطن مع مقاومة الحبل' },
+          { exerciseId: 'obl-half-kneeling-chop', sets: 3, durationSeconds: 20, sides: 'each', restSeconds: 45, notes: 'ثبات 20 ثانية لكل جانب' },
+          { exerciseId: 'bk-bird-dog', sets: 3, reps: 10, holdSeconds: 3, sides: 'each', restSeconds: 45, notes: 'ثبات 3 ثوانٍ كاملة في القمة' },
+          { exerciseId: 'bk-prone-cobra', sets: 3, reps: 8, holdSeconds: 5, restSeconds: 45, notes: 'ثبات 5 ثوانٍ مع عصر لوحي الكتف' }
+        ]
+      },
+      {
+        id: 'plan-w4-sC',
+        sessionCode: 'C',
+        title: 'الجلسة C: البلانك المرتفع والحشرة المتعارضة',
+        description: 'البلانك المرتفع (30 ثانية) + الحشرة المتعارضة (6 ثوانٍ) + الجسر الأحادي + سحب الحزام',
+        estimatedMinutes: 25,
+        dayOfWeek: 3,
+        dayNameAr: 'الأربعاء',
+        routineId: 'routine-w4-sC',
+        prescriptions: [
+          { exerciseId: 'ab-elevated-plank', sets: 3, durationSeconds: 30, restSeconds: 45, notes: 'ثبات 30 ثانية بجسم مستقيم كالمسطرة' },
+          { exerciseId: 'obl-contralateral-deadbug', sets: 3, reps: 6, holdSeconds: 6, sides: 'each', restSeconds: 45, notes: 'دفع 6 ثوانٍ متواصلة لكل عدة' },
+          { exerciseId: 'obl-kickstand-bridge', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'عصر الألوية' },
+          { exerciseId: 'bk-seated-band-row', sets: 3, reps: 12, restSeconds: 45, notes: 'عصر الظهر ثانية في كل عدة' }
+        ]
+      },
+      {
+        id: 'plan-w4-sD',
+        sessionCode: 'D',
+        title: 'الجلسة D: مسك الختام والاستشفاء المتكامل',
+        description: 'ضغط الحائط (20 ثانية) + حمل الحقيبة (40 ثانية) + تمرين W إلى Y + القطة والجمال',
+        estimatedMinutes: 24,
+        dayOfWeek: 4,
+        dayNameAr: 'الخميس',
+        routineId: 'routine-w4-sD',
+        prescriptions: [
+          { exerciseId: 'ab-wall-press-core', sets: 3, durationSeconds: 20, restSeconds: 45, notes: 'تفعيل كامل للحزام العضلي' },
+          { exerciseId: 'obl-suitcase-carry', sets: 3, durationSeconds: 40, sides: 'each', restSeconds: 45, notes: 'مشي 40 ثانية لكل يد بتحكم كامل' },
+          { exerciseId: 'bk-prone-w-to-y', sets: 3, reps: 10, restSeconds: 45, notes: '10 عدات متقنة' },
+          { exerciseId: 'bk-gentle-cat-camel', sets: 2, reps: 8, restSeconds: 30, notes: 'تليين واستشفاء ختامي للعمود الفقري' }
+        ]
+      }
+    ]
+  }
+];
+
+// ============================================================
+// خطة المستويات الثلاثة (The 3 Progression Levels Plan)
+// من الدليل الطبي (Untitled-1)
+// ============================================================
+export const FOUNDATION_LEVELS_PLAN: PlanLevel[] = [
+  {
+    levelNumber: 1,
+    title: 'المستوى 1: التأسيس والتثبيت الخالي من الألم',
+    subtitle: 'Foundation & Stabilization',
+    durationWeeks: 'أول 3 إلى 4 أسابيع',
+    goal: 'تفعيل العضلات العميقة واستقرار القوس القطني دون أي إجهاد لأسفل الظهر.',
+    rules: [
+      'قاعدة الـ 3-4 أسابيع: لا تنتقل للمستوى التالي إلا بعد 3-4 أسابيع كاملة بدون زيادة في الألم أو وخز عصبي.',
+      'قاعدة الإتقان قبل الصعوبة: إنهاء كل العدات بتحكم كامل ودون اهتزاز في العمود الفقري.',
+      'المبدأ الذهبي: التدرج بزيادة زمن الثبات والتحكم وليس بزيادة السرعة أو إجهاد العضلة حتى الفشل.'
+    ],
+    sections: [
+      {
+        title: '1. إحماء وتليين المفاصل',
+        category: 'warmup',
+        exercises: [
+          { exerciseId: 'bk-gentle-cat-camel', arabicName: 'القطة والجمال الخفيف', englishName: 'Gentle Cat-Camel', sets: 2, reps: 6, restSeconds: 30, notes: '6 عدات بطيئة جداً لتحريك المفاصل دون ضغط' }
+        ]
+      },
+      {
+        title: '2. تمارين البطن العميقة',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'ab-stomach-vacuum', arabicName: 'تفريغ البطن مستلقياً', englishName: 'Stomach Vacuum', sets: 3, reps: 5, holdSeconds: 10, restSeconds: 45, notes: 'ثبات 10 ثوانٍ' },
+          { exerciseId: 'ab-mcgill-curlup', arabicName: 'تمرين ماكجيل للبطن', englishName: 'McGill Curl-Up', sets: 3, reps: 6, holdSeconds: 5, restSeconds: 45, notes: 'يدك تحت ظهرك - ثبات 5 ثوانٍ لكل عدة' }
+        ]
+      },
+      {
+        title: '3. تمارين الجوانب ومنع الدوران',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'obl-side-plank-knees', arabicName: 'البلانك الجانبي على الركبتين', englishName: 'Side Plank on Knees', sets: 3, durationSeconds: 15, sides: 'each', restSeconds: 45, notes: 'ثبات 15 ثانية لكل جانب' },
+          { exerciseId: 'obl-clamshell', arabicName: 'تمرين المحار', englishName: 'Clamshells', sets: 3, reps: 12, sides: 'each', restSeconds: 45, notes: '12 عدة لكل جانب' }
+        ]
+      },
+      {
+        title: '4. تمارين الظهر والسلسلة الخلفية',
+        category: 'back',
+        exercises: [
+          { exerciseId: 'bk-glute-bridge', arabicName: 'الجسر العادي', englishName: 'Glute Bridge', sets: 3, reps: 10, holdSeconds: 1, restSeconds: 45, notes: 'ثبات ثانية في الأعلى دون مبالغة في الرفع' },
+          { exerciseId: 'bk-bird-dog', arabicName: 'الطائر والكلب (بحركة الرجلين فقط)', englishName: 'Bird Dog (Legs only)', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'اليدين ثابتتان لتسهيل التوازن' }
+        ]
+      }
+    ]
+  },
+  {
+    levelNumber: 2,
+    title: 'المستوى 2: بناء التحمل العضلي وقوة الجذع',
+    subtitle: 'Endurance & Core Control',
+    durationWeeks: 'من الأسبوع 4 إلى 8',
+    goal: 'رفع كفاءة التحمل لمنع إجهاد الظهر أثناء الجلوس في العمل (من 8 صباحاً إلى 4 عصراً).',
+    rules: [
+      'التأكد من خلو الحركات من أي ألم حاد أو شعور كهربائي في الساقين.',
+      'التنفس المنتظم والزفير المستمر أثناء الجهد وتجنب حبس النفس تماماً.',
+      'استخدام وزن خفيف (3-5 كجم) فقط في حمل الحقيبة للحفاظ على استقامة العمود الفقري.'
+    ],
+    sections: [
+      {
+        title: '1. إحماء',
+        category: 'warmup',
+        exercises: [
+          { exerciseId: 'bk-gentle-cat-camel', arabicName: 'القطة والجمال الخفيف', englishName: 'Gentle Cat-Camel', sets: 2, reps: 6, restSeconds: 30, notes: 'مجموعتان × 6 عدات' }
+        ]
+      },
+      {
+        title: '2. تمارين البطن',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'ab-dead-bug', arabicName: 'الحشرة الميتة', englishName: 'Dead Bug', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: 'الذراع العكسية مع الساق' },
+          { exerciseId: 'ab-elevated-plank', arabicName: 'البلانك المرتفع على حافة', englishName: 'Elevated Plank', sets: 3, durationSeconds: 28, restSeconds: 45, notes: 'ثبات 25–30 ثانية' }
+        ]
+      },
+      {
+        title: '3. تمارين الجوانب',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'obl-wall-side-plank', arabicName: 'البلانك الجانبي على الساعد والقدمين', englishName: 'Side Plank', sets: 3, durationSeconds: 22, sides: 'each', restSeconds: 45, notes: 'ثبات 20–25 ثانية لكل جانب' },
+          { exerciseId: 'obl-suitcase-carry', arabicName: 'حمل الحقيبة بوزن في يد واحدة', englishName: 'Suitcase Carry', sets: 3, durationSeconds: 30, sides: 'each', restSeconds: 45, notes: 'مشي 30 ثانية لكل يد بوزن 3-5 كجم مع استقامة تامة' }
+        ]
+      },
+      {
+        title: '4. تمارين الظهر',
+        category: 'back',
+        exercises: [
+          { exerciseId: 'bk-bird-dog', arabicName: 'الطائر والكلب الكامل', englishName: 'Bird Dog', sets: 3, reps: 8, holdSeconds: 2, sides: 'each', restSeconds: 45, notes: 'ذراع وساق متعاكسان مع ثبات ثانيتين' },
+          { exerciseId: 'bk-glute-bridge-squeeze', arabicName: 'الجسر مع ضم وسادة', englishName: 'Glute Bridge with Squeeze', sets: 3, reps: 11, restSeconds: 45, notes: '10–12 عدة' },
+          { exerciseId: 'bk-seated-band-row', arabicName: 'سحب الحزام جالساً', englishName: 'Seated Resistance Band Row', sets: 3, reps: 11, restSeconds: 45, notes: 'تقوية عضلات أعلى الظهر والوضعية' }
+        ]
+      }
+    ]
+  },
+  {
+    levelNumber: 3,
+    title: 'المستوى 3: القوة الوظيفية ومنع الانتكاسات',
+    subtitle: 'Functional Strength & Resilience',
+    durationWeeks: 'بعد إتمام الأسبوع 8 بنجاح',
+    goal: 'تدريب الظهر على مقاومة الحركات المفاجئة وحمل الأوزان اليومية بأمان واستقرار كامل.',
+    rules: [
+      'مستوى متقدم يتطلب إتقان التثبيت التام وعدم التسرع.',
+      'في حال الشعور بأي تعب بالظهر أثناء الدب الثابت، انزل الركبتين فوراً واسترح.',
+      'الحفاظ على الاستقامة التامة أثناء حمل الحقيبة ومنع ميل الجذع لأي اتجاه.'
+    ],
+    sections: [
+      {
+        title: '1. إحماء وتليين متقدم',
+        category: 'warmup',
+        exercises: [
+          { exerciseId: 'bk-gentle-cat-camel', arabicName: 'القطة والجمال الخفيف', englishName: 'Gentle Cat-Camel', sets: 2, reps: 6, restSeconds: 30, notes: 'تليين مفاصل الفقرات' },
+          { exerciseId: 'bk-standing-lumbar-extension', arabicName: 'مد الظهر أثناء الوقوف', englishName: 'Standing Lumbar Extension', sets: 1, reps: 5, restSeconds: 30, notes: '5 عدات برفق لاستعادة التقوس' }
+        ]
+      },
+      {
+        title: '2. تمارين البطن الوظيفية',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'ab-bear-crawl-hold', arabicName: 'الدب الثابت', englishName: 'Bear Crawl Hold', sets: 3, durationSeconds: 25, restSeconds: 45, notes: 'ثبات 20–30 ثانية والركبتين مرتفعتين 2 سم' },
+          { exerciseId: 'ab-banded-dead-bug', arabicName: 'الحشرة الميتة مع حزام مقاومة', englishName: 'Banded Dead Bug', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: '8 عدات لكل جانب' }
+        ]
+      },
+      {
+        title: '3. تمارين الجوانب والقوة الدائرية',
+        category: 'core',
+        exercises: [
+          { exerciseId: 'obl-pallof-press', arabicName: 'البالوف بريس بحزام المقاومة', englishName: 'Pallof Press', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: '10 عدات لكل جانب مع ثبات ثانيتين للأمام' },
+          { exerciseId: 'obl-suitcase-carry', arabicName: 'حمل الحقيبة بوزن في يد واحدة', englishName: 'Suitcase Carry', sets: 3, durationSeconds: 45, sides: 'each', restSeconds: 45, notes: 'مشي 45 ثانية بوزن متوسط وتحكم كامل' }
+        ]
+      },
+      {
+        title: '4. تمارين الظهر والسلسلة الخلفية',
+        category: 'back',
+        exercises: [
+          { exerciseId: 'bk-prone-arm-leg-lift', arabicName: 'سوبرمان المعدل بالتناوب', englishName: 'Modified Superman', sets: 3, reps: 10, sides: 'each', restSeconds: 45, notes: 'مع وسادة تحت الحوض - 10 عدات لكل جانب' },
+          { exerciseId: 'obl-kickstand-bridge', arabicName: 'الجسر برجل واحدة مدعومة', englishName: 'Kickstand Glute Bridge', sets: 3, reps: 8, sides: 'each', restSeconds: 45, notes: '8 عدات لكل جهة' },
+          { exerciseId: 'bk-prone-cobra', arabicName: 'تمرين الكوبرا الخفيف', englishName: 'Prone Cobra', sets: 3, reps: 8, holdSeconds: 5, restSeconds: 45, notes: 'ثبات 5 ثوانٍ مع عصر لوحي الكتف' }
+        ]
+      }
+    ]
+  }
+];
+
+// إنشاء كافة روتينات جلسات الخطة الـ 16 لتشغيلها مباشرة في الـ WorkoutPlayer
+export const ALL_PLAN_ROUTINES: Routine[] = FOUR_WEEK_PLAN.flatMap((week: PlanWeek) =>
+  week.sessions.map((s: PlanSession) => ({
+    id: s.routineId,
+    name: `${week.title.split(':')[0]} • ${s.title}`,
+    description: s.description,
+    exerciseIds: s.prescriptions.map((p: ExercisePrescription) => p.exerciseId),
+    totalEstimatedMinutes: s.estimatedMinutes,
+    level: week.weekNumber === 1 ? 'gentle' : week.weekNumber <= 3 ? 'moderate' : 'deep',
+    tag: `خطة 4 أسابيع / ${week.title.split(':')[0]}`,
+    weekNumber: week.weekNumber,
+    sessionCode: s.sessionCode,
+    planSessionId: s.id,
+    prescriptions: s.prescriptions
+  }))
+);
+
+// جدول الأسبوع المهيكل الافتراضي (السبت A، الإثنين B، الأربعاء C، الخميس D) + (الأحد، الثلاثاء، الجمعة راحة)
 export const INITIAL_WEEKLY_SCHEDULE: WeeklyScheduleItem[] = [
-  { dayOfWeek: 6, dayNameAr: 'السبت', routineId: 'routine-core-back-shield' },
-  { dayOfWeek: 0, dayNameAr: 'الأحد', routineId: null }, // راحة
-  { dayOfWeek: 1, dayNameAr: 'الاثنين', routineId: 'routine-pelvic-lateral-stability' },
-  { dayOfWeek: 2, dayNameAr: 'الثلاثاء', routineId: null }, // راحة
-  { dayOfWeek: 3, dayNameAr: 'الأربعاء', routineId: 'routine-posture-thoracic-relief' },
-  { dayOfWeek: 4, dayNameAr: 'الخميس', routineId: null }, // راحة
-  { dayOfWeek: 5, dayNameAr: 'الجمعة', routineId: 'routine-core-back-shield' },
+  { dayOfWeek: 6, dayNameAr: 'السبت', routineId: 'routine-w1-sA', sessionCode: 'A', weekNumber: 1 },
+  { dayOfWeek: 0, dayNameAr: 'الأحد', routineId: null, isRestDay: true, restReason: 'راحة سلبية أو مشي خفيف (15–20 دقيقة) لتروية الأنسجة' },
+  { dayOfWeek: 1, dayNameAr: 'الاثنين', routineId: 'routine-w1-sB', sessionCode: 'B', weekNumber: 1 },
+  { dayOfWeek: 2, dayNameAr: 'الثلاثاء', routineId: null, isRestDay: true, restReason: 'راحة واستشفاء للغضاريف' },
+  { dayOfWeek: 3, dayNameAr: 'الأربعاء', routineId: 'routine-w1-sC', sessionCode: 'C', weekNumber: 1 },
+  { dayOfWeek: 4, dayNameAr: 'الخميس', routineId: 'routine-w1-sD', sessionCode: 'D', weekNumber: 1 },
+  { dayOfWeek: 5, dayNameAr: 'الجمعة', routineId: null, isRestDay: true, restReason: 'راحة تامة واستشفاء أسبوعي' },
 ];
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   id: 'current_settings',
   userName: 'صديقي البطل',
   theme: 'dark',
+  activePlanType: '4-weeks',
+  currentWeekNumber: 1,
+  currentLevelNumber: 1,
   soundBeepsEnabled: true,
   voiceCoachEnabled: true,
   voiceLanguage: 'ar',
   defaultRestSeconds: 15,
   reminderEnabled: true,
-  reminderTime: '08:30',
-  reminderDays: [6, 1, 3, 5],
+  reminderTime: '18:30', // 6:30 PM (المساء بعد العودة من العمل كما في الدليل الطبي)
+  reminderDays: [6, 1, 3, 4], // السبت، الإثنين، الأربعاء، الخميس
+  workBreakReminderEnabled: true,
+  workBreakIntervalMinutes: 50, // كل 50 دقيقة أثناء ساعات العمل
   screenWakeLock: true,
 };

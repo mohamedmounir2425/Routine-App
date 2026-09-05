@@ -1,6 +1,13 @@
 import Dexie, { type Table } from 'dexie';
-import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings } from '../types';
-import { INITIAL_EXERCISES, INITIAL_ROUTINES, INITIAL_WEEKLY_SCHEDULE, DEFAULT_USER_SETTINGS } from './seedData';
+import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings, PlanSession } from '../types';
+import { 
+  INITIAL_EXERCISES, 
+  INITIAL_ROUTINES, 
+  INITIAL_WEEKLY_SCHEDULE, 
+  DEFAULT_USER_SETTINGS,
+  FOUR_WEEK_PLAN,
+  ALL_PLAN_ROUTINES 
+} from './seedData';
 
 export class RoutineDatabase extends Dexie {
   exercises!: Table<Exercise, string>;
@@ -13,9 +20,9 @@ export class RoutineDatabase extends Dexie {
     super('RoutineAppDB');
     this.version(1).stores({
       exercises: 'id, category, isFavorite, createdAt',
-      routines: 'id, isDefault, isMiniRescue',
+      routines: 'id, isDefault, isMiniRescue, weekNumber, sessionCode',
       weeklySchedule: 'dayOfWeek, routineId',
-      workoutLogs: 'id, routineId, completedAt',
+      workoutLogs: 'id, routineId, completedAt, weekNumber, sessionCode',
       settings: 'id'
     });
   }
@@ -27,15 +34,17 @@ export const db = new RoutineDatabase();
 export async function initializeDatabase(forceRefresh: boolean = false): Promise<void> {
   try {
     const exerciseCount = await db.exercises.count();
+    const routineCount = await db.routines.count();
     const sampleEx = await db.exercises.get('ab-mcgill-curlup');
-    const needsUpdate = exerciseCount < 30 || !sampleEx?.youtubeUrl || (sampleEx as any)?.localVideoUrl !== undefined || forceRefresh;
+    const needsUpdate = exerciseCount < 30 || routineCount < 15 || !sampleEx?.youtubeUrl || (sampleEx as any)?.localVideoUrl !== undefined || forceRefresh;
 
     if (needsUpdate) {
       await db.exercises.clear();
       await db.exercises.bulkAdd(INITIAL_EXERCISES);
 
       await db.routines.clear();
-      await db.routines.bulkAdd(INITIAL_ROUTINES);
+      // Seed both core routines and all 16 sessions of the 4-week program
+      await db.routines.bulkAdd([...INITIAL_ROUTINES, ...ALL_PLAN_ROUTINES]);
 
       await db.weeklySchedule.clear();
       await db.weeklySchedule.bulkAdd(INITIAL_WEEKLY_SCHEDULE);
@@ -50,22 +59,175 @@ export async function initializeDatabase(forceRefresh: boolean = false): Promise
   }
 }
 
+export async function getUserSettings(): Promise<UserSettings> {
+  let settings = await db.settings.get('current_settings');
+  if (!settings) {
+    settings = DEFAULT_USER_SETTINGS;
+    await db.settings.put(settings);
+  }
+  return settings;
+}
+
+export async function updateUserSettings(partial: Partial<UserSettings>): Promise<UserSettings> {
+  const current = await getUserSettings();
+  const updated = { ...current, ...partial };
+  await db.settings.put(updated);
+  return updated;
+}
+
+// Get rich status of today's workout plan
+export interface TodayPlanStatus {
+  isWorkoutDay: boolean;
+  isRestDay: boolean;
+  restReason?: string;
+  weekNumber: number;
+  sessionCode?: 'A' | 'B' | 'C' | 'D';
+  sessionTitle?: string;
+  session?: PlanSession | null;
+  routine: Routine | null;
+  estimatedMinutes: number;
+  scheduleItem: WeeklyScheduleItem;
+  nextSession?: {
+    dayNameAr: string;
+    sessionCode: 'A' | 'B' | 'C' | 'D';
+    title: string;
+    time: string;
+  };
+  completedSessionsThisWeek: number;
+  totalSessionsThisWeek: number;
+  overallCompletedSessions: number;
+  totalOverallSessions: number;
+}
+
+export async function getTodayPlanStatus(): Promise<TodayPlanStatus> {
+  const settings = await getUserSettings();
+  const currentWeekNum = settings.currentWeekNumber || 1;
+  const currentWeek = FOUR_WEEK_PLAN.find(w => w.weekNumber === currentWeekNum) || FOUR_WEEK_PLAN[0];
+
+  const now = new Date();
+  const todayDay = now.getDay(); // 0 = الأحد, 1 = الإثنين ... 6 = السبت
+
+  // Days mapping in the 4-day plan:
+  // Saturday (6) = Session A
+  // Monday (1) = Session B
+  // Wednesday (3) = Session C
+  // Thursday (4) = Session D
+  // Sunday (0), Tuesday (2), Friday (5) = Rest Days
+  const sessionCodeMap: { [day: number]: 'A' | 'B' | 'C' | 'D' } = {
+    6: 'A',
+    1: 'B',
+    3: 'C',
+    4: 'D',
+  };
+
+  const isWorkoutDay = todayDay in sessionCodeMap;
+  const sessionCode = isWorkoutDay ? sessionCodeMap[todayDay] : undefined;
+  const session = sessionCode ? (currentWeek.sessions.find((s: PlanSession) => s.sessionCode === sessionCode) || null) : null;
+
+  let routine: Routine | null = null;
+  if (session) {
+    routine = (await db.routines.get(session.routineId)) || null;
+    if (!routine) {
+      // Fallback
+      routine = ALL_PLAN_ROUTINES.find(r => r.id === session.routineId) || null;
+    }
+  }
+
+  // Determine next session if today is a rest day
+  let nextSession: TodayPlanStatus['nextSession'] | undefined = undefined;
+  const daySequence = [6, 0, 1, 2, 3, 4, 5];
+  const currentDayIndex = daySequence.indexOf(todayDay);
+  for (let i = 1; i <= 7; i++) {
+    const nextDayNum = daySequence[(currentDayIndex + i) % 7];
+    if (nextDayNum in sessionCodeMap) {
+      const nextCode = sessionCodeMap[nextDayNum];
+      const nextSess = currentWeek.sessions.find((s: PlanSession) => s.sessionCode === nextCode);
+      const dayNameAr = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][nextDayNum];
+      if (nextSess) {
+        nextSession = {
+          dayNameAr,
+          sessionCode: nextCode,
+          title: nextSess.title,
+          time: settings.reminderTime ? `${settings.reminderTime} م` : '6:30 م',
+        };
+      }
+      break;
+    }
+  }
+
+  // Calculate week completion from workoutLogs
+  const allLogs = await db.workoutLogs.toArray();
+  const weekLogs = allLogs.filter(l => l.weekNumber === currentWeekNum || (l.routineId && l.routineId.includes(`w${currentWeekNum}`)));
+  const completedCodes = new Set(weekLogs.map(l => l.sessionCode).filter(Boolean));
+  const completedSessionsThisWeek = completedCodes.size;
+
+  // Calculate overall 16-session progress
+  const uniqueSessionsCompleted = new Set(
+    allLogs
+      .map(l => l.routineId)
+      .filter(id => id && id.startsWith('routine-w'))
+  ).size;
+
+  let restReason = 'راحة واستشفاء للغضاريف وإعادة امتصاص السوائل الحامية';
+  if (todayDay === 0) restReason = 'راحة سلبية أو مشي خفيف (15–20 دقيقة) لتروية الأنسجة';
+  if (todayDay === 2) restReason = 'يوم تعافي واسترخاء لتجنب إجهاد عضلات الظهر';
+  if (todayDay === 5) restReason = 'راحة تامة واستشفاء أسبوعي كامل';
+
+  const scheduleItem: WeeklyScheduleItem = {
+    dayOfWeek: todayDay,
+    dayNameAr: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][todayDay],
+    routineId: routine ? routine.id : null,
+    isRestDay: !isWorkoutDay,
+    restReason,
+    sessionCode,
+    weekNumber: currentWeekNum,
+  };
+
+  return {
+    isWorkoutDay,
+    isRestDay: !isWorkoutDay,
+    restReason,
+    weekNumber: currentWeekNum,
+    sessionCode,
+    sessionTitle: session ? session.title : undefined,
+    session,
+    routine,
+    estimatedMinutes: session ? session.estimatedMinutes : 20,
+    scheduleItem,
+    nextSession,
+    completedSessionsThisWeek,
+    totalSessionsThisWeek: 4,
+    overallCompletedSessions: Math.min(16, uniqueSessionsCompleted),
+    totalOverallSessions: 16,
+  };
+}
+
+// Switch active week in the 4-week plan
+export async function setActivePlanWeek(weekNumber: number): Promise<void> {
+  await updateUserSettings({ currentWeekNumber: weekNumber });
+  const week = FOUR_WEEK_PLAN.find(w => w.weekNumber === weekNumber);
+  if (!week) return;
+
+  // Update weekly schedule to point to this week's routines
+  for (const s of week.sessions) {
+    await db.weeklySchedule.put({
+      dayOfWeek: s.dayOfWeek,
+      dayNameAr: s.dayNameAr,
+      routineId: s.routineId,
+      sessionCode: s.sessionCode,
+      weekNumber: weekNumber,
+    });
+  }
+}
+
 // Get routine assigned for today based on day of week
 export async function getTodayRoutine(): Promise<{ routine: Routine | null; isRestDay: boolean; scheduleItem: WeeklyScheduleItem }> {
-  const todayDay = new Date().getDay(); // 0-6 (0 is Sunday, 6 is Saturday)
-  let scheduleItem = await db.weeklySchedule.get(todayDay);
-
-  if (!scheduleItem) {
-    const fallback = INITIAL_WEEKLY_SCHEDULE.find(s => s.dayOfWeek === todayDay) || INITIAL_WEEKLY_SCHEDULE[0];
-    scheduleItem = fallback;
-  }
-
-  if (!scheduleItem.routineId) {
-    return { routine: null, isRestDay: true, scheduleItem };
-  }
-
-  const routine = (await db.routines.get(scheduleItem.routineId)) || null;
-  return { routine, isRestDay: false, scheduleItem };
+  const planStatus = await getTodayPlanStatus();
+  return {
+    routine: planStatus.routine,
+    isRestDay: planStatus.isRestDay,
+    scheduleItem: planStatus.scheduleItem,
+  };
 }
 
 // Get consecutive days streak calculation

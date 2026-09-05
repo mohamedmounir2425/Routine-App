@@ -75,6 +75,8 @@ export const CompletionModal: React.FC<Props> = ({
       durationMinutes: durationMin,
       exercisesCompleted: exercisesCompletedCount,
       totalExercises: routine.exerciseIds.length,
+      weekNumber: routine.weekNumber,
+      sessionCode: routine.sessionCode,
       prePainScore: prePain,
       postPainScore: postPain,
       difficultyRating,

@@ -15,6 +15,7 @@ import { Navbar, TabType } from './components/common/Navbar';
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
 import { ExerciseLibrary } from './components/exercises/ExerciseLibrary';
 import { WeeklyPlanner } from './components/planner/WeeklyPlanner';
+import { TrainingPlanView } from './components/planner/TrainingPlanView';
 import { RoutineBuilderModal } from './components/planner/RoutineBuilderModal';
 import { ProgressStats } from './components/stats/ProgressStats';
 import { SettingsView } from './components/settings/SettingsView';
@@ -46,6 +47,9 @@ export function App() {
   // Custom routine builder modal state
   const [isRoutineBuilderOpen, setIsRoutineBuilderOpen] = useState<boolean>(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+
+  // Planner sub-tab ('prescribed' for 4-week/3-levels plan, 'custom' for weekly builder)
+  const [plannerSubTab, setPlannerSubTab] = useState<'prescribed' | 'custom'>('prescribed');
 
   // Active workout player state
   const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
@@ -380,6 +384,7 @@ export function App() {
             streakStats={streakStats}
             miniRescueRoutine={miniRescueRoutine}
             weeklyCompletion={weeklyCompletion}
+            exercises={exercises}
             onStartRoutine={(r) => startRoutinePlayback(r)}
             onNavigateTab={setCurrentTab}
           />
@@ -395,17 +400,50 @@ export function App() {
         )}
 
         {currentTab === 'planner' && (
-          <WeeklyPlanner
-            schedule={weeklySchedule}
-            routines={routines}
-            exercises={exercises}
-            onUpdateScheduleDay={handleUpdateScheduleDay}
-            onApplyPreset={handleApplyPreset}
-            onStartRoutine={(r) => startRoutinePlayback(r)}
-            onCreateCustomRoutine={handleOpenCreateRoutine}
-            onEditRoutine={handleOpenEditRoutine}
-            onDeleteRoutine={handleDeleteCustomRoutine}
-          />
+          <div className="space-y-6">
+            {/* View Switcher: Prescribed Plan vs Custom Builder */}
+            <div className="flex items-center justify-between p-1.5 rounded-2xl liquid-glass border border-white/10 max-w-md mx-auto">
+              <button
+                onClick={() => setPlannerSubTab('prescribed')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  plannerSubTab === 'prescribed'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 liquid-button'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                خطة الـ 4 أسابيع والأساس
+              </button>
+              <button
+                onClick={() => setPlannerSubTab('custom')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  plannerSubTab === 'custom'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 liquid-button'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                تخصيص جدول الأسبوع
+              </button>
+            </div>
+
+            {plannerSubTab === 'prescribed' ? (
+              <TrainingPlanView
+                exercises={exercises}
+                onStartRoutine={(r) => startRoutinePlayback(r)}
+              />
+            ) : (
+              <WeeklyPlanner
+                schedule={weeklySchedule}
+                routines={routines}
+                exercises={exercises}
+                onUpdateScheduleDay={handleUpdateScheduleDay}
+                onApplyPreset={handleApplyPreset}
+                onStartRoutine={(r) => startRoutinePlayback(r)}
+                onCreateCustomRoutine={handleOpenCreateRoutine}
+                onEditRoutine={handleOpenEditRoutine}
+                onDeleteRoutine={handleDeleteCustomRoutine}
+              />
+            )}
+          </div>
         )}
 
         {currentTab === 'stats' && (
