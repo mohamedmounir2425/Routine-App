@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#0b0f19"/>
+  
+  <!-- Outer glow ring -->
+  <circle cx="256" cy="240" r="190" fill="none" stroke="url(#ringGrad)" stroke-width="3" opacity="0.6"/>
+  
+  <!-- Inner soft glow -->
+  <circle cx="256" cy="240" r="160" fill="url(#innerGlow)" opacity="0.15"/>
+  
+  <!-- Body silhouette (warrior pose) -->
+  <!-- Head -->
+  <circle cx="310" cy="100" r="28" fill="url(#bodyGrad)"/>
+  
+  <!-- Spine highlight -->
+  <path d="M295 128 Q280 160 275 200 Q272 230 278 260 Q284 290 280 320" 
+        stroke="rgba(167,243,208,0.9)" stroke-width="6" fill="none" stroke-linecap="round"
+        stroke-dasharray="8,5"/>
+  
+  <!-- Torso -->
+  <path d="M295 128 Q270 155 265 195 Q260 230 270 265 L230 310 Q220 340 240 360 L260 380"
+        fill="none" stroke="url(#bodyGrad)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Raised arm -->
+  <path d="M285 145 Q310 120 350 80 Q370 60 390 45"
+        fill="none" stroke="url(#bodyGrad)" stroke-width="16" stroke-linecap="round"/>
+  
+  <!-- Other arm -->
+  <path d="M275 180 Q240 175 200 180 Q175 185 155 190"
+        fill="none" stroke="url(#bodyGrad)" stroke-width="14" stroke-linecap="round"/>
+  
+  <!-- Front leg (lunged forward) -->
+  <path d="M260 300 Q240 330 220 360 Q210 390 215 420"
+        fill="none" stroke="url(#bodyGrad)" stroke-width="20" stroke-linecap="round"/>
+  
+  <!-- Back leg (extended) -->
+  <path d="M265 310 Q280 350 290 390 Q298 420 295 450"
+        fill="none" stroke="url(#bodyGrad)" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- Foot front -->
+  <ellipse cx="215" cy="430" rx="25" ry="10" fill="url(#bodyGrad)" opacity="0.8" transform="rotate(-10, 215, 430)"/>
+  <!-- Foot back -->
+  <ellipse cx="296" cy="455" rx="25" ry="10" fill="url(#bodyGrad)" opacity="0.8" transform="rotate(5, 296, 455)"/>
+  
+  <!-- Gradients -->
+  <defs>
+    <radialGradient id="innerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="0"/>
+    </radialGradient>
+    
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#065f46"/>
+    </linearGradient>
+    
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6ee7b7"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    
+    <!-- Glass sheen -->
+    <linearGradient id="glassGrad" x1="0%" y1="0%" x2="50%" y2="60%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Glass sheen overlay top-left -->
+  <path d="M40 40 Q80 30 180 60 Q220 75 256 110 Q200 80 100 90 Q60 92 40 80 Z" 
+        fill="url(#glassGrad)" rx="30"/>
+</svg>
