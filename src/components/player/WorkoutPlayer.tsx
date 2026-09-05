@@ -198,7 +198,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
   const progressPercent = ((currentIndex + (phase === 'rest' ? 1 : 0)) / sessionExercises.length) * 100;
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col justify-between bg-[#070b14] text-white select-none overflow-hidden h-[100dvh] max-h-[100dvh] relative ${isTvMode ? 'p-3 sm:p-6' : 'p-2.5 sm:p-4'}`}>
+    <div className={`fixed inset-0 z-[100] top-0 left-0 right-0 bottom-0 w-full h-[100dvh] max-h-[100dvh] flex flex-col justify-between bg-[#070b14]/98 backdrop-blur-2xl text-white select-none overflow-hidden ${isTvMode ? 'p-3 sm:p-6' : 'p-2.5 sm:p-4'}`}>
       {/* Liquid Glass Ambient Orbs in Player */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div className="liquid-orb-1 absolute -top-16 -right-16 w-80 h-80 rounded-full blur-[100px] bg-emerald-500/20" />
@@ -387,9 +387,13 @@ export const WorkoutPlayer: React.FC<Props> = ({
                   <div className="font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.35)] text-5xl sm:text-6xl leading-none">
                     {formatTime(timeLeft)}
                   </div>
-                  <div className="w-28 sm:w-36 h-1.5 bg-slate-950/60 rounded-full mt-1.5 overflow-hidden border border-white/10">
+                  {/* Counter bar below counter with reversed direction */}
+                  <div 
+                    dir="ltr" 
+                    className="w-28 sm:w-36 h-1.5 bg-slate-950/60 rounded-full mt-1.5 overflow-hidden border border-white/10 flex justify-start"
+                  >
                     <div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300 rounded-full"
                       style={{ width: `${(timeLeft / (currentExercise.durationSeconds || 60)) * 100}%` }}
                     />
                   </div>

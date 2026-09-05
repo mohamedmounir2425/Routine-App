@@ -66,7 +66,7 @@ export const HomeDashboard: React.FC<Props> = ({
           {/* Quick Streak Widget */}
           <div 
             onClick={() => onNavigateTab('stats')}
-            className="flex items-center gap-3 liquid-glass-pill rounded-2xl p-2.5 sm:p-3 px-3.5 sm:px-4 cursor-pointer hover:scale-105 transition-all shrink-0 w-full sm:w-auto justify-between sm:justify-start"
+            className="flex items-center gap-3 liquid-glass-pill rounded-2xl p-2.5 sm:p-3 px-3.5 sm:px-4 cursor-pointer hover:bg-white/10 transition-colors shrink-0 w-full sm:w-auto justify-between sm:justify-start"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -219,13 +219,13 @@ export const HomeDashboard: React.FC<Props> = ({
                 )}
               </div>
 
-              {/* Giant One-Click Start Button with Apple Liquid Sheen */}
+              {/* Giant One-Click Start Button */}
               <button
                 onClick={() => onStartRoutine(todayRoutine)}
-                className="w-full py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black text-lg sm:text-xl shadow-2xl shadow-emerald-500/35 hover:shadow-emerald-500/55 transition-all flex items-center justify-center gap-3 group/btn liquid-button liquid-shimmer"
+                className="w-full py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black text-lg sm:text-xl shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/40 transition-all flex items-center justify-center gap-3 group/btn liquid-button"
               >
                 <div className="w-10 h-10 rounded-xl bg-slate-950/20 flex items-center justify-center">
-                  <Play className="w-6 h-6 fill-slate-950 ml-0.5 group-hover/btn:scale-110 transition-transform" />
+                  <Play className="w-6 h-6 fill-slate-950 ml-0.5" />
                 </div>
                 <span className="font-['Tajawal'] tracking-tight">
                   {streakStats.hasWorkedOutToday ? 'إعادة تشغيل تمرين اليوم ▶' : 'ابدأ تمرين اليوم ▶'}
@@ -280,9 +280,9 @@ export const HomeDashboard: React.FC<Props> = ({
             onClick={() => {
               if (miniRescueRoutine) onStartRoutine(miniRescueRoutine);
             }}
-            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:bg-emerald-500/10 text-center transition-colors"
           >
-            <div className="text-lg font-black text-emerald-400 group-hover:scale-105 transition-transform">5 دقائق</div>
+            <div className="text-lg font-black text-emerald-400">5 دقائق</div>
             <div className="text-[11px] text-slate-400 mt-0.5">إنقاذ سريع ومريح</div>
           </button>
 
@@ -290,17 +290,17 @@ export const HomeDashboard: React.FC<Props> = ({
             onClick={() => {
               if (todayRoutine) onStartRoutine(todayRoutine);
             }}
-            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:bg-sky-500/10 text-center transition-colors"
           >
-            <div className="text-lg font-black text-sky-400 group-hover:scale-105 transition-transform">10 دقائق</div>
+            <div className="text-lg font-black text-sky-400">10 دقائق</div>
             <div className="text-[11px] text-slate-400 mt-0.5">مرونة وتليين الظهر</div>
           </button>
 
           <button
             onClick={() => onNavigateTab('exercises')}
-            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:bg-teal-500/10 text-center transition-colors"
           >
-            <div className="text-lg font-black text-teal-400 group-hover:scale-105 transition-transform">15 دقيقة</div>
+            <div className="text-lg font-black text-teal-400">15 دقيقة</div>
             <div className="text-[11px] text-slate-400 mt-0.5">جلسة علاجية متكاملة</div>
           </button>
         </div>

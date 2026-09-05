@@ -72,119 +72,78 @@ body {
   }
 }
 
-.liquid-orb-1 {
-  animation: liquid-blob-1 18s ease-in-out infinite alternate;
-  will-change: transform;
-}
-
-.liquid-orb-2 {
-  animation: liquid-blob-2 22s ease-in-out infinite alternate;
-  will-change: transform;
-}
-
+.liquid-orb-1,
+.liquid-orb-2,
 .liquid-orb-3 {
-  animation: liquid-blob-3 15s ease-in-out infinite alternate;
-  will-change: transform;
+  animation: none !important;
+  will-change: auto;
 }
 
 /* Base Liquid Glass Material */
 .liquid-glass {
-  background: rgba(15, 23, 42, 0.65);
+  position: relative;
+  background: rgba(15, 23, 42, 0.50);
   backdrop-filter: blur(28px) saturate(190%) contrast(105%);
   -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(105%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.28),
+    inset -2px 2px 3px -1px rgba(255, 255, 255, 0.22),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.12),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.25),
     0 16px 36px -10px rgba(0, 0, 0, 0.45);
 }
 
-/* Liquid Glass Elevated Cards */
+/* Liquid Glass Elevated Cards (Translucent, with specular box-shadow corner shine) */
 .liquid-glass-card {
   position: relative;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3),
+    inset -2px 2px 3px -1px rgba(255, 255, 255, 0.24),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.14),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.25),
     0 12px 32px -8px rgba(0, 0, 0, 0.4);
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .liquid-glass-card:hover {
-  transform: translateY(-3px) scale(1.008);
+  transform: translateY(-1px);
   border-color: rgba(52, 211, 153, 0.35);
   box-shadow: 
-    inset 0 1px 2px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 1px 0 rgba(16, 185, 129, 0.2),
-    0 20px 40px -10px rgba(0, 0, 0, 0.5),
-    0 0 25px -4px rgba(16, 185, 129, 0.22);
+    inset -2px 2px 3px -1px rgba(255, 255, 255, 0.35),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.20),
+    inset 0 -1px 2px 0 rgba(16, 185, 129, 0.15),
+    0 16px 36px -10px rgba(0, 0, 0, 0.45),
+    0 0 20px -4px rgba(16, 185, 129, 0.18);
 }
 
 /* Liquid Floating Dock (VisionOS Floating Island) */
 .liquid-glass-dock {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(32px) saturate(210%);
   -webkit-backdrop-filter: blur(32px) saturate(210%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
-    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+    inset -2px 2px 2px -1px rgba(255, 255, 255, 0.26),
+    inset 2px 2px 2px -1px rgba(255, 255, 255, 0.16),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.35),
     0 20px 50px -10px rgba(0, 0, 0, 0.65),
     0 8px 16px -4px rgba(0, 0, 0, 0.4);
 }
 
 /* Liquid Pill */
 .liquid-glass-pill {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.15);
-}
-
-/* Specular Shimmer Sweep Animation */
-@keyframes liquid-sweep {
-  0% {
-    transform: translateX(-150%) skewX(-20deg);
-    opacity: 0;
-  }
-  40% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateX(250%) skewX(-20deg);
-    opacity: 0;
-  }
-}
-
-.liquid-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.liquid-shimmer::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    90deg, 
-    rgba(255, 255, 255, 0) 0%, 
-    rgba(255, 255, 255, 0.08) 45%, 
-    rgba(255, 255, 255, 0.22) 50%, 
-    rgba(255, 255, 255, 0.08) 55%, 
-    rgba(255, 255, 255, 0) 100%
-  );
-  animation: liquid-sweep 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  pointer-events: none;
+    inset -1px 1px 1.5px -0.5px rgba(255, 255, 255, 0.20),
+    inset 1px 1px 1.5px -0.5px rgba(255, 255, 255, 0.10),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.12);
 }
 
 /* Glossy Liquid Convex Button */
@@ -199,16 +158,15 @@ body {
 }
 
 .liquid-button:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-1px);
   box-shadow: 
-    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.5),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45),
     inset 0 -2px 2px 0 rgba(0, 0, 0, 0.2),
-    0 14px 28px -4px rgba(16, 185, 129, 0.5),
-    0 0 20px rgba(52, 211, 153, 0.3);
+    0 10px 22px -4px rgba(16, 185, 129, 0.4);
 }
 
 .liquid-button:active {
-  transform: translateY(1px) scale(0.97);
+  transform: translateY(1px) scale(0.98);
   box-shadow: 
     inset 0 1px 1px 0 rgba(0, 0, 0, 0.3),
     0 4px 10px rgba(16, 185, 129, 0.2);
@@ -287,44 +245,89 @@ html.theme-transition *::after {
 
 /* ============================================================
    LIGHT MODE STYLING SYSTEM
-   Clean, medical-grade, soft contrast, and calm on the eyes
+   Apple-grade, serene porcelain background (#f5f5f7),
+   translucent glass cards with specular corner box-shadow shine,
+   high-contrast readable accent colors, and calm contrast.
 ============================================================ */
 html.light {
   color-scheme: light;
+  /* High-contrast accessible color variables for Light Mode */
+  --color-teal-200: #0f766e;
+  --color-teal-300: #0f766e;
+  --color-teal-400: #0d9488;
+  --color-emerald-200: #047857;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #059669;
+  --color-cyan-200: #0e7490;
+  --color-cyan-300: #0e7490;
+  --color-cyan-400: #0891b2;
+  --color-sky-200: #0369a1;
+  --color-sky-300: #0369a1;
+  --color-sky-400: #0284c7;
+  --color-amber-300: #b45309;
+  --color-amber-400: #d97706;
 }
 
 html.light body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #f5f5f7;
+  color: #1d1d1f;
 }
 
 html.light ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f5f5f7;
 }
 html.light ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d2d2d7;
 }
 html.light ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #86868b;
 }
 
 /* Main background in Light Mode */
 html.light .bg-\[\#070b14\] {
-  background-color: #f8fafc !important;
+  background-color: #f5f5f7 !important;
 }
 
-/* Cards & Surfaces in Light Mode */
+/* Translucent Cards & Surfaces in Light Mode with Corner Box-Shadow Shine */
 html.light .bg-slate-900,
 html.light .bg-slate-900\/90,
 html.light .bg-slate-900\/80,
 html.light .bg-slate-900\/70,
 html.light .bg-slate-900\/60,
-html.light .bg-slate-900\/50 {
-  background-color: #ffffff !important;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+html.light .bg-slate-900\/50,
+html.light .liquid-glass-card,
+html.light .glass-card {
+  background-color: rgba(255, 255, 255, 0.58) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 
+    inset -2px 2px 3px -1px rgba(255, 255, 255, 0.95),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.70),
+    0 10px 30px -6px rgba(0, 0, 0, 0.04),
+    0 2px 6px -1px rgba(0, 0, 0, 0.02) !important;
 }
 
-/* Secondary / Inset Surfaces */
+html.light .liquid-glass-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 
+    inset -2px 2px 3px -1px rgba(255, 255, 255, 1),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.85),
+    0 14px 32px -6px rgba(0, 0, 0, 0.06),
+    0 0 16px rgba(16, 185, 129, 0.12) !important;
+}
+
+/* Ensure no pseudo-element radial gradients conflict with box-shadow corner shine */
+html.light .liquid-glass-card::before,
+html.light .liquid-glass-card::after,
+html.light .liquid-glass::before,
+html.light .liquid-glass::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Secondary / Inset Surfaces (Soft translucent tint) */
 html.light .bg-slate-950,
 html.light .bg-slate-950\/95,
 html.light .bg-slate-950\/85,
@@ -332,7 +335,7 @@ html.light .bg-slate-950\/70,
 html.light .bg-slate-950\/60,
 html.light .bg-slate-950\/50,
 html.light .bg-slate-950\/40 {
-  background-color: #f1f5f9 !important;
+  background-color: rgba(0, 0, 0, 0.035) !important;
 }
 
 /* Hover & Tertiary surfaces */
@@ -341,7 +344,7 @@ html.light .bg-slate-800\/90,
 html.light .bg-slate-800\/80,
 html.light .bg-slate-800\/70,
 html.light .bg-slate-800\/60 {
-  background-color: #e2e8f0 !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Borders in Light Mode */
@@ -350,42 +353,118 @@ html.light .border-slate-800\/80,
 html.light .border-slate-800\/60,
 html.light .border-slate-700,
 html.light .border-slate-700\/60 {
-  border-color: #e2e8f0 !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Text in Light Mode */
+/* Apple Typography in Light Mode (Gentle on the eyes, harmonious) */
 html.light .text-white {
-  color: #0f172a !important;
+  color: #1d1d1f !important;
 }
 
 html.light .text-slate-100,
 html.light .text-slate-200 {
-  color: #1e293b !important;
+  color: #1d1d1f !important;
 }
 
 html.light .text-slate-300 {
-  color: #334155 !important;
+  color: #424245 !important;
 }
 
 html.light .text-slate-400 {
-  color: #64748b !important;
+  color: #6e6e73 !important;
 }
 
 html.light .text-slate-500 {
-  color: #94a3b8 !important;
+  color: #86868b !important;
 }
 
-/* Sticky Header and Mobile Bottom Bar in Light Mode */
-html.light header {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  border-bottom-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+/* High Contrast Accent Colors in Light Mode (Solves hard-to-see var(--color-teal-300) etc.) */
+html.light .text-teal-300,
+html.light .text-teal-200 {
+  color: #0f766e !important; /* rich dark teal */
+}
+html.light .text-teal-400 {
+  color: #0d9488 !important;
 }
 
-html.light nav.fixed {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-top-color: #e2e8f0 !important;
-  box-shadow: 0 -4px 20px -2px rgba(0, 0, 0, 0.05);
+html.light .text-emerald-300,
+html.light .text-emerald-200 {
+  color: #047857 !important; /* rich dark emerald */
+}
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-cyan-300,
+html.light .text-cyan-200 {
+  color: #0e7490 !important;
+}
+html.light .text-cyan-400 {
+  color: #0891b2 !important;
+}
+
+html.light .text-sky-300,
+html.light .text-sky-200 {
+  color: #0369a1 !important;
+}
+html.light .text-sky-400 {
+  color: #0284c7 !important;
+}
+
+html.light .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light .text-amber-400 {
+  color: #d97706 !important;
+}
+
+/* Badges with light backgrounds */
+html.light .bg-emerald-500\/20 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+html.light .border-emerald-500\/40,
+html.light .border-emerald-500\/30 {
+  border-color: rgba(5, 150, 105, 0.3) !important;
+}
+html.light .bg-teal-500\/25,
+html.light .bg-teal-500\/20,
+html.light .bg-teal-500\/15 {
+  background-color: rgba(20, 184, 166, 0.12) !important;
+}
+html.light .border-teal-500\/40,
+html.light .border-teal-500\/30,
+html.light .border-teal-500\/25 {
+  border-color: rgba(13, 148, 136, 0.3) !important;
+}
+
+/* Translucent Sticky Header and Floating Dock in Light Mode */
+html.light header,
+html.light .liquid-glass {
+  background-color: rgba(245, 245, 247, 0.65) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .liquid-glass-dock {
+  background-color: rgba(255, 255, 255, 0.68) !important;
+  backdrop-filter: blur(32px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 
+    inset -2px 2px 2px -1px rgba(255, 255, 255, 1),
+    inset 2px 2px 2px -1px rgba(255, 255, 255, 0.8),
+    0 20px 45px -10px rgba(0, 0, 0, 0.08),
+    0 6px 16px -4px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .liquid-glass-pill {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 
+    inset -1px 1px 1.5px -0.5px rgba(255, 255, 255, 0.8),
+    inset 1px 1px 1.5px -0.5px rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Inputs & Form Elements in Light Mode */
@@ -395,89 +474,33 @@ html.light input[type="url"],
 html.light input[type="time"],
 html.light select,
 html.light textarea {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  color: #1d1d1f !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 html.light input::placeholder,
 html.light textarea::placeholder {
-  color: #94a3b8 !important;
+  color: #86868b !important;
 }
 
 /* Modals Overlay Backdrop in Light Mode */
 html.light .bg-black\/80 {
-  background-color: rgba(15, 23, 42, 0.55) !important;
+  background-color: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(16px) !important;
 }
 
-/* Special Gradients in Light Mode */
+/* Special Gradients in Light Mode (Soft pastels) */
 html.light .bg-gradient-to-br.from-slate-900.via-slate-900.to-emerald-950\/40 {
-  background-image: linear-gradient(to bottom right, #ffffff, #f8fafc, #ecfdf5) !important;
+  background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.75), rgba(245, 245, 247, 0.6), rgba(236, 253, 245, 0.6)) !important;
 }
 
 html.light .bg-gradient-to-r.from-slate-900.via-slate-900.to-teal-950\/30 {
-  background-image: linear-gradient(to right, #ffffff, #f8fafc, #f0fdfa) !important;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.75), rgba(245, 245, 247, 0.6), rgba(240, 253, 250, 0.6)) !important;
 }
 
 html.light .bg-gradient-to-r.from-slate-900.to-emerald-950\/40 {
-  background-image: linear-gradient(to right, #ffffff, #f0fdf4) !important;
-}
-
-/* Liquid Glass in Light Mode */
-html.light .liquid-glass {
-  background: rgba(255, 255, 255, 0.76) !important;
-  border-color: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 1px 0 rgba(148, 163, 184, 0.15),
-    0 16px 36px -10px rgba(148, 163, 184, 0.25) !important;
-}
-
-html.light .liquid-glass-card {
-  background: rgba(255, 255, 255, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 
-    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 1px 0 rgba(148, 163, 184, 0.15),
-    0 12px 28px -6px rgba(148, 163, 184, 0.2) !important;
-}
-
-html.light .liquid-glass-card:hover {
-  border-color: rgba(16, 185, 129, 0.45) !important;
-  box-shadow: 
-    inset 0 2px 2px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 1px 0 rgba(16, 185, 129, 0.15),
-    0 20px 40px -8px rgba(16, 185, 129, 0.18),
-    0 0 20px rgba(52, 211, 153, 0.18) !important;
-}
-
-html.light .liquid-glass-dock {
-  background: rgba(255, 255, 255, 0.82) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 
-    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 1px 0 rgba(148, 163, 184, 0.15),
-    0 20px 45px -10px rgba(15, 23, 42, 0.12),
-    0 6px 16px -4px rgba(15, 23, 42, 0.06) !important;
-}
-
-html.light .liquid-glass-pill {
-  background: rgba(241, 245, 249, 0.85) !important;
-  border-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 1px 0 rgba(148, 163, 184, 0.15) !important;
-}
-
-html.light .liquid-shimmer::after {
-  background: linear-gradient(
-    90deg, 
-    rgba(255, 255, 255, 0) 0%, 
-    rgba(255, 255, 255, 0.25) 45%, 
-    rgba(255, 255, 255, 0.6) 50%, 
-    rgba(255, 255, 255, 0.25) 55%, 
-    rgba(255, 255, 255, 0) 100%
-  ) !important;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.75), rgba(240, 253, 244, 0.6)) !important;
 }
 
 

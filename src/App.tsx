@@ -88,6 +88,19 @@ export function App() {
     return () => clearTimeout(timer);
   }, [theme]);
 
+  // Lock body scroll when WorkoutPlayer is active and scroll to top
+  useEffect(() => {
+    if (activeRoutine) {
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeRoutine]);
+
   const handleToggleTheme = () => {
     const nextTheme: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
@@ -324,7 +337,7 @@ export function App() {
           style={{
             background: theme === 'dark' 
               ? 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.10) 60%, transparent 80%)' 
-              : 'radial-gradient(circle, rgba(52, 211, 153, 0.22) 0%, rgba(167, 243, 208, 0.15) 60%, transparent 80%)',
+              : 'radial-gradient(circle, rgba(16, 185, 129, 0.09) 0%, rgba(167, 243, 208, 0.04) 50%, transparent 75%)',
           }}
         />
         {/* Fluid Orb 2 - Cyan / Teal / Sky */}
@@ -333,7 +346,7 @@ export function App() {
           style={{
             background: theme === 'dark' 
               ? 'radial-gradient(circle, rgba(6, 182, 212, 0.20) 0%, rgba(14, 116, 144, 0.08) 60%, transparent 80%)' 
-              : 'radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, rgba(186, 230, 253, 0.12) 60%, transparent 80%)',
+              : 'radial-gradient(circle, rgba(56, 189, 248, 0.07) 0%, rgba(224, 242, 254, 0.03) 50%, transparent 75%)',
           }}
         />
         {/* Fluid Orb 3 - Deep Indigo / Cobalt / Soft Jade */}
@@ -342,7 +355,7 @@ export function App() {
           style={{
             background: theme === 'dark' 
               ? 'radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(99, 102, 241, 0.10) 50%, transparent 80%)' 
-              : 'radial-gradient(circle, rgba(147, 197, 253, 0.18) 0%, rgba(167, 243, 208, 0.14) 60%, transparent 80%)',
+              : 'radial-gradient(circle, rgba(129, 140, 248, 0.07) 0%, rgba(224, 231, 255, 0.03) 50%, transparent 75%)',
           }}
         />
       </div>
