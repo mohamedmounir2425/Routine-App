@@ -19,6 +19,7 @@ export const CompletionModal: React.FC<Props> = ({
 }) => {
   const [prePain, setPrePain] = useState<number>(3);
   const [postPain, setPostPain] = useState<number>(1);
+  const [difficultyRating, setDifficultyRating] = useState<'easy' | 'moderate' | 'challenging' | 'hard'>('moderate');
   const [notes, setNotes] = useState<string>('');
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export const CompletionModal: React.FC<Props> = ({
       totalExercises: routine.exerciseIds.length,
       prePainScore: prePain,
       postPainScore: postPain,
+      difficultyRating,
       notes: notes.trim(),
     });
   };
@@ -150,6 +152,35 @@ export const CompletionModal: React.FC<Props> = ({
             <p className={`text-xs mt-2 font-medium ${currentFeedback.color}`}>
               {currentFeedback.text}
             </p>
+          </div>
+
+          {/* Difficulty & Feeling Selection */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 text-right">
+            <label className="block text-xs font-bold text-slate-300 mb-2">
+              كيف كان مستوى التمرين اليوم؟
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'easy', label: 'سهل', emoji: '😊' },
+                { id: 'moderate', label: 'مناسب', emoji: '🙂' },
+                { id: 'challenging', label: 'تحدي', emoji: '😐' },
+                { id: 'hard', label: 'صعب', emoji: '😣' },
+              ].map(item => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setDifficultyRating(item.id as any)}
+                  className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                    difficultyRating === item.id
+                      ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-sm'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="text-xl">{item.emoji}</span>
+                  <span className="text-[11px] font-bold">{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Pre pain assessment toggle / optional */}

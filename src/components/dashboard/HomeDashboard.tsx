@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Flame, Calendar, Clock, Sparkles, CheckCircle2, ChevronLeft, Zap } from 'lucide-react';
+import { Play, Flame, Calendar, Clock, Sparkles, CheckCircle2, ChevronLeft, Zap, Check } from 'lucide-react';
 import { Routine } from '../../types';
 import { StreakStats } from '../../db';
 
@@ -8,6 +8,7 @@ interface Props {
   isRestDay: boolean;
   streakStats: StreakStats;
   miniRescueRoutine: Routine | null;
+  weeklyCompletion?: { [dayOfWeek: number]: boolean };
   onStartRoutine: (routine: Routine) => void;
   onNavigateTab: (tab: 'exercises' | 'planner' | 'stats') => void;
 }
@@ -17,6 +18,7 @@ export const HomeDashboard: React.FC<Props> = ({
   isRestDay,
   streakStats,
   miniRescueRoutine,
+  weeklyCompletion = {},
   onStartRoutine,
   onNavigateTab,
 }) => {
@@ -44,7 +46,7 @@ export const HomeDashboard: React.FC<Props> = ({
   return (
     <div className="space-y-6 pb-16">
       {/* Top Welcome Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 p-6 sm:p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 p-5 sm:p-8 shadow-xl">
         <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
@@ -53,7 +55,7 @@ export const HomeDashboard: React.FC<Props> = ({
               <Sparkles className="w-3.5 h-3.5" />
               <span>يوم جديد لصحة أفضل</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white font-['Tajawal'] tracking-tight">
+            <h2 className="text-xl sm:text-3xl font-black text-white font-['Tajawal'] tracking-tight">
               {greeting}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
@@ -64,18 +66,87 @@ export const HomeDashboard: React.FC<Props> = ({
           {/* Quick Streak Widget */}
           <div 
             onClick={() => onNavigateTab('stats')}
-            className="flex items-center gap-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3 px-4 cursor-pointer hover:border-amber-500/30 transition-all shrink-0"
+            className="flex items-center gap-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5 sm:p-3 px-3.5 sm:px-4 cursor-pointer hover:border-amber-500/30 transition-all shrink-0 w-full sm:w-auto justify-between sm:justify-start"
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Flame className="w-6 h-6 fill-amber-500" />
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-slate-400 font-medium">الالتزام المتتالي</div>
-              <div className="text-base font-black text-amber-400">
-                {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'يوم' : streakStats.currentStreak === 2 ? 'يومان' : streakStats.currentStreak <= 10 ? 'أيام' : 'يوماً'} 🔥
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <Flame className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-500" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-slate-400 font-medium">الالتزام المتتالي</div>
+                <div className="text-sm sm:text-base font-black text-amber-400">
+                  {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'يوم' : streakStats.currentStreak === 2 ? 'يومان' : streakStats.currentStreak <= 10 ? 'أيام' : 'يوماً'} 🔥
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Weekly Days Tracker Widget */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-xs sm:text-sm font-bold text-white font-['Tajawal']">
+              تقدم هذا الأسبوع
+            </h3>
+          </div>
+          <span className="text-[11px] text-slate-400 font-semibold">
+            {Object.values(weeklyCompletion).filter(Boolean).length} من 7 أيام منجزة
+          </span>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+          {[
+            { num: 6, label: 'السبت', short: 'سبت' },
+            { num: 0, label: 'الأحد', short: 'أحد' },
+            { num: 1, label: 'الاثنين', short: 'إثنين' },
+            { num: 2, label: 'الثلاثاء', short: 'ثلاثاء' },
+            { num: 3, label: 'الأربعاء', short: 'أربعاء' },
+            { num: 4, label: 'الخميس', short: 'خميس' },
+            { num: 5, label: 'الجمعة', short: 'جمعة' },
+          ].map(day => {
+            const todayDay = new Date().getDay();
+            const isToday = todayDay === day.num;
+            const isDone = Boolean(weeklyCompletion[day.num]);
+
+            return (
+              <div
+                key={day.num}
+                className={`flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border transition-all ${
+                  isDone
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-md shadow-emerald-500/10'
+                    : isToday
+                    ? 'bg-slate-800/90 border-emerald-400/60 ring-1 sm:ring-2 ring-emerald-500/30 text-white'
+                    : 'bg-slate-950/50 border-slate-800 text-slate-400'
+                }`}
+              >
+                <span className="text-[9px] sm:text-xs font-bold font-['Tajawal'] mb-1 truncate max-w-full">
+                  <span className="sm:hidden">{day.short}</span>
+                  <span className="hidden sm:inline">{day.label}</span>
+                </span>
+
+                <div
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center text-[10px] sm:text-xs font-black transition-all ${
+                    isDone
+                      ? 'bg-emerald-500 text-slate-950 font-black'
+                      : isToday
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[9px]'
+                      : 'bg-slate-900 border border-slate-800 text-slate-500'
+                  }`}
+                >
+                  {isDone ? (
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
+                  ) : isToday ? (
+                    'اليوم'
+                  ) : (
+                    '○'
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -827,6 +827,7 @@ export const INITIAL_WEEKLY_SCHEDULE: WeeklyScheduleItem[] = [
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   id: 'current_settings',
   userName: 'صديقي البطل',
+  theme: 'dark',
   soundBeepsEnabled: true,
   voiceCoachEnabled: true,
   voiceLanguage: 'ar',

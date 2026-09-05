@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Play } from 'lucide-react';
+import { Clock, Play, Plus, Edit3, Trash2 } from 'lucide-react';
 import { Routine, WeeklyScheduleItem, Exercise } from '../../types';
 
 interface Props {
@@ -9,6 +9,9 @@ interface Props {
   onUpdateScheduleDay: (dayOfWeek: number, routineId: string | null) => void;
   onApplyPreset: (presetType: '3days' | '4days' | 'daily') => void;
   onStartRoutine: (routine: Routine) => void;
+  onCreateCustomRoutine?: () => void;
+  onEditRoutine?: (routine: Routine) => void;
+  onDeleteRoutine?: (routineId: string) => void;
 }
 
 export const WeeklyPlanner: React.FC<Props> = ({
@@ -18,6 +21,9 @@ export const WeeklyPlanner: React.FC<Props> = ({
   onUpdateScheduleDay,
   onApplyPreset,
   onStartRoutine,
+  onCreateCustomRoutine,
+  onEditRoutine,
+  onDeleteRoutine,
 }) => {
   const todayIndex = new Date().getDay();
 
@@ -37,21 +43,33 @@ export const WeeklyPlanner: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Quick presets */}
-        <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
-          <span className="text-xs text-slate-400 font-semibold px-2">اقتراح سريع:</span>
-          <button
-            onClick={() => onApplyPreset('3days')}
-            className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
-          >
-            3 أيام / أسبوع
-          </button>
-          <button
-            onClick={() => onApplyPreset('4days')}
-            className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
-          >
-            4 أيام / أسبوع
-          </button>
+        {/* Actions: Custom Routine + Quick presets */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onCreateCustomRoutine && (
+            <button
+              onClick={onCreateCustomRoutine}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>إنشاء روتين مخصص</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
+            <span className="text-xs text-slate-400 font-semibold px-2">اقتراح سريع:</span>
+            <button
+              onClick={() => onApplyPreset('3days')}
+              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
+            >
+              3 أيام
+            </button>
+            <button
+              onClick={() => onApplyPreset('4days')}
+              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
+            >
+              4 أيام
+            </button>
+          </div>
         </div>
       </div>
 
@@ -70,35 +88,35 @@ export const WeeklyPlanner: React.FC<Props> = ({
           return (
             <div
               key={dayNum}
-              className={`rounded-2xl p-4 sm:p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              className={`rounded-2xl p-3.5 sm:p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 ${
                 isToday
                   ? 'bg-slate-900/90 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
                   : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700'
               }`}
             >
               {/* Day info */}
-              <div className="flex items-center gap-3.5">
-                <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-bold font-['Tajawal'] ${
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center font-bold font-['Tajawal'] shrink-0 ${
                   isToday
                     ? 'bg-emerald-500 text-slate-950 font-black'
                     : 'bg-slate-800 text-slate-300'
                 }`}>
                   <span className="text-xs">{item.dayNameAr}</span>
-                  {isToday && <span className="text-[9px] font-black uppercase">اليوم</span>}
+                  {isToday && <span className="text-[8px] sm:text-[9px] font-black uppercase">اليوم</span>}
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white font-['Tajawal']">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm sm:text-base font-bold text-white font-['Tajawal'] truncate">
                       {assignedRoutine ? assignedRoutine.name : 'يوم راحة واستشفاء 🌿'}
                     </span>
                     {isToday && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold shrink-0">
                         اليوم الحالي
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
                     {assignedRoutine
                       ? `${assignedRoutine.totalEstimatedMinutes} دقيقة • ${assignedRoutine.exerciseIds.length} تمارين • ${assignedRoutine.tag}`
                       : 'فرصة لراحة العضلات والمفاصل'}
@@ -107,11 +125,11 @@ export const WeeklyPlanner: React.FC<Props> = ({
               </div>
 
               {/* Selector & Actions */}
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-800/60 sm:border-0">
                 <select
                   value={item.routineId || ''}
                   onChange={(e) => onUpdateScheduleDay(dayNum, e.target.value || null)}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer flex-1 sm:flex-none min-w-0"
                 >
                   <option value="">🌿 راحة (Rest)</option>
                   {routines.map(r => (
@@ -124,7 +142,7 @@ export const WeeklyPlanner: React.FC<Props> = ({
                 {assignedRoutine && (
                   <button
                     onClick={() => onStartRoutine(assignedRoutine)}
-                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/20 transition-all"
+                    className="p-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/30 transition-all shrink-0 flex items-center justify-center"
                     title="بدء هذا الروتين"
                   >
                     <Play className="w-4 h-4 fill-current" />
@@ -153,13 +171,47 @@ export const WeeklyPlanner: React.FC<Props> = ({
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                      {r.tag}
-                    </span>
-                    <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {r.totalEstimatedMinutes} دقيقة
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.isCustom ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-slate-800 text-slate-300'
+                      }`}>
+                        {r.tag} {r.isCustom && '⭐'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {r.totalEstimatedMinutes} دقيقة
+                      </span>
+
+                      {r.isCustom && (
+                        <div className="flex items-center gap-1">
+                          {onEditRoutine && (
+                            <button
+                              onClick={() => onEditRoutine(r)}
+                              className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                              title="تعديل الروتين"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                          )}
+                          {onDeleteRoutine && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`هل أنت متأكد من حذف الروتين "${r.name}"؟`)) {
+                                  onDeleteRoutine(r.id);
+                                }
+                              }}
+                              className="p-1 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors"
+                              title="حذف الروتين"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <h4 className="text-sm font-bold text-white font-['Tajawal']">{r.name}</h4>

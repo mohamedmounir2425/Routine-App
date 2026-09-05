@@ -28,7 +28,9 @@ export interface Routine {
   level: 'gentle' | 'moderate' | 'deep';
   tag: string;
   isDefault?: boolean;
+  isCustom?: boolean;
   isMiniRescue?: boolean;  // هل هذا روتين الإنقاذ السريع (5 دقائق)؟
+  customExerciseConfigs?: { [exerciseId: string]: { durationSeconds?: number; restAfterSeconds?: number; reps?: number } };
 }
 
 export interface WeeklyScheduleItem {
@@ -47,12 +49,14 @@ export interface WorkoutLog {
   totalExercises: number;
   prePainScore?: number;  // 0 (لا يوجد ألم) إلى 10 (ألم شديد)
   postPainScore?: number; // تقييم ما بعد التمرين
+  difficultyRating?: 'easy' | 'moderate' | 'challenging' | 'hard'; // تقييم شعور الجلسة (إيموجي)
   notes?: string;
 }
 
 export interface UserSettings {
   id: string; // 'current_settings'
   userName: string;
+  theme?: 'dark' | 'light';
   soundBeepsEnabled: boolean;
   voiceCoachEnabled: boolean;
   voiceLanguage: 'ar' | 'en';

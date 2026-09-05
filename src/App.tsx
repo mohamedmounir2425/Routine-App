@@ -4,6 +4,9 @@ import {
   db, 
   getTodayRoutine, 
   calculateStreakStats, 
+  getWeeklyCompletionStatus,
+  saveCustomRoutine,
+  deleteCustomRoutine,
   StreakStats 
 } from './db';
 import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings } from './types';
@@ -12,6 +15,7 @@ import { Navbar, TabType } from './components/common/Navbar';
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
 import { ExerciseLibrary } from './components/exercises/ExerciseLibrary';
 import { WeeklyPlanner } from './components/planner/WeeklyPlanner';
+import { RoutineBuilderModal } from './components/planner/RoutineBuilderModal';
 import { ProgressStats } from './components/stats/ProgressStats';
 import { SettingsView } from './components/settings/SettingsView';
 import { WorkoutPlayer } from './components/player/WorkoutPlayer';
@@ -29,6 +33,7 @@ export function App() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [todayRoutine, setTodayRoutine] = useState<Routine | null>(null);
   const [isRestDay, setIsRestDay] = useState<boolean>(false);
+  const [weeklyCompletion, setWeeklyCompletion] = useState<{ [dayOfWeek: number]: boolean }>({});
   const [streakStats, setStreakStats] = useState<StreakStats>({
     currentStreak: 0,
     longestStreak: 0,
@@ -38,6 +43,10 @@ export function App() {
     hasWorkedOutToday: false,
   });
 
+  // Custom routine builder modal state
+  const [isRoutineBuilderOpen, setIsRoutineBuilderOpen] = useState<boolean>(false);
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+
   // Active workout player state
   const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
   const [activeRoutineExercises, setActiveRoutineExercises] = useState<Exercise[]>([]);
@@ -45,12 +54,61 @@ export function App() {
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
+  // Theme state ('dark' | 'light') with animation
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('movecare_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
+    }
+    return 'dark';
+  });
+
+  // Apply theme to document element with smooth transition animation
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+
+    if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+
+    localStorage.setItem('movecare_theme', theme);
+
+    const timer = setTimeout(() => {
+      root.classList.remove('theme-transition');
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    const nextTheme: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    const updated: UserSettings = { ...settings, theme: nextTheme };
+    db.settings.put(updated);
+    setSettings(updated);
+  };
+
+  const handleSetTheme = (newTheme: 'dark' | 'light') => {
+    setTheme(newTheme);
+    const updated: UserSettings = { ...settings, theme: newTheme };
+    db.settings.put(updated);
+    setSettings(updated);
+  };
+
   // Load and refresh all data
   const loadAppData = async () => {
     try {
       await initializeDatabase();
 
-      const [allEx, allRoutines, allSchedule, allLogs, userSettings, todayInfo, streaks] = await Promise.all([
+      const [allEx, allRoutines, allSchedule, allLogs, userSettings, todayInfo, streaks, weeklyStatus] = await Promise.all([
         db.exercises.toArray(),
         db.routines.toArray(),
         db.weeklySchedule.toArray(),
@@ -58,16 +116,23 @@ export function App() {
         db.settings.get('current_settings'),
         getTodayRoutine(),
         calculateStreakStats(),
+        getWeeklyCompletionStatus(),
       ]);
 
       setExercises(allEx);
       setRoutines(allRoutines);
       setWeeklySchedule(allSchedule.length > 0 ? allSchedule : INITIAL_WEEKLY_SCHEDULE);
       setWorkoutLogs(allLogs);
-      if (userSettings) setSettings(userSettings);
+      if (userSettings) {
+        setSettings(userSettings);
+        if (userSettings.theme) {
+          setTheme(userSettings.theme);
+        }
+      }
       setTodayRoutine(todayInfo.routine);
       setIsRestDay(todayInfo.isRestDay);
       setStreakStats(streaks);
+      setWeeklyCompletion(weeklyStatus);
 
       // Check if URL shortcut ?action=start-today was clicked
       const params = new URLSearchParams(window.location.search);
@@ -210,6 +275,29 @@ export function App() {
     setSettings(newSettings);
   };
 
+  // Custom routine actions
+  const handleSaveCustomRoutine = async (routine: Routine) => {
+    await saveCustomRoutine(routine);
+    await loadAppData();
+    setIsRoutineBuilderOpen(false);
+    setEditingRoutine(null);
+  };
+
+  const handleDeleteCustomRoutine = async (routineId: string) => {
+    await deleteCustomRoutine(routineId);
+    await loadAppData();
+  };
+
+  const handleOpenCreateRoutine = () => {
+    setEditingRoutine(null);
+    setIsRoutineBuilderOpen(true);
+  };
+
+  const handleOpenEditRoutine = (routine: Routine) => {
+    setEditingRoutine(routine);
+    setIsRoutineBuilderOpen(true);
+  };
+
   const miniRescueRoutine = routines.find(r => r.isMiniRescue) || routines[routines.length - 1] || null;
 
   if (isLoading) {
@@ -235,16 +323,19 @@ export function App() {
         streakCount={streakStats.currentStreak}
         isTvMode={isTvMode}
         onToggleTvMode={() => setIsTvMode(!isTvMode)}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-28 md:pb-12">
         {currentTab === 'home' && (
           <HomeDashboard
             todayRoutine={todayRoutine}
             isRestDay={isRestDay}
             streakStats={streakStats}
             miniRescueRoutine={miniRescueRoutine}
+            weeklyCompletion={weeklyCompletion}
             onStartRoutine={(r) => startRoutinePlayback(r)}
             onNavigateTab={setCurrentTab}
           />
@@ -267,6 +358,9 @@ export function App() {
             onUpdateScheduleDay={handleUpdateScheduleDay}
             onApplyPreset={handleApplyPreset}
             onStartRoutine={(r) => startRoutinePlayback(r)}
+            onCreateCustomRoutine={handleOpenCreateRoutine}
+            onEditRoutine={handleOpenEditRoutine}
+            onDeleteRoutine={handleDeleteCustomRoutine}
           />
         )}
 
@@ -283,15 +377,31 @@ export function App() {
             onUpdateSettings={handleUpdateSettings}
             onInstallPwa={handleInstallPwa}
             canInstallPwa={!!deferredPrompt}
+            onRefreshData={loadAppData}
+            theme={theme}
+            onSetTheme={handleSetTheme}
           />
         )}
       </main>
+
+      {/* Routine Builder Modal */}
+      <RoutineBuilderModal
+        isOpen={isRoutineBuilderOpen}
+        onClose={() => {
+          setIsRoutineBuilderOpen(false);
+          setEditingRoutine(null);
+        }}
+        onSave={handleSaveCustomRoutine}
+        availableExercises={exercises}
+        initialRoutine={editingRoutine}
+      />
 
       {/* Active Workout Player Modal / Screen */}
       {activeRoutine && activeRoutineExercises.length > 0 && (
         <WorkoutPlayer
           routine={activeRoutine}
           exercises={activeRoutineExercises}
+          allAvailableExercises={exercises}
           defaultRestSeconds={settings.defaultRestSeconds}
           soundEnabled={settings.soundBeepsEnabled}
           voiceCoachEnabled={settings.voiceCoachEnabled}

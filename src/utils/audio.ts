@@ -105,6 +105,32 @@ class SoundManager {
     }
   }
 
+  // Play high pitched warning beep
+  playWarningBeep() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {
+      // silent catch
+    }
+  }
+
+  // Voice alert for 10 seconds remaining
+  speakTenSecondsRemaining(lang: 'ar' | 'en' = 'ar') {
+    const text = lang === 'ar' ? 'متبقي 10 ثوانٍ' : '10 seconds remaining';
+    this.speak(text, lang);
+  }
+
   // Speak voice instruction with Web Speech API
   speak(text: string, lang: 'ar' | 'en' = 'ar') {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;

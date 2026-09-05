@@ -171,3 +171,121 @@ function calculateLongestStreak(sortedDescDates: string[]): number {
 
   return maxStreak;
 }
+
+// Save or update custom routine
+export async function saveCustomRoutine(routine: Routine): Promise<void> {
+  await db.routines.put({
+    ...routine,
+    isCustom: true,
+  });
+}
+
+// Delete a custom routine and unassign from schedule if assigned
+export async function deleteCustomRoutine(routineId: string): Promise<void> {
+  await db.routines.delete(routineId);
+  const affectedDays = await db.weeklySchedule.where('routineId').equals(routineId).toArray();
+  for (const day of affectedDays) {
+    await db.weeklySchedule.update(day.dayOfWeek, { routineId: null });
+  }
+}
+
+// Get completed days for the current week (Saturday through Friday)
+export async function getWeeklyCompletionStatus(): Promise<{ [dayOfWeek: number]: boolean }> {
+  const result: { [dayOfWeek: number]: boolean } = {
+    0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false
+  };
+
+  const now = new Date();
+  const currentDay = now.getDay(); // 0-6 (0=Sun, 6=Sat)
+  
+  // Calculate distance from previous Saturday
+  // If today is Saturday (6), daysFromSat = 0
+  // If today is Sunday (0), daysFromSat = 1
+  // If today is Friday (5), daysFromSat = 6
+  const daysFromSat = (currentDay + 1) % 7;
+  
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - daysFromSat);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const logs = await db.workoutLogs
+    .where('completedAt')
+    .between(startOfWeek.toISOString(), endOfWeek.toISOString(), true, true)
+    .toArray();
+
+  for (const log of logs) {
+    const logDate = new Date(log.completedAt);
+    const day = logDate.getDay();
+    result[day] = true;
+  }
+
+  return result;
+}
+
+// Export full backup
+export async function exportCompleteBackup(): Promise<string> {
+  const [exercises, routines, logs, schedule, settings] = await Promise.all([
+    db.exercises.toArray(),
+    db.routines.toArray(),
+    db.workoutLogs.toArray(),
+    db.weeklySchedule.toArray(),
+    db.settings.toArray(),
+  ]);
+
+  const backupObj = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    appName: 'MoveCare Routine App',
+    data: {
+      exercises,
+      routines,
+      logs,
+      schedule,
+      settings,
+    }
+  };
+
+  return JSON.stringify(backupObj, null, 2);
+}
+
+// Import full backup
+export async function importCompleteBackup(jsonData: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const parsed = JSON.parse(jsonData);
+    if (!parsed || !parsed.data) {
+      return { success: false, message: 'ملف النسخة الاحتياطية غير صالح أو تالف' };
+    }
+
+    const { routines, logs, schedule, settings } = parsed.data;
+
+    if (routines && Array.isArray(routines)) {
+      for (const r of routines) {
+        await db.routines.put(r);
+      }
+    }
+
+    if (logs && Array.isArray(logs)) {
+      for (const l of logs) {
+        await db.workoutLogs.put(l);
+      }
+    }
+
+    if (schedule && Array.isArray(schedule)) {
+      for (const s of schedule) {
+        await db.weeklySchedule.put(s);
+      }
+    }
+
+    if (settings && Array.isArray(settings) && settings.length > 0) {
+      await db.settings.put(settings[0]);
+    }
+
+    return { success: true, message: 'تم استرجاع النسخة الاحتياطية بنجاح!' };
+  } catch (err: any) {
+    return { success: false, message: `فشل الاسترجاع: ${err.message || 'خطأ في تنسيق الملف'}` };
+  }
+}

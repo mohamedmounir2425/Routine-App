@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Pause, SkipForward, SkipBack, X, Volume2, VolumeX, 
-  Maximize2, Minimize2, Video, Activity, AlertTriangle, ChevronLeft
+  Maximize2, Minimize2, Video, Activity, ChevronLeft, RefreshCw
 } from 'lucide-react';
 import { Routine, Exercise, WorkoutLog } from '../../types';
 import { ExerciseAnimation } from './ExerciseAnimation';
@@ -11,6 +11,7 @@ import { sounds } from '../../utils/audio';
 interface Props {
   routine: Routine;
   exercises: Exercise[];
+  allAvailableExercises?: Exercise[];
   defaultRestSeconds?: number;
   soundEnabled?: boolean;
   voiceCoachEnabled?: boolean;
@@ -24,6 +25,7 @@ type PlayerPhase = 'exercise' | 'rest' | 'completed';
 export const WorkoutPlayer: React.FC<Props> = ({
   routine,
   exercises,
+  allAvailableExercises = [],
   defaultRestSeconds = 15,
   soundEnabled = true,
   voiceCoachEnabled = true,
@@ -31,6 +33,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
   onClose,
   onFinishWorkout,
 }) => {
+  const [sessionExercises, setSessionExercises] = useState<Exercise[]>(exercises);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [phase, setPhase] = useState<PlayerPhase>('exercise');
   const [timeLeft, setTimeLeft] = useState<number>(exercises[0]?.durationSeconds || 60);
@@ -40,14 +43,15 @@ export const WorkoutPlayer: React.FC<Props> = ({
   const [isTvMode, setIsTvMode] = useState<boolean>(isTvModeInitial);
   const [viewMode, setViewMode] = useState<'video' | 'animation'>('video');
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
+  const [showSwapModal, setShowSwapModal] = useState<boolean>(false);
   const [totalElapsedTime, setTotalElapsedTime] = useState<number>(0);
 
-  const currentExercise: Exercise | undefined = exercises[currentIndex];
-  const nextExercise: Exercise | undefined = exercises[currentIndex + 1];
+  const currentExercise: Exercise | undefined = sessionExercises[currentIndex];
+  const nextExercise: Exercise | undefined = sessionExercises[currentIndex + 1];
 
   const timerRef = useRef<any>(null);
 
-  // Initialize exercise time when index changes
+  // Initialize exercise time when index or session exercises change
   useEffect(() => {
     if (currentExercise) {
       setTimeLeft(currentExercise.durationSeconds || 60);
@@ -61,7 +65,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
         }
       }
     }
-  }, [currentIndex]);
+  }, [currentIndex, sessionExercises]);
 
   // Main countdown timer interval
   useEffect(() => {
@@ -113,7 +117,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
   }, [phase, isPaused, isMuted, voiceCoachEnabled, currentIndex]);
 
   const handleExerciseFinish = () => {
-    if (currentIndex < exercises.length - 1) {
+    if (currentIndex < sessionExercises.length - 1) {
       // Enter rest period
       setPhase('rest');
       const restSec = currentExercise?.restAfterSeconds || defaultRestSeconds;
@@ -132,10 +136,24 @@ export const WorkoutPlayer: React.FC<Props> = ({
   };
 
   const startNextExercise = () => {
-    if (currentIndex < exercises.length - 1) {
+    if (currentIndex < sessionExercises.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       setPhase('completed');
+    }
+  };
+
+  const handleSwapExercise = (newEx: Exercise) => {
+    const updated = [...sessionExercises];
+    updated[currentIndex] = newEx;
+    setSessionExercises(updated);
+    setTimeLeft(newEx.durationSeconds || 60);
+    setShowSwapModal(false);
+    if (!isMuted) {
+      sounds.playGoChime();
+      if (voiceCoachEnabled) {
+        sounds.speak(`تم استبدال التمرين بـ: ${newEx.arabicName || newEx.name}`);
+      }
     }
   };
 
@@ -171,102 +189,139 @@ export const WorkoutPlayer: React.FC<Props> = ({
       <CompletionModal
         routine={routine}
         durationSeconds={totalElapsedTime}
-        exercisesCompletedCount={exercises.length}
+        exercisesCompletedCount={sessionExercises.length}
         onSaveAndClose={onFinishWorkout}
       />
     );
   }
 
-  const progressPercent = ((currentIndex + (phase === 'rest' ? 1 : 0)) / exercises.length) * 100;
+  const progressPercent = ((currentIndex + (phase === 'rest' ? 1 : 0)) / sessionExercises.length) * 100;
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col bg-slate-950 text-white select-none overflow-y-auto ${isTvMode ? 'p-6 lg:p-12' : 'p-3 sm:p-6'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col justify-between bg-[#070b14] text-white select-none overflow-hidden h-[100dvh] max-h-[100dvh] ${isTvMode ? 'p-3 sm:p-6' : 'p-2.5 sm:p-4'}`}>
       {/* Top Header */}
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowExitConfirm(true)}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="إنهاء الجلسة والخروج"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {routine.name}
-            </span>
-            <div className="text-xs text-slate-400 mt-0.5">
-              التمرين {currentIndex + 1} من {exercises.length}
+      <div className="w-full max-w-3xl mx-auto shrink-0 pb-2 border-b border-slate-800/80">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setShowExitConfirm(true)}
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="إنهاء الجلسة والخروج"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-['Tajawal']">
+                {routine.name}
+              </span>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 font-medium">
+                التمرين {currentIndex + 1} من {sessionExercises.length}
+              </div>
             </div>
+          </div>
+
+          {/* Action icons & Percentage Pill */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Live Progress Percentage Badge */}
+            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono text-xs font-black shadow-sm flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>{Math.round(progressPercent)}%</span>
+            </span>
+
+            {/* Sound Mute Toggle */}
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`p-1.5 sm:p-2 rounded-xl border transition-colors ${
+                isMuted ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title={isMuted ? 'تشغيل الصوت والتوجيه' : 'كتم الصوت'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* TV / Big Screen Toggle */}
+            <button
+              onClick={() => setIsTvMode(!isTvMode)}
+              className={`p-1.5 sm:p-2 rounded-xl border transition-colors ${
+                isTvMode ? 'bg-sky-500 text-white border-sky-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title={isTvMode ? 'تصغير الشاشة' : 'وضع الشاشة الكبيرة (TV)'}
+            >
+              {isTvMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
-        {/* Action icons */}
-        <div className="flex items-center gap-2">
-          {/* Sound Mute Toggle */}
-          <button
-            onClick={() => setIsMuted(!isMuted)}
-            className={`p-2.5 rounded-xl border transition-colors ${
-              isMuted ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
-            }`}
-            title={isMuted ? 'تشغيل الصوت والتوجيه' : 'كتم الصوت'}
-          >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
+        {/* Customized High-Visibility Segmented Progress Tracker */}
+        <div 
+          className="w-full flex items-center gap-1.5 sm:gap-2 mt-2.5"
+          title={`إنجاز الجلسة: ${Math.round(progressPercent)}%`}
+        >
+          {sessionExercises.map((_, idx) => {
+            const isCompleted = idx < currentIndex;
+            const isCurrent = idx === currentIndex;
+            const currentPercent = isCurrent 
+              ? phase === 'exercise'
+                ? ((currentExercise.durationSeconds - timeLeft) / (currentExercise.durationSeconds || 60)) * 100
+                : 100
+              : 0;
 
-          {/* TV / Big Screen Toggle */}
-          <button
-            onClick={() => setIsTvMode(!isTvMode)}
-            className={`p-2.5 rounded-xl border transition-colors ${
-              isTvMode ? 'bg-sky-500 text-white border-sky-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
-            }`}
-            title={isTvMode ? 'تصغير الشاشة' : 'وضع الشاشة الكبيرة (TV)'}
-          >
-            {isTvMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+            return (
+              <div 
+                key={idx}
+                className="flex-1 h-2 sm:h-2.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden relative shadow-inner"
+              >
+                {isCompleted && (
+                  <div className="w-full h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
+                )}
+                {isCurrent && (
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 shadow-[0_0_14px_rgba(52,211,153,0.9)] transition-all duration-300 relative rounded-full"
+                    style={{ width: `${Math.max(6, currentPercent)}%` }}
+                  >
+                    <div className="absolute top-0 right-0 bottom-0 w-2 bg-white rounded-full animate-pulse shadow-sm" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full max-w-5xl mx-auto h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
-        <div 
-          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 ease-out"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center items-center my-4">
+      {/* Main Content Area: Centered, Focused Theater Layout without scroll */}
+      <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col justify-between items-center py-2 sm:py-3 overflow-hidden gap-2 sm:gap-3">
         {phase === 'exercise' ? (
-          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-            {/* Visual / Media Container */}
-            <div className={`lg:col-span-7 flex flex-col items-center justify-center bg-slate-900/80 border border-slate-800 rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-2xl ${isTvMode ? 'h-[440px]' : 'h-80 sm:h-96'}`}>
+          <div className="w-full h-full flex flex-col justify-between items-center overflow-hidden gap-2 sm:gap-3">
+            {/* Visual / Media Container (Prominent, comfortable sizing) */}
+            <div className={`w-full rounded-3xl bg-slate-900 border border-slate-800/80 relative overflow-hidden shadow-2xl flex items-center justify-center shrink-0 ${
+              isTvMode ? 'h-[44vh] sm:h-[50vh]' : 'h-[36vh] sm:h-[42vh] max-h-[340px]'
+            }`}>
               {/* Media Toggle Pills */}
-              <div className="absolute top-4 right-4 z-10 flex gap-1.5 bg-slate-950/85 p-1 rounded-xl border border-slate-800 shadow-md">
+              <div className="absolute top-3 right-3 z-10 flex gap-1.5 bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-md">
                 {currentExercise.videoUrl && (
                   <button
                     onClick={() => setViewMode('video')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                    className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors ${
                       viewMode === 'video' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     <Video className="w-3.5 h-3.5" />
-                    فيديو يوتيوب
+                    <span>فيديو</span>
                   </button>
                 )}
                 <button
                   onClick={() => setViewMode('animation')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                  className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors ${
                     viewMode === 'animation' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Activity className="w-3.5 h-3.5" />
-                  رسم الحركة
+                  <span>رسم الحركة</span>
                 </button>
               </div>
 
               {viewMode === 'video' && currentExercise.videoUrl ? (
-                <div className="w-full h-full rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                <div className="w-full h-full bg-black flex items-center justify-center">
                   <iframe
                     src={currentExercise.videoUrl}
                     title={currentExercise.name}
@@ -279,88 +334,95 @@ export const WorkoutPlayer: React.FC<Props> = ({
                 <ExerciseAnimation
                   slug={currentExercise.animationSlug}
                   category={currentExercise.category}
-                  className="w-full h-full"
+                  className="w-full h-full scale-95 sm:scale-100"
                 />
               )}
             </div>
 
-            {/* Exercise Details & Countdown Column */}
-            <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                    {currentExercise.category === 'back' ? 'علاج الظهر' : currentExercise.category === 'core' ? 'تقوية الجذع' : 'إطالة ومرونة'}
+            {/* Unified Exercise Details & Guidance Card (Consumes space comfortably, easy on eyes) */}
+            <div className="w-full flex-1 min-h-0 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-3 sm:p-4 flex flex-col justify-between shadow-xl backdrop-blur-sm">
+              {/* Top Row: Exercise Number + Category + Swap Button */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black font-['Tajawal'] flex items-center gap-1.5 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>التمرين {currentIndex + 1} من {sessionExercises.length}</span>
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">
-                    ⏱ {currentExercise.durationSeconds} ثانية
+                  <span className="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hidden xs:inline-block">
+                    {currentExercise.category === 'back' ? 'علاج الظهر' : currentExercise.category === 'core' ? 'تقوية الجذع' : 'مرونة وإطالة'}
                   </span>
                 </div>
 
-                <h2 className={`font-black text-white font-['Tajawal'] tracking-tight ${isTvMode ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
-                  {currentExercise.arabicName}
-                </h2>
-                <p className="text-sm text-slate-400 font-medium">{currentExercise.name}</p>
-              </div>
-
-              {/* Big Timer */}
-              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 text-center shadow-inner relative overflow-hidden">
-                <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">
-                  الوقت المتبقي
-                </div>
-                <div className={`font-black font-mono tracking-tight text-emerald-400 ${isTvMode ? 'text-7xl sm:text-8xl' : 'text-6xl sm:text-7xl'}`}>
-                  {formatTime(timeLeft)}
-                </div>
-
-                {/* Micro progress ring/bar */}
-                <div className="w-full h-1.5 bg-slate-800 rounded-full mt-3 overflow-hidden">
-                  <div 
-                    className="h-full bg-emerald-500 transition-all duration-300"
-                    style={{ width: `${(timeLeft / (currentExercise.durationSeconds || 60)) * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Therapeutic instructions / precautions snippet */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 text-right">
-                <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-1">
-                  <span className="text-emerald-400">💡</span> تعليمات الحركة السليمة:
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {currentExercise.instructions[0] || currentExercise.description}
-                </p>
-
-                {currentExercise.precautions && currentExercise.precautions.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-start gap-1.5 text-[11px] text-amber-400 font-medium">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{currentExercise.precautions[0]}</span>
-                  </div>
+                {allAvailableExercises.length > 0 && (
+                  <button
+                    onClick={() => setShowSwapModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border border-slate-700/60 text-xs font-bold transition-all shrink-0"
+                    title="استبدال هذا التمرين ببديل ألطف للظهر"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>استبدال ببديل 🔄</span>
+                  </button>
                 )}
+              </div>
+
+              {/* Middle Row: Title & Giant Countdown Timer */}
+              <div className="flex items-center justify-between gap-4 py-1">
+                <div className="text-right min-w-0 flex-1">
+                  <h2 className="font-black text-white font-['Tajawal'] tracking-tight text-lg sm:text-2xl truncate">
+                    {currentExercise.arabicName}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    {currentExercise.name}
+                  </p>
+                </div>
+
+                {/* Giant Countdown Timer */}
+                <div className="text-left shrink-0">
+                  <div className="font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] text-5xl sm:text-6xl leading-none">
+                    {formatTime(timeLeft)}
+                  </div>
+                  <div className="w-28 sm:w-36 h-1 bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 transition-all duration-300"
+                      style={{ width: `${(timeLeft / (currentExercise.durationSeconds || 60)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Guidance Box */}
+              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300">
+                <span className="text-base text-emerald-400 shrink-0 mt-0.5">💡</span>
+                <p className="line-clamp-2 leading-relaxed text-[11px] sm:text-xs">
+                  <strong className="text-emerald-300 font-bold ml-1">إرشاد الأداء:</strong>
+                  {currentExercise.precautions?.[0] || currentExercise.instructions[0]}
+                </p>
               </div>
             </div>
           </div>
         ) : (
-          /* REST PERIOD VIEW */
-          <div className="w-full max-w-2xl bg-slate-900/90 border border-teal-500/30 rounded-3xl p-8 sm:p-12 text-center shadow-2xl animate-in zoom-in duration-300">
-            <span className="px-4 py-1.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-bold uppercase tracking-wider">
+          /* REST PERIOD VIEW (Clean, comfortable and fitting without scroll) */
+          <div className="w-full max-w-md bg-slate-900/90 border border-teal-500/30 rounded-3xl p-6 sm:p-8 text-center shadow-2xl animate-in zoom-in duration-300 my-auto">
+            <span className="px-4 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-bold uppercase tracking-wider">
               استراحة واستعداد 🌿
             </span>
 
-            <div className="my-6">
+            <div className="my-5">
               <div className="text-xs text-slate-400 mb-1">تنفس بعمق وفك التوتر</div>
-              <div className="text-7xl sm:text-8xl font-black font-mono text-teal-400 tracking-tight">
+              <div className="text-6xl sm:text-7xl font-black font-mono text-teal-400 tracking-tight">
                 {formatTime(restTimeLeft)}
               </div>
             </div>
 
             {/* Next Exercise Preview */}
             {nextExercise && (
-              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 mb-6 flex items-center justify-between text-right">
+              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-5 flex items-center justify-between text-right">
                 <div>
-                  <div className="text-[11px] text-slate-400">التمرين القادم:</div>
-                  <div className="text-base font-bold text-white font-['Tajawal']">{nextExercise.arabicName}</div>
-                  <div className="text-xs text-slate-500">{nextExercise.durationSeconds} ثانية</div>
+                  <div className="text-[10px] text-slate-400">التمرين القادم:</div>
+                  <div className="text-sm font-bold text-white font-['Tajawal']">{nextExercise.arabicName}</div>
+                  <div className="text-[11px] text-slate-500">{nextExercise.durationSeconds} ثانية</div>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl">
                   🧘‍♂️
                 </div>
               </div>
@@ -370,15 +432,15 @@ export const WorkoutPlayer: React.FC<Props> = ({
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => handleAddRestSeconds(10)}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                className="px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
               >
-                +10 ثوانٍ إضافية
+                +10 ثوانٍ
               </button>
               <button
                 onClick={handleSkipRest}
-                className="px-6 py-3 rounded-xl bg-teal-500 text-slate-950 font-black text-sm hover:bg-teal-400 transition-colors flex items-center gap-2 shadow-lg shadow-teal-500/20"
+                className="px-5 py-2.5 rounded-xl bg-teal-500 text-slate-950 font-black text-xs sm:text-sm hover:bg-teal-400 transition-colors flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
               >
-                <span>تخطي الاستراحة والبدء فوراً</span>
+                <span>تخطي والبدء</span>
                 <ChevronLeft className="w-4 h-4" />
               </button>
             </div>
@@ -386,35 +448,40 @@ export const WorkoutPlayer: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Bottom Control Bar */}
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-center gap-4 pt-4 border-t border-slate-800/80">
+      {/* Bottom Control Bar: Icons replaced with proper RTL directions */}
+      <div className="w-full max-w-md mx-auto shrink-0 flex items-center justify-center gap-5 sm:gap-7 py-2.5 border-t border-slate-800/80">
+        {/* Back / السابق button (Pointing to the right/backward in RTL) */}
         <button
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95"
+          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 flex items-center gap-2 shadow-lg"
           title="التمرين السابق"
         >
-          <SkipBack className="w-6 h-6" />
+          <SkipForward className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+          <span className="text-xs font-bold font-['Tajawal']">السابق</span>
         </button>
 
+        {/* Play / Pause in the center */}
         <button
           onClick={() => setIsPaused(!isPaused)}
-          className={`p-5 rounded-2xl font-bold text-slate-950 shadow-xl transition-all active:scale-95 flex items-center justify-center ${
+          className={`w-13 h-13 sm:w-15 sm:h-15 rounded-2xl font-bold text-slate-950 shadow-xl transition-all active:scale-95 flex items-center justify-center ${
             isPaused
-              ? 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/20'
-              : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+              ? 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/25'
+              : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/25'
           }`}
           title={isPaused ? 'استئناف' : 'إيقاف مؤقت'}
         >
-          {isPaused ? <Play className="w-8 h-8 fill-slate-950 ml-0.5" /> : <Pause className="w-8 h-8 fill-slate-950" />}
+          {isPaused ? <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-slate-950 ml-0.5" /> : <Pause className="w-6 h-6 sm:w-7 sm:h-7 fill-slate-950" />}
         </button>
 
+        {/* Next / التالي button (Pointing to the left/forward in RTL) */}
         <button
           onClick={handleSkip}
-          className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-all active:scale-95"
-          title="تخطي للتالي"
+          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+          title="التمرين التالي"
         >
-          <SkipForward className="w-6 h-6" />
+          <span className="text-xs font-bold font-['Tajawal']">التالي</span>
+          <SkipBack className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
         </button>
       </div>
 
@@ -439,6 +506,53 @@ export const WorkoutPlayer: React.FC<Props> = ({
               >
                 خروج
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Swap / Replace Exercise Modal */}
+      {showSwapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-white font-['Tajawal'] flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-emerald-400" />
+                  <span>استبدال التمرين ببديل مناسب</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  اختر تمريناً بديلاً أكثر راحة لظهرك لمتابعة الجلسة دون انقطاع
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSwapModal(false)}
+                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-3 overflow-y-auto space-y-2 flex-1 custom-scrollbar">
+              {allAvailableExercises
+                .filter(ex => ex.id !== currentExercise?.id)
+                .map(ex => (
+                  <div
+                    key={ex.id}
+                    onClick={() => handleSwapExercise(ex)}
+                    className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 cursor-pointer flex items-center justify-between gap-3 transition-all group"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-white font-['Tajawal'] group-hover:text-emerald-400 transition-colors">
+                        {ex.arabicName}
+                      </div>
+                      <div className="text-[10px] text-slate-400">{ex.name} • {ex.durationSeconds} ثانية</div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-800 group-hover:bg-emerald-500 group-hover:text-slate-950 text-emerald-400 text-[10px] font-bold transition-all">
+                      اختيار البديل
+                    </span>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
