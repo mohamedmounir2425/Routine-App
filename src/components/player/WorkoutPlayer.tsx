@@ -198,20 +198,26 @@ export const WorkoutPlayer: React.FC<Props> = ({
   const progressPercent = ((currentIndex + (phase === 'rest' ? 1 : 0)) / sessionExercises.length) * 100;
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col justify-between bg-[#070b14] text-white select-none overflow-hidden h-[100dvh] max-h-[100dvh] ${isTvMode ? 'p-3 sm:p-6' : 'p-2.5 sm:p-4'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col justify-between bg-[#070b14] text-white select-none overflow-hidden h-[100dvh] max-h-[100dvh] relative ${isTvMode ? 'p-3 sm:p-6' : 'p-2.5 sm:p-4'}`}>
+      {/* Liquid Glass Ambient Orbs in Player */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+        <div className="liquid-orb-1 absolute -top-16 -right-16 w-80 h-80 rounded-full blur-[100px] bg-emerald-500/20" />
+        <div className="liquid-orb-2 absolute bottom-10 -left-16 w-80 h-80 rounded-full blur-[100px] bg-teal-500/15" />
+      </div>
+
       {/* Top Header */}
-      <div className="w-full max-w-3xl mx-auto shrink-0 pb-2 border-b border-slate-800/80">
+      <div className="w-full max-w-3xl mx-auto shrink-0 pb-2 border-b border-white/10 relative z-10">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowExitConfirm(true)}
-              className="p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl liquid-glass-pill text-slate-400 hover:text-white transition-colors"
               title="إنهاء الجلسة والخروج"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <div>
-              <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-['Tajawal']">
+              <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full liquid-glass-pill text-emerald-400 font-['Tajawal']">
                 {routine.name}
               </span>
               <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 font-medium">
@@ -223,7 +229,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
           {/* Action icons & Percentage Pill */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Live Progress Percentage Badge */}
-            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono text-xs font-black shadow-sm flex items-center gap-1">
+            <span className="px-2.5 py-1 rounded-xl liquid-glass-pill text-emerald-400 font-mono text-xs font-black shadow-sm flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               <span>{Math.round(progressPercent)}%</span>
             </span>
@@ -231,8 +237,8 @@ export const WorkoutPlayer: React.FC<Props> = ({
             {/* Sound Mute Toggle */}
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className={`p-1.5 sm:p-2 rounded-xl border transition-colors ${
-                isMuted ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
+                isMuted ? 'bg-rose-500/20 border border-rose-500/30 text-rose-400' : 'liquid-glass-pill text-slate-300 hover:text-white'
               }`}
               title={isMuted ? 'تشغيل الصوت والتوجيه' : 'كتم الصوت'}
             >
@@ -242,8 +248,8 @@ export const WorkoutPlayer: React.FC<Props> = ({
             {/* TV / Big Screen Toggle */}
             <button
               onClick={() => setIsTvMode(!isTvMode)}
-              className={`p-1.5 sm:p-2 rounded-xl border transition-colors ${
-                isTvMode ? 'bg-sky-500 text-white border-sky-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
+                isTvMode ? 'bg-sky-500 text-white border-sky-400' : 'liquid-glass-pill text-slate-300 hover:text-white'
               }`}
               title={isTvMode ? 'تصغير الشاشة' : 'وضع الشاشة الكبيرة (TV)'}
             >
@@ -293,11 +299,11 @@ export const WorkoutPlayer: React.FC<Props> = ({
         {phase === 'exercise' ? (
           <div className="w-full h-full flex flex-col justify-between items-center overflow-hidden gap-2 sm:gap-3">
             {/* Visual / Media Container (Prominent, comfortable sizing) */}
-            <div className={`w-full rounded-3xl bg-slate-900 border border-slate-800/80 relative overflow-hidden shadow-2xl flex items-center justify-center shrink-0 ${
+            <div className={`w-full rounded-3xl liquid-glass-card relative overflow-hidden shadow-2xl flex items-center justify-center shrink-0 ${
               isTvMode ? 'h-[44vh] sm:h-[50vh]' : 'h-[36vh] sm:h-[42vh] max-h-[340px]'
             }`}>
               {/* Media Toggle Pills */}
-              <div className="absolute top-3 right-3 z-10 flex gap-1.5 bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-md">
+              <div className="absolute top-3 right-3 z-10 flex gap-1.5 liquid-glass-pill p-1 rounded-xl shadow-md">
                 {currentExercise.videoUrl && (
                   <button
                     onClick={() => setViewMode('video')}
@@ -340,15 +346,15 @@ export const WorkoutPlayer: React.FC<Props> = ({
             </div>
 
             {/* Unified Exercise Details & Guidance Card (Consumes space comfortably, easy on eyes) */}
-            <div className="w-full flex-1 min-h-0 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-3 sm:p-4 flex flex-col justify-between shadow-xl backdrop-blur-sm">
+            <div className="w-full flex-1 min-h-0 liquid-glass-card rounded-3xl p-3 sm:p-4 flex flex-col justify-between shadow-2xl">
               {/* Top Row: Exercise Number + Category + Swap Button */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black font-['Tajawal'] flex items-center gap-1.5 shadow-sm">
+                  <span className="px-3 py-1 rounded-xl liquid-glass-pill text-emerald-300 text-xs font-black font-['Tajawal'] flex items-center gap-1.5 shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>التمرين {currentIndex + 1} من {sessionExercises.length}</span>
                   </span>
-                  <span className="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hidden xs:inline-block">
+                  <span className="px-2.5 py-1 rounded-xl liquid-glass-pill text-slate-300 text-xs font-semibold hidden xs:inline-block">
                     {currentExercise.category === 'back' ? 'علاج الظهر' : currentExercise.category === 'core' ? 'تقوية الجذع' : 'مرونة وإطالة'}
                   </span>
                 </div>
@@ -356,7 +362,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
                 {allAvailableExercises.length > 0 && (
                   <button
                     onClick={() => setShowSwapModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border border-slate-700/60 text-xs font-bold transition-all shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl liquid-glass-pill hover:text-emerald-400 text-slate-300 text-xs font-bold transition-all shrink-0 liquid-button"
                     title="استبدال هذا التمرين ببديل ألطف للظهر"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
@@ -378,12 +384,12 @@ export const WorkoutPlayer: React.FC<Props> = ({
 
                 {/* Giant Countdown Timer */}
                 <div className="text-left shrink-0">
-                  <div className="font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] text-5xl sm:text-6xl leading-none">
+                  <div className="font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.35)] text-5xl sm:text-6xl leading-none">
                     {formatTime(timeLeft)}
                   </div>
-                  <div className="w-28 sm:w-36 h-1 bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div className="w-28 sm:w-36 h-1.5 bg-slate-950/60 rounded-full mt-1.5 overflow-hidden border border-white/10">
                     <div 
-                      className="h-full bg-emerald-500 transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
                       style={{ width: `${(timeLeft / (currentExercise.durationSeconds || 60)) * 100}%` }}
                     />
                   </div>
@@ -391,7 +397,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
               </div>
 
               {/* Bottom Guidance Box */}
-              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl liquid-glass-pill text-xs text-slate-300">
                 <span className="text-base text-emerald-400 shrink-0 mt-0.5">💡</span>
                 <p className="line-clamp-2 leading-relaxed text-[11px] sm:text-xs">
                   <strong className="text-emerald-300 font-bold ml-1">إرشاد الأداء:</strong>
@@ -402,27 +408,27 @@ export const WorkoutPlayer: React.FC<Props> = ({
           </div>
         ) : (
           /* REST PERIOD VIEW (Clean, comfortable and fitting without scroll) */
-          <div className="w-full max-w-md bg-slate-900/90 border border-teal-500/30 rounded-3xl p-6 sm:p-8 text-center shadow-2xl animate-in zoom-in duration-300 my-auto">
-            <span className="px-4 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-bold uppercase tracking-wider">
+          <div className="w-full max-w-md liquid-glass-card border-teal-500/40 rounded-3xl p-6 sm:p-8 text-center shadow-2xl animate-in zoom-in duration-300 my-auto">
+            <span className="px-4 py-1 rounded-full liquid-glass-pill text-teal-400 text-xs font-bold uppercase tracking-wider">
               استراحة واستعداد 🌿
             </span>
 
             <div className="my-5">
               <div className="text-xs text-slate-400 mb-1">تنفس بعمق وفك التوتر</div>
-              <div className="text-6xl sm:text-7xl font-black font-mono text-teal-400 tracking-tight">
+              <div className="text-6xl sm:text-7xl font-black font-mono text-teal-400 tracking-tight drop-shadow-[0_0_20px_rgba(20,184,166,0.3)]">
                 {formatTime(restTimeLeft)}
               </div>
             </div>
 
             {/* Next Exercise Preview */}
             {nextExercise && (
-              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-5 flex items-center justify-between text-right">
+              <div className="liquid-glass-pill rounded-2xl p-3.5 mb-5 flex items-center justify-between text-right">
                 <div>
                   <div className="text-[10px] text-slate-400">التمرين القادم:</div>
                   <div className="text-sm font-bold text-white font-['Tajawal']">{nextExercise.arabicName}</div>
-                  <div className="text-[11px] text-slate-500">{nextExercise.durationSeconds} ثانية</div>
+                  <div className="text-[11px] text-slate-400">{nextExercise.durationSeconds} ثانية</div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/25 flex items-center justify-center text-xl">
                   🧘‍♂️
                 </div>
               </div>
@@ -432,13 +438,13 @@ export const WorkoutPlayer: React.FC<Props> = ({
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => handleAddRestSeconds(10)}
-                className="px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                className="px-3.5 py-2.5 rounded-xl liquid-glass-pill text-xs font-bold text-slate-300 hover:text-white transition-colors liquid-button"
               >
                 +10 ثوانٍ
               </button>
               <button
                 onClick={handleSkipRest}
-                className="px-5 py-2.5 rounded-xl bg-teal-500 text-slate-950 font-black text-xs sm:text-sm hover:bg-teal-400 transition-colors flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-400 text-slate-950 font-black text-xs sm:text-sm hover:brightness-110 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-500/25 liquid-button"
               >
                 <span>تخطي والبدء</span>
                 <ChevronLeft className="w-4 h-4" />
@@ -449,12 +455,12 @@ export const WorkoutPlayer: React.FC<Props> = ({
       </div>
 
       {/* Bottom Control Bar: Icons replaced with proper RTL directions */}
-      <div className="w-full max-w-md mx-auto shrink-0 flex items-center justify-center gap-5 sm:gap-7 py-2.5 border-t border-slate-800/80">
+      <div className="w-full max-w-md mx-auto shrink-0 flex items-center justify-center gap-5 sm:gap-7 py-2.5 border-t border-white/10 relative z-10">
         {/* Back / السابق button (Pointing to the right/backward in RTL) */}
         <button
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl liquid-glass-pill text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 flex items-center gap-2 shadow-lg liquid-button"
           title="التمرين السابق"
         >
           <SkipForward className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
@@ -464,10 +470,10 @@ export const WorkoutPlayer: React.FC<Props> = ({
         {/* Play / Pause in the center */}
         <button
           onClick={() => setIsPaused(!isPaused)}
-          className={`w-13 h-13 sm:w-15 sm:h-15 rounded-2xl font-bold text-slate-950 shadow-xl transition-all active:scale-95 flex items-center justify-center ${
+          className={`w-13 h-13 sm:w-15 sm:h-15 rounded-2xl font-bold text-slate-950 shadow-xl transition-all active:scale-95 flex items-center justify-center liquid-button liquid-shimmer ${
             isPaused
-              ? 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/25'
-              : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/25'
+              ? 'bg-gradient-to-tr from-amber-500 to-amber-300 shadow-amber-400/30'
+              : 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-400 shadow-emerald-500/30'
           }`}
           title={isPaused ? 'استئناف' : 'إيقاف مؤقت'}
         >
@@ -477,7 +483,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
         {/* Next / التالي button (Pointing to the left/forward in RTL) */}
         <button
           onClick={handleSkip}
-          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+          className="px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl liquid-glass-pill text-slate-300 hover:text-white transition-all active:scale-95 flex items-center gap-2 shadow-lg liquid-button"
           title="التمرين التالي"
         >
           <span className="text-xs font-bold font-['Tajawal']">التالي</span>

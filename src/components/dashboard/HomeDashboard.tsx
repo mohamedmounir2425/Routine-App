@@ -46,8 +46,8 @@ export const HomeDashboard: React.FC<Props> = ({
   return (
     <div className="space-y-6 pb-16">
       {/* Top Welcome Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 p-5 sm:p-8 shadow-xl">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+      <div className="liquid-glass-card rounded-3xl p-5 sm:p-8 shadow-2xl">
+        <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div>
@@ -66,10 +66,10 @@ export const HomeDashboard: React.FC<Props> = ({
           {/* Quick Streak Widget */}
           <div 
             onClick={() => onNavigateTab('stats')}
-            className="flex items-center gap-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-2.5 sm:p-3 px-3.5 sm:px-4 cursor-pointer hover:border-amber-500/30 transition-all shrink-0 w-full sm:w-auto justify-between sm:justify-start"
+            className="flex items-center gap-3 liquid-glass-pill rounded-2xl p-2.5 sm:p-3 px-3.5 sm:px-4 cursor-pointer hover:scale-105 transition-all shrink-0 w-full sm:w-auto justify-between sm:justify-start"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
                 <Flame className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-500" />
               </div>
               <div className="text-right">
@@ -84,7 +84,7 @@ export const HomeDashboard: React.FC<Props> = ({
       </div>
 
       {/* Weekly Days Tracker Widget */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg">
+      <div className="liquid-glass-card rounded-3xl p-4 sm:p-5 shadow-xl">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-400" />
@@ -108,32 +108,30 @@ export const HomeDashboard: React.FC<Props> = ({
             { num: 5, label: 'الجمعة', short: 'جمعة' },
           ].map(day => {
             const todayDay = new Date().getDay();
-            const isToday = todayDay === day.num;
-            const isDone = Boolean(weeklyCompletion[day.num]);
+            const isToday = day.num === todayDay;
+            const isDone = !!weeklyCompletion[day.num];
 
             return (
               <div
                 key={day.num}
-                className={`flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border transition-all ${
-                  isDone
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-md shadow-emerald-500/10'
-                    : isToday
-                    ? 'bg-slate-800/90 border-emerald-400/60 ring-1 sm:ring-2 ring-emerald-500/30 text-white'
-                    : 'bg-slate-950/50 border-slate-800 text-slate-400'
+                className={`flex flex-col items-center py-2 px-1 rounded-2xl transition-all ${
+                  isToday 
+                    ? 'liquid-glass-pill ring-2 ring-emerald-500/40 shadow-sm' 
+                    : isDone
+                    ? 'bg-emerald-500/10'
+                    : 'opacity-70'
                 }`}
               >
-                <span className="text-[9px] sm:text-xs font-bold font-['Tajawal'] mb-1 truncate max-w-full">
-                  <span className="sm:hidden">{day.short}</span>
-                  <span className="hidden sm:inline">{day.label}</span>
+                <span className={`text-[10px] sm:text-xs mb-1 font-bold ${isToday ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {day.short}
                 </span>
-
                 <div
                   className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center text-[10px] sm:text-xs font-black transition-all ${
                     isDone
-                      ? 'bg-emerald-500 text-slate-950 font-black'
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/30'
                       : isToday
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[9px]'
-                      : 'bg-slate-900 border border-slate-800 text-slate-500'
+                      : 'liquid-glass-pill text-slate-500'
                   }`}
                 >
                   {isDone ? (
@@ -151,12 +149,12 @@ export const HomeDashboard: React.FC<Props> = ({
       </div>
 
       {/* Hero Today's Routine Card */}
-      <div className="relative rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-2xl overflow-hidden group">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-emerald-500/15 to-teal-500/0 rounded-full blur-3xl pointer-events-none" />
+      <div className="liquid-glass-card rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-emerald-500/20 to-teal-500/0 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10">
           <div className="flex items-center justify-between gap-2 mb-4">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+            <span className="px-3 py-1 rounded-full text-xs font-bold liquid-glass-pill text-emerald-400 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
               تمرينك النهارده
             </span>
@@ -170,7 +168,7 @@ export const HomeDashboard: React.FC<Props> = ({
           {isRestDay && !todayRoutine ? (
             /* Rest Day View */
             <div className="py-6 text-center space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-3xl">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-3xl shadow-lg">
                 🌿
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-white font-['Tajawal']">
@@ -182,7 +180,7 @@ export const HomeDashboard: React.FC<Props> = ({
               {miniRescueRoutine && (
                 <button
                   onClick={() => onStartRoutine(miniRescueRoutine)}
-                  className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-bold transition-all"
+                  className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-pill text-slate-300 hover:text-white text-xs font-bold transition-all liquid-button"
                 >
                   <Zap className="w-4 h-4 text-emerald-400" />
                   بدء جلسة إطالة سريعة خفيفة (5 دقائق)
@@ -203,14 +201,14 @@ export const HomeDashboard: React.FC<Props> = ({
 
               {/* Routine metrics */}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-xs font-semibold text-slate-300">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-semibold text-slate-300">
                   <Clock className="w-4 h-4 text-emerald-400" />
                   <span>{todayRoutine.totalEstimatedMinutes} دقيقة</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-xs font-semibold text-slate-300">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-semibold text-slate-300">
                   <span>🧘‍♂️ {todayRoutine.exerciseIds.length} تمارين</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 text-xs font-bold">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full liquid-glass-pill text-sky-400 text-xs font-bold">
                   <span>{todayRoutine.tag}</span>
                 </div>
                 {streakStats.hasWorkedOutToday && (
@@ -221,10 +219,10 @@ export const HomeDashboard: React.FC<Props> = ({
                 )}
               </div>
 
-              {/* Giant One-Click Start Button */}
+              {/* Giant One-Click Start Button with Apple Liquid Sheen */}
               <button
                 onClick={() => onStartRoutine(todayRoutine)}
-                className="w-full py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-slate-950 font-black text-lg sm:text-xl shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 group/btn pulse-glow"
+                className="w-full py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black text-lg sm:text-xl shadow-2xl shadow-emerald-500/35 hover:shadow-emerald-500/55 transition-all flex items-center justify-center gap-3 group/btn liquid-button liquid-shimmer"
               >
                 <div className="w-10 h-10 rounded-xl bg-slate-950/20 flex items-center justify-center">
                   <Play className="w-6 h-6 fill-slate-950 ml-0.5 group-hover/btn:scale-110 transition-transform" />
@@ -240,9 +238,9 @@ export const HomeDashboard: React.FC<Props> = ({
 
       {/* "I don't feel like exercising today" - The Rescue Section */}
       {miniRescueRoutine && (
-        <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-teal-950/30 border border-teal-500/20 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="liquid-glass-card rounded-3xl border-teal-500/30 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-2xl shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-2xl shrink-0 shadow-md">
               😴
             </div>
             <div>
@@ -257,7 +255,7 @@ export const HomeDashboard: React.FC<Props> = ({
 
           <button
             onClick={() => onStartRoutine(miniRescueRoutine)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-500/20 border border-teal-500/30 text-teal-300 font-bold text-xs hover:bg-teal-500/30 hover:text-white transition-all shrink-0 flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-500/25 border border-teal-500/40 text-teal-300 font-bold text-xs hover:bg-teal-500/35 hover:text-white transition-all shrink-0 flex items-center justify-center gap-1.5 liquid-button"
           >
             <span>ابدأ جلسة الإنقاذ (5 دقائق)</span>
             <ChevronLeft className="w-4 h-4" />
@@ -266,7 +264,7 @@ export const HomeDashboard: React.FC<Props> = ({
       )}
 
       {/* Quick Adaptive Routine Filter (كم وقت معك اليوم؟) */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 sm:p-6">
+      <div className="liquid-glass-card rounded-3xl p-5 sm:p-6">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h4 className="text-sm font-bold text-white font-['Tajawal'] flex items-center gap-2">
@@ -282,7 +280,7 @@ export const HomeDashboard: React.FC<Props> = ({
             onClick={() => {
               if (miniRescueRoutine) onStartRoutine(miniRescueRoutine);
             }}
-            className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60 hover:border-emerald-500/40 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
           >
             <div className="text-lg font-black text-emerald-400 group-hover:scale-105 transition-transform">5 دقائق</div>
             <div className="text-[11px] text-slate-400 mt-0.5">إنقاذ سريع ومريح</div>
@@ -292,7 +290,7 @@ export const HomeDashboard: React.FC<Props> = ({
             onClick={() => {
               if (todayRoutine) onStartRoutine(todayRoutine);
             }}
-            className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60 hover:border-emerald-500/40 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
           >
             <div className="text-lg font-black text-sky-400 group-hover:scale-105 transition-transform">10 دقائق</div>
             <div className="text-[11px] text-slate-400 mt-0.5">مرونة وتليين الظهر</div>
@@ -300,7 +298,7 @@ export const HomeDashboard: React.FC<Props> = ({
 
           <button
             onClick={() => onNavigateTab('exercises')}
-            className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60 hover:border-emerald-500/40 text-center transition-all group"
+            className="p-3.5 rounded-2xl liquid-glass-pill hover:scale-105 text-center transition-all group"
           >
             <div className="text-lg font-black text-teal-400 group-hover:scale-105 transition-transform">15 دقيقة</div>
             <div className="text-[11px] text-slate-400 mt-0.5">جلسة علاجية متكاملة</div>

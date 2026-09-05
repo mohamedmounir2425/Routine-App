@@ -315,7 +315,38 @@ export function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] ${isTvMode ? 'text-lg' : ''}`}>
+    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isTvMode ? 'text-lg' : ''}`}>
+      {/* Apple Liquid Glass Dynamic Ambient Fluid Mesh Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+        {/* Fluid Orb 1 - Emerald / Mint */}
+        <div 
+          className="liquid-orb-1 absolute -top-24 -right-24 w-[380px] sm:w-[520px] h-[380px] sm:h-[520px] rounded-full blur-[95px] sm:blur-[125px] transition-all duration-700 opacity-90"
+          style={{
+            background: theme === 'dark' 
+              ? 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.10) 60%, transparent 80%)' 
+              : 'radial-gradient(circle, rgba(52, 211, 153, 0.22) 0%, rgba(167, 243, 208, 0.15) 60%, transparent 80%)',
+          }}
+        />
+        {/* Fluid Orb 2 - Cyan / Teal / Sky */}
+        <div 
+          className="liquid-orb-2 absolute top-1/3 -left-28 w-[350px] sm:w-[480px] h-[350px] sm:h-[480px] rounded-full blur-[90px] sm:blur-[115px] transition-all duration-700 opacity-80"
+          style={{
+            background: theme === 'dark' 
+              ? 'radial-gradient(circle, rgba(6, 182, 212, 0.20) 0%, rgba(14, 116, 144, 0.08) 60%, transparent 80%)' 
+              : 'radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, rgba(186, 230, 253, 0.12) 60%, transparent 80%)',
+          }}
+        />
+        {/* Fluid Orb 3 - Deep Indigo / Cobalt / Soft Jade */}
+        <div 
+          className="liquid-orb-3 absolute -bottom-20 right-1/4 w-[420px] sm:w-[550px] h-[420px] sm:h-[550px] rounded-full blur-[100px] sm:blur-[130px] transition-all duration-700 opacity-75"
+          style={{
+            background: theme === 'dark' 
+              ? 'radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(99, 102, 241, 0.10) 50%, transparent 80%)' 
+              : 'radial-gradient(circle, rgba(147, 197, 253, 0.18) 0%, rgba(167, 243, 208, 0.14) 60%, transparent 80%)',
+          }}
+        />
+      </div>
+
       {/* Top Navbar */}
       <Navbar
         currentTab={currentTab}
@@ -328,7 +359,7 @@ export function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-28 md:pb-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-28 md:pb-12 relative z-10">
         {currentTab === 'home' && (
           <HomeDashboard
             todayRoutine={todayRoutine}

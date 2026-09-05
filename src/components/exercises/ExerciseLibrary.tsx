@@ -145,7 +145,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
             placeholder="ابحث باسم التمرين أو العضلة المستهدفة..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full liquid-glass-pill rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </div>
 
@@ -164,8 +164,8 @@ export const ExerciseLibrary: React.FC<Props> = ({
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/25 liquid-button'
+                  : 'liquid-glass-pill text-slate-400 hover:text-white'
               }`}
             >
               {cat.label}
@@ -180,12 +180,12 @@ export const ExerciseLibrary: React.FC<Props> = ({
           <div
             key={ex.id}
             onClick={() => setActiveExercise(ex)}
-            className="group relative bg-slate-900 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between"
+            className="group relative liquid-glass-card rounded-3xl p-5 cursor-pointer flex flex-col justify-between"
           >
             <div>
               {/* Card visual / badge row */}
               <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700/60">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold liquid-glass-pill text-slate-300">
                   {ex.category === 'back' ? 'علاج الظهر' : ex.category === 'core' ? 'تقوية الجذع' : 'مرونة وإطالة'}
                 </span>
 
@@ -201,7 +201,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
               </div>
 
               {/* Animation mini preview */}
-              <div className="w-full h-28 bg-slate-950/60 border border-slate-800/80 rounded-2xl mb-3 flex items-center justify-center overflow-hidden">
+              <div className="w-full h-28 liquid-glass-pill rounded-2xl mb-3 flex items-center justify-center overflow-hidden">
                 <ExerciseAnimation slug={ex.animationSlug} category={ex.category} className="scale-75" />
               </div>
 
@@ -230,7 +230,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 bg-slate-900/50 rounded-3xl border border-slate-800/80">
+        <div className="text-center py-16 liquid-glass rounded-3xl">
           <Dumbbell className="w-10 h-10 text-slate-600 mx-auto mb-2" />
           <p className="text-sm text-slate-400">لا توجد تمارين تطابق هذا البحث أو التصنيف.</p>
         </div>
@@ -239,10 +239,10 @@ export const ExerciseLibrary: React.FC<Props> = ({
       {/* Exercise Detail Modal */}
       {activeExercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto my-auto custom-scrollbar">
+          <div className="relative w-full max-w-xl liquid-glass rounded-3xl p-5 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto my-auto custom-scrollbar">
             <button
               onClick={() => setActiveExercise(null)}
-              className="absolute top-4 left-4 sm:top-5 sm:left-5 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="absolute top-4 left-4 sm:top-5 sm:left-5 p-2 rounded-xl liquid-glass-pill text-slate-400 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
