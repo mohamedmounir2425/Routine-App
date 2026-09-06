@@ -1299,4 +1299,8 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   workBreakReminderEnabled: true,
   workBreakIntervalMinutes: 50, // كل 50 دقيقة أثناء ساعات العمل
   screenWakeLock: true,
+  workoutVideoAutoplay: true,
+  workoutVideoMuted: true,
+  workoutVideoLoop: true,
+  workoutDefaultViewMode: 'video',
 };

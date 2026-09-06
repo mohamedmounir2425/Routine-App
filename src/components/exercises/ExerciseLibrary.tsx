@@ -3,6 +3,8 @@ import { Search, Star, Play, Plus, Clock, AlertTriangle, X, Dumbbell, ShieldAler
 import { Exercise, MuscleCategory } from '../../types';
 import { ExerciseAnimation } from '../player/ExerciseAnimation';
 import { BACK_SAFETY_TIPS } from '../../db/seedData';
+import { SlidingTabs } from '../common/SlidingTabs';
+import { buildWorkoutVideoUrl } from '../../utils/youtube';
 
 interface Props {
   exercises: Exercise[];
@@ -149,28 +151,22 @@ export const ExerciseLibrary: React.FC<Props> = ({
           />
         </div>
 
-        {/* Filter Badges */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {[
-            { id: 'all', label: 'الكل' },
-            { id: 'favorites', label: '⭐ المفضلة' },
-            { id: 'back', label: 'علاج الظهر' },
-            { id: 'core', label: 'تثبيت الجذع' },
-            { id: 'mobility', label: 'المرونة والاستطالة' },
-            { id: 'neck', label: 'أعلى الظهر والرقبة' },
-          ].map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/25 liquid-button'
-                  : 'liquid-glass-pill text-slate-400 hover:text-white'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Filter Badges with Smooth Swipe */}
+        <div className="overflow-x-auto pb-1 no-scrollbar">
+          <SlidingTabs
+            tabs={[
+              { id: 'all', label: 'الكل' },
+              { id: 'favorites', label: '⭐ المفضلة' },
+              { id: 'back', label: 'علاج الظهر' },
+              { id: 'core', label: 'تثبيت الجذع' },
+              { id: 'mobility', label: 'المرونة والاستطالة' },
+              { id: 'neck', label: 'أعلى الظهر والرقبة' },
+            ]}
+            activeTab={selectedCategory}
+            onChange={setSelectedCategory}
+            size="sm"
+            className="w-max min-w-full sm:min-w-0"
+          />
         </div>
       </div>
 
@@ -297,7 +293,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
             <div className="w-full h-48 sm:h-56 bg-slate-950 border border-slate-800 rounded-2xl mb-4 overflow-hidden flex items-center justify-center">
               {modalViewMode === 'video' && activeExercise.videoUrl ? (
                 <iframe
-                  src={activeExercise.videoUrl}
+                  src={buildWorkoutVideoUrl(activeExercise.videoUrl, { autoplay: false, mute: true, loop: true })}
                   title={activeExercise.name}
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

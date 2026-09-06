@@ -12,6 +12,7 @@ import {
 import { Exercise, PlanSession, Routine } from '../../types';
 import { FOUR_WEEK_PLAN, FOUNDATION_LEVELS_PLAN, ALL_PLAN_ROUTINES } from '../../db/seedData';
 import { db, getUserSettings, updateUserSettings, setActivePlanWeek } from '../../db';
+import { SlidingTabs } from '../common/SlidingTabs';
 
 interface Props {
   exercises: Exercise[];
@@ -98,31 +99,15 @@ export const TrainingPlanView: React.FC<Props> = ({ exercises, onStartRoutine })
         </div>
 
         {/* Dual Mode Switcher (4-Week Schedule vs 3 Foundation Levels) */}
-        <div className="flex items-center p-1.5 liquid-glass-pill rounded-2xl shrink-0 self-start sm:self-auto border-white/10">
-          <button
-            onClick={() => setActiveTab('4-weeks')}
-            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === '4-weeks'
-                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>جدول الـ 4 أسابيع</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('3-levels')}
-            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === '3-levels'
-                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>المستويات الـ 3</span>
-          </button>
-        </div>
+        <SlidingTabs
+          tabs={[
+            { id: '4-weeks', label: 'جدول الـ 4 أسابيع', icon: Calendar },
+            { id: '3-levels', label: 'المستويات الـ 3', icon: Layers },
+          ]}
+          activeTab={activeTab}
+          onChange={(tab) => setActiveTab(tab as '4-weeks' | '3-levels')}
+          className="shrink-0 self-start sm:self-auto"
+        />
       </div>
 
       {activeTab === '4-weeks' ? (

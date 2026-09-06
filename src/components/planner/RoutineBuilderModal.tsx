@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ArrowUp, ArrowDown, Clock, Dumbbell, Sparkles, Check, Search } from 'lucide-react';
 import { Routine, Exercise } from '../../types';
+import { SlidingTabs } from '../common/SlidingTabs';
 
 interface Props {
   isOpen: boolean;
@@ -382,41 +383,17 @@ export const RoutineBuilderModal: React.FC<Props> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 w-full sm:w-auto justify-center">
-                <button
-                  type="button"
-                  onClick={() => setCategoryFilter('all')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    categoryFilter === 'all'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  الكل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCategoryFilter('core')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    categoryFilter === 'core'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  البطن والجوانب
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCategoryFilter('back')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    categoryFilter === 'back'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  عضلات الظهر
-                </button>
-              </div>
+              <SlidingTabs
+                tabs={[
+                  { id: 'all', label: 'الكل' },
+                  { id: 'core', label: 'البطن والجوانب' },
+                  { id: 'back', label: 'عضلات الظهر' },
+                ]}
+                activeTab={categoryFilter}
+                onChange={(tab) => setCategoryFilter(tab as 'all' | 'core' | 'back')}
+                size="sm"
+                className="w-full sm:w-auto justify-center"
+              />
             </div>
 
             {/* Exercise Grid */}

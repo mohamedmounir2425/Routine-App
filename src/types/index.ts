@@ -125,4 +125,8 @@ export interface UserSettings {
   workBreakReminderEnabled: boolean;
   workBreakIntervalMinutes: number; // 45-60 mins
   screenWakeLock: boolean;
+  workoutVideoAutoplay?: boolean; // تشغيل فيديو اليوتيوب تلقائياً
+  workoutVideoMuted?: boolean; // كتم صوت فيديو اليوتيوب
+  workoutVideoLoop?: boolean; // تكرار تشغيل الفيديو عند انتهائه
+  workoutDefaultViewMode?: 'video' | 'animation'; // نمط العرض الافتراضي
 }

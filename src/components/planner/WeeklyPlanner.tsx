@@ -55,19 +55,36 @@ export const WeeklyPlanner: React.FC<Props> = ({
             </button>
           )}
 
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
+          {/* Quick Schedule Presets (Highlighted when active) */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800/90 p-1.5 rounded-2xl shadow-sm">
             <span className="text-xs text-slate-400 font-semibold px-2">اقتراح سريع:</span>
             <button
+              type="button"
               onClick={() => onApplyPreset('3days')}
-              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                schedule.filter(s => s.routineId !== null).length === 3
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-400/40'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700/80'
+              }`}
             >
-              3 أيام
+              {schedule.filter(s => s.routineId !== null).length === 3 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-950/80 animate-pulse" />
+              )}
+              <span>3 أيام</span>
             </button>
             <button
+              type="button"
               onClick={() => onApplyPreset('4days')}
-              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                schedule.filter(s => s.routineId !== null).length === 4
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-400/40'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700/80'
+              }`}
             >
-              4 أيام
+              {schedule.filter(s => s.routineId !== null).length === 4 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-950/80 animate-pulse" />
+              )}
+              <span>4 أيام</span>
             </button>
           </div>
         </div>

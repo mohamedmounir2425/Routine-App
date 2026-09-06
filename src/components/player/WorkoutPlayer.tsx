@@ -7,6 +7,7 @@ import { Routine, Exercise, WorkoutLog } from '../../types';
 import { ExerciseAnimation } from './ExerciseAnimation';
 import { CompletionModal } from './CompletionModal';
 import { sounds } from '../../utils/audio';
+import { buildWorkoutVideoUrl } from '../../utils/youtube';
 
 interface Props {
   routine: Routine;
@@ -16,6 +17,10 @@ interface Props {
   soundEnabled?: boolean;
   voiceCoachEnabled?: boolean;
   isTvModeInitial?: boolean;
+  workoutVideoAutoplay?: boolean;
+  workoutVideoMuted?: boolean;
+  workoutVideoLoop?: boolean;
+  defaultViewMode?: 'video' | 'animation';
   onClose: () => void;
   onFinishWorkout: (logData: Omit<WorkoutLog, 'id'>) => void;
 }
@@ -30,6 +35,10 @@ export const WorkoutPlayer: React.FC<Props> = ({
   soundEnabled = true,
   voiceCoachEnabled = true,
   isTvModeInitial = false,
+  workoutVideoAutoplay = true,
+  workoutVideoMuted = true,
+  workoutVideoLoop = true,
+  defaultViewMode = 'video',
   onClose,
   onFinishWorkout,
 }) => {
@@ -41,7 +50,7 @@ export const WorkoutPlayer: React.FC<Props> = ({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(!soundEnabled);
   const [isTvMode, setIsTvMode] = useState<boolean>(isTvModeInitial);
-  const [viewMode, setViewMode] = useState<'video' | 'animation'>('video');
+  const [viewMode, setViewMode] = useState<'video' | 'animation'>(defaultViewMode);
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const [showSwapModal, setShowSwapModal] = useState<boolean>(false);
   const [totalElapsedTime, setTotalElapsedTime] = useState<number>(0);
@@ -50,6 +59,21 @@ export const WorkoutPlayer: React.FC<Props> = ({
   const nextExercise: Exercise | undefined = sessionExercises[currentIndex + 1];
 
   const timerRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Sync YouTube player play/pause state when user pauses/resumes workout timer
+  useEffect(() => {
+    if (!iframeRef.current?.contentWindow) return;
+    try {
+      if (isPaused) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+      } else if (phase === 'exercise' && workoutVideoAutoplay) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+      }
+    } catch {
+      // Ignore cross-origin issues
+    }
+  }, [isPaused, phase, workoutVideoAutoplay]);
 
   // Initialize exercise time when index or session exercises change
   useEffect(() => {
@@ -326,10 +350,16 @@ export const WorkoutPlayer: React.FC<Props> = ({
                 </button>
               </div>
 
-              {viewMode === 'video' && currentExercise.videoUrl ? (
+              {viewMode === 'video' && currentExercise?.videoUrl ? (
                 <div className="w-full h-full bg-black flex items-center justify-center">
                   <iframe
-                    src={currentExercise.videoUrl}
+                    ref={iframeRef}
+                    key={`${currentExercise.id}-${workoutVideoAutoplay}-${workoutVideoMuted}-${workoutVideoLoop}`}
+                    src={buildWorkoutVideoUrl(currentExercise.videoUrl, {
+                      autoplay: workoutVideoAutoplay,
+                      mute: workoutVideoMuted,
+                      loop: workoutVideoLoop,
+                    })}
                     title={currentExercise.name}
                     className="w-full h-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

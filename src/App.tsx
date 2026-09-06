@@ -20,6 +20,7 @@ import { RoutineBuilderModal } from './components/planner/RoutineBuilderModal';
 import { ProgressStats } from './components/stats/ProgressStats';
 import { SettingsView } from './components/settings/SettingsView';
 import { WorkoutPlayer } from './components/player/WorkoutPlayer';
+import { SlidingTabs } from './components/common/SlidingTabs';
 
 export function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -402,28 +403,16 @@ export function App() {
         {currentTab === 'planner' && (
           <div className="space-y-6">
             {/* View Switcher: Prescribed Plan vs Custom Builder */}
-            <div className="flex items-center justify-between p-1.5 rounded-2xl liquid-glass border border-white/10 max-w-md mx-auto">
-              <button
-                onClick={() => setPlannerSubTab('prescribed')}
-                className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  plannerSubTab === 'prescribed'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 liquid-button'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                خطة الـ 4 أسابيع والأساس
-              </button>
-              <button
-                onClick={() => setPlannerSubTab('custom')}
-                className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                  plannerSubTab === 'custom'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 liquid-button'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                تخصيص جدول الأسبوع
-              </button>
-            </div>
+            <SlidingTabs
+              tabs={[
+                { id: 'prescribed', label: 'خطة الـ 4 أسابيع والأساس' },
+                { id: 'custom', label: 'تخصيص جدول الأسبوع' },
+              ]}
+              activeTab={plannerSubTab}
+              onChange={(tab) => setPlannerSubTab(tab as 'prescribed' | 'custom')}
+              fullWidth
+              className="max-w-md mx-auto"
+            />
 
             {plannerSubTab === 'prescribed' ? (
               <TrainingPlanView
@@ -488,6 +477,10 @@ export function App() {
           soundEnabled={settings.soundBeepsEnabled}
           voiceCoachEnabled={settings.voiceCoachEnabled}
           isTvModeInitial={isTvMode}
+          workoutVideoAutoplay={settings.workoutVideoAutoplay ?? true}
+          workoutVideoMuted={settings.workoutVideoMuted ?? true}
+          workoutVideoLoop={settings.workoutVideoLoop ?? true}
+          defaultViewMode={settings.workoutDefaultViewMode || 'video'}
           onClose={() => {
             setActiveRoutine(null);
             setActiveRoutineExercises([]);
