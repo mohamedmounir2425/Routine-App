@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       <header className="sticky top-0 z-40 w-full rounded-none border-b border-white/10 dark:border-white/10 bg-slate-950/80 dark:bg-slate-950/80 backdrop-blur-xl transition-colors">
-        <div className="max-w-5xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
           {/* Brand */}
           <div 
             onClick={() => navigate('/')}

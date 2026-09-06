@@ -89,7 +89,7 @@ export const WeeklyPlanner: React.FC<Props> = ({
       </div>
 
       {/* Days Grid / List */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         {orderedDays.map(dayNum => {
           const item = schedule.find(s => s.dayOfWeek === dayNum) || {
             dayOfWeek: dayNum,

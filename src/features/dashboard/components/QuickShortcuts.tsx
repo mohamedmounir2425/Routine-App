@@ -20,7 +20,7 @@ export const QuickShortcuts: React.FC<Props> = ({
   const ArrowIcon = isRTL ? ChevronLeft : ChevronRight;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-2.5 sm:gap-3 pt-1">
       {/* 1. Desk Break */}
       <div 
         onClick={onOpenDeskBreak}

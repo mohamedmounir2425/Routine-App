@@ -63,7 +63,7 @@ export const SettingsView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-6 pb-20 max-w-2xl mx-auto">
+    <div className="space-y-6 pb-20 w-full">
       {/* Header */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-black text-white font-['Tajawal'] tracking-tight">
@@ -81,39 +81,40 @@ export const SettingsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 1. Workout Video Settings */}
-      <WorkoutVideoSettings
-        settings={settings}
-        onToggle={handleToggle}
-      />
+      {/* Responsive 2-Column Grid on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Column 1: Video & Audio Guidance */}
+        <div className="space-y-6">
+          <WorkoutVideoSettings
+            settings={settings}
+            onToggle={handleToggle}
+          />
+          <AudioVoiceSettings
+            settings={settings}
+            onToggle={handleToggle}
+          />
+        </div>
 
-      {/* 2. Audio & Voice Guidance */}
-      <AudioVoiceSettings
-        settings={settings}
-        onToggle={handleToggle}
-      />
-
-      {/* 3. Daily Reminders */}
-      <DailyRemindersSettings
-        settings={settings}
-        onToggle={handleToggle}
-        notificationStatus={notificationStatus}
-        onRequestNotification={handleRequestNotification}
-        onSendTestNotification={handleSendTestNotification}
-      />
-
-      {/* 4. Appearance, Theme & Language */}
-      <AppearanceLanguageSettings
-        theme={theme}
-        onSetTheme={onSetTheme}
-        canInstallPwa={canInstallPwa}
-        onInstallPwa={onInstallPwa}
-      />
-
-      {/* 5. Backup & Restore Data */}
-      <BackupDataSettings
-        onRefreshData={onRefreshData}
-      />
+        {/* Column 2: Reminders, Appearance & Backup */}
+        <div className="space-y-6">
+          <DailyRemindersSettings
+            settings={settings}
+            onToggle={handleToggle}
+            notificationStatus={notificationStatus}
+            onRequestNotification={handleRequestNotification}
+            onSendTestNotification={handleSendTestNotification}
+          />
+          <AppearanceLanguageSettings
+            theme={theme}
+            onSetTheme={onSetTheme}
+            canInstallPwa={canInstallPwa}
+            onInstallPwa={onInstallPwa}
+          />
+          <BackupDataSettings
+            onRefreshData={onRefreshData}
+          />
+        </div>
+      </div>
     </div>
   );
 };

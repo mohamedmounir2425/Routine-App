@@ -36,7 +36,7 @@ export const FourWeekSchedule: React.FC<FourWeekScheduleProps> = ({
         <span>جدول أيام الأسبوع {selectedWeekNum} (4 جلسات + 3 أيام تعافي)</span>
       </h3>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         {weekDays.map(day => {
           const isToday = todayDay === day.dayNum;
 

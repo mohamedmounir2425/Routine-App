@@ -8,6 +8,7 @@ import { WeeklyTracker } from './components/WeeklyTracker';
 import { TodayHeroCard } from './components/TodayHeroCard';
 import { RestDayCard } from './components/RestDayCard';
 import { QuickShortcuts } from './components/QuickShortcuts';
+import { DashboardStatsWidget } from './components/DashboardStatsWidget';
 
 interface Props {
   todayRoutine: Routine | null;
@@ -49,47 +50,59 @@ export const HomeDashboard: React.FC<Props> = ({
   const isEffectiveRestDay = planStatus ? planStatus.isRestDay : (isRestDay && !todayRoutine);
 
   return (
-    <div className="space-y-4 sm:space-y-5 pb-16 max-w-3xl mx-auto">
+    <div className="space-y-5 pb-16 w-full">
       <DeskBreakModal
         isOpen={showDeskBreakModal}
         onClose={() => setShowDeskBreakModal(false)}
         onComplete={() => setShowDeskBreakModal(false)}
       />
 
+      {/* Top Welcome Header */}
       <DashboardHeader
         isEffectiveRestDay={isEffectiveRestDay}
         streakStats={streakStats}
         onNavigateStats={() => navigate('/stats')}
       />
 
-      <WeeklyTracker
-        planStatus={planStatus}
-        weeklyCompletion={weeklyCompletion}
-      />
+      {/* Responsive Grid: 2-Columns on Desktop, Single Column on Mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+        {/* Main Focus Column: Today's Workout Hero Card */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+          {isEffectiveRestDay ? (
+            <RestDayCard
+              planStatus={planStatus}
+              miniRescueRoutine={miniRescueRoutine}
+              onStartRoutine={onStartRoutine}
+              onNavigatePlanner={() => navigate('/planner')}
+            />
+          ) : activeWorkoutRoutine ? (
+            <TodayHeroCard
+              routine={activeWorkoutRoutine}
+              planStatus={planStatus}
+              streakStats={streakStats}
+              exercises={exercises}
+              onStartRoutine={onStartRoutine}
+            />
+          ) : null}
+        </div>
 
-      {isEffectiveRestDay ? (
-        <RestDayCard
-          planStatus={planStatus}
-          miniRescueRoutine={miniRescueRoutine}
-          onStartRoutine={onStartRoutine}
-          onNavigatePlanner={() => navigate('/planner')}
-        />
-      ) : activeWorkoutRoutine ? (
-        <TodayHeroCard
-          routine={activeWorkoutRoutine}
-          planStatus={planStatus}
-          streakStats={streakStats}
-          exercises={exercises}
-          onStartRoutine={onStartRoutine}
-        />
-      ) : null}
+        {/* Secondary Column on Desktop: Weekly Tracker, Stats Widget & Quick Shortcuts */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-5">
+          <WeeklyTracker
+            planStatus={planStatus}
+            weeklyCompletion={weeklyCompletion}
+          />
 
-      <QuickShortcuts
-        miniRescueRoutine={miniRescueRoutine}
-        onOpenDeskBreak={() => setShowDeskBreakModal(true)}
-        onStartRescue={onStartRoutine}
-        onNavigatePlanner={() => navigate('/planner')}
-      />
+          <DashboardStatsWidget streakStats={streakStats} />
+
+          <QuickShortcuts
+            miniRescueRoutine={miniRescueRoutine}
+            onOpenDeskBreak={() => setShowDeskBreakModal(true)}
+            onStartRescue={onStartRoutine}
+            onNavigatePlanner={() => navigate('/planner')}
+          />
+        </div>
+      </div>
     </div>
   );
 };

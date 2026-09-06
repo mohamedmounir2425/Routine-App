@@ -57,10 +57,10 @@ export const ExerciseLibrary: React.FC<Props> = ({
       {/* Safety Tips Accordion */}
       <SafetyTipsAccordion />
 
-      {/* Search & Categories */}
-      <div className="space-y-3">
+      {/* Search & Categories Toolbar */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
         {/* Search Box */}
-        <div className="relative">
+        <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
           <input
             type="text"
@@ -72,7 +72,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
         </div>
 
         {/* Filter Badges with Smooth Swipe */}
-        <div className="overflow-x-auto pb-1 no-scrollbar">
+        <div className="overflow-x-auto pb-1 no-scrollbar shrink-0">
           <SlidingTabs
             tabs={[
               { id: 'all', label: 'الكل' },
@@ -91,7 +91,7 @@ export const ExerciseLibrary: React.FC<Props> = ({
       </div>
 
       {/* Exercise Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredExercises.map(ex => (
           <ExerciseCard
             key={ex.id}

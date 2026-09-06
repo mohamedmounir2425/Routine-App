@@ -98,67 +98,77 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
         </div>
       </div>
 
-      {/* 14-Day Consistency Calendar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-        <h3 className="text-sm font-bold text-white font-['Tajawal'] flex items-center gap-2 mb-4">
-          <CalendarIcon className="w-4 h-4 text-emerald-400" />
-          التزام آخر أسبوعين (Consistency Track)
-        </h3>
+      {/* Middle Section: Calendar & Pain Analysis in 2-Column Grid on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* 14-Day Consistency Calendar */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white font-['Tajawal'] flex items-center gap-2 mb-4">
+              <CalendarIcon className="w-4 h-4 text-emerald-400" />
+              التزام آخر أسبوعين (Consistency Track)
+            </h3>
 
-        <div className="grid grid-cols-7 sm:grid-cols-14 gap-2 text-center">
-          {last14Days.map((d, i) => (
-            <div
-              key={i}
-              className={`p-2.5 rounded-2xl border flex flex-col items-center justify-between gap-1 transition-all ${
-                d.hasLog
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-bold'
-                  : 'bg-slate-950/60 border-slate-800/80 text-slate-500'
-              }`}
-            >
-              <span className="text-[10px]">{d.dayLetter}</span>
-              <span className="text-sm font-bold">{d.dayNum}</span>
-              <span className="text-xs mt-0.5">
-                {d.hasLog ? '✓' : '•'}
-              </span>
+            <div className="grid grid-cols-7 gap-2 text-center">
+              {last14Days.map((d, i) => (
+                <div
+                  key={i}
+                  className={`p-2.5 rounded-2xl border flex flex-col items-center justify-between gap-1 transition-all ${
+                    d.hasLog
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-bold'
+                      : 'bg-slate-950/60 border-slate-800/80 text-slate-500'
+                  }`}
+                >
+                  <span className="text-[10px]">{d.dayLetter}</span>
+                  <span className="text-sm font-bold">{d.dayNum}</span>
+                  <span className="text-xs mt-0.5">
+                    {d.hasLog ? '✓' : '•'}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Pain & Comfort Analysis */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-white font-['Tajawal'] flex items-center gap-2">
-            <HeartHandshake className="w-4 h-4 text-teal-400" />
-            مقارنة مستوى الألم قبل وبعد التمارين
-          </h3>
-          <span className="text-xs text-slate-400">0 = راحة تامة | 10 = ألم شديد</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-400">متوسط الألم قبل التمرين:</div>
-              <div className="text-2xl font-bold text-amber-400 mt-1">{avgPrePain} من 10</div>
-            </div>
-            <Meh className="w-8 h-8 text-amber-400/80" />
           </div>
-
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-400">متوسط الشعور بعد التمرين:</div>
-              <div className="text-2xl font-bold text-emerald-400 mt-1">{avgPostPain} من 10</div>
-            </div>
-            <Smile className="w-8 h-8 text-emerald-400" />
+          <div className="text-[11px] text-slate-500 mt-4 text-center">
+            {streakStats.currentStreak > 0 ? `أنت ملتزم لـ ${streakStats.currentStreak} أيام متتالية! استمر 💪` : 'ابدأ اليوم لتبني سلسلتك'}
           </div>
         </div>
 
-        <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
-          💡 <strong>ملاحظة استشفائية:</strong> انخفاض مؤشر الألم بعد التمرين يدل على نجاح تقوية واستطالة العضلات المحيطة بالفقرات. إذا زاد الألم في أي وقت، امنح جسمك راحة كافية واستشر طبيبك المختص.
-        </p>
+        {/* Pain & Comfort Analysis */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-white font-['Tajawal'] flex items-center gap-2">
+                <HeartHandshake className="w-4 h-4 text-teal-400" />
+                مقارنة مستوى الألم قبل وبعد التمارين
+              </h3>
+              <span className="text-xs text-slate-400">0 = راحة | 10 = ألم</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-slate-400">متوسط الألم قبل:</div>
+                  <div className="text-2xl font-bold text-amber-400 mt-1">{avgPrePain} من 10</div>
+                </div>
+                <Meh className="w-8 h-8 text-amber-400/80" />
+              </div>
+
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-slate-400">متوسط الراحة بعد:</div>
+                  <div className="text-2xl font-bold text-emerald-400 mt-1">{avgPostPain} من 10</div>
+                </div>
+                <Smile className="w-8 h-8 text-emerald-400" />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+            💡 <strong>ملاحظة:</strong> انخفاض مؤشر الألم بعد التمرين يدل على نجاح تقوية واستطالة العضلات المحيطة بالفقرات.
+          </p>
+        </div>
       </div>
 
-      {/* Recent Workout Logs Table */}
+      {/* Recent Workout Logs */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
         <h3 className="text-sm font-bold text-white font-['Tajawal'] mb-4">
           سجل الجلسات السابقة ({workoutLogs.length}):
@@ -169,7 +179,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
             لم تسجل أي تمارين بعد. ابدأ أول جلسة اليوم ليظهر إنجازك هنا!
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {workoutLogs.slice(0, 8).map(log => {
               const dateStr = new Date(log.completedAt).toLocaleDateString('ar-EG', {
                 weekday: 'short',
@@ -194,7 +204,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold">
                       ⏱ {log.durationMinutes} دقيقة
                     </span>
