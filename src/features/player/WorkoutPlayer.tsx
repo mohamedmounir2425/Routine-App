@@ -68,6 +68,7 @@ export const WorkoutPlayer: React.FC<WorkoutPlayerProps> = ({
     handleAddRestSeconds,
     handleSwapExercise,
     formatTime,
+    setTracker,
   } = usePlayerLogic({
     routine,
     exercises,
@@ -138,9 +139,10 @@ export const WorkoutPlayer: React.FC<WorkoutPlayerProps> = ({
               currentIndex={currentIndex}
               totalExercises={sessionExercises.length}
               timeLeft={timeLeft}
-              formatTime={formatTime}
               onOpenSwapModal={() => setShowSwapModal(true)}
               hasAvailableExercises={allAvailableExercises.length > 0}
+              setTracker={setTracker}
+              isPaused={isPaused}
             />
           </div>
         ) : (

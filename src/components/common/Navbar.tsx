@@ -95,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Desktop Nav Items with Sliding Indicator */}
           <nav 
             ref={desktopNavRef}
-            className="hidden md:flex items-center gap-1 p-1.5 navbar-liquid-glass relative"
+            className="hidden md:flex items-center gap-1 px-2 py-1.5 liquid-glass-dock rounded-2xl shadow-xl relative"
           >
             <div
               className="absolute top-1.5 bottom-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/25 pointer-events-none transition-all duration-350 ease-[cubic-bezier(0.25,1,0.5,1)]"

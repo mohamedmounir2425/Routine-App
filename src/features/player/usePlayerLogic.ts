@@ -13,7 +13,10 @@ interface UsePlayerLogicProps {
   workoutVideoAutoplay?: boolean;
 }
 
+import { useExerciseSetTracker } from './useExerciseSetTracker';
+
 export function usePlayerLogic({
+  routine,
   exercises,
   defaultRestSeconds = 15,
   soundEnabled = true,
@@ -37,6 +40,31 @@ export function usePlayerLogic({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const handleExerciseFinish = () => {
+    if (currentIndex < sessionExercises.length - 1) {
+      setPhase('rest');
+      const restSec = currentExercise?.restAfterSeconds || defaultRestSeconds;
+      setRestTimeLeft(restSec);
+
+      if (!isMuted) {
+        sounds.playRestChime();
+        if (voiceCoachEnabled && nextExercise) {
+          sounds.speak(`استراحة. التمرين التالي: ${nextExercise.arabicName || nextExercise.name}`);
+        }
+      }
+    } else {
+      setPhase('completed');
+    }
+  };
+
+  const setTracker = useExerciseSetTracker({
+    currentExercise,
+    routine,
+    isMuted,
+    voiceCoachEnabled,
+    onExerciseComplete: handleExerciseFinish,
+  });
+
   // Sync YouTube player play/pause state
   useEffect(() => {
     if (!iframeRef.current?.contentWindow) return;
@@ -58,8 +86,7 @@ export function usePlayerLogic({
       setPhase('exercise');
       setIsPaused(false);
 
-      if (!isMuted) {
-        sounds.playGoChime();
+      if (!isMuted && setTracker.exerciseMode === 'continuous') {
         if (voiceCoachEnabled) {
           sounds.speak(`ابدأ: ${currentExercise.arabicName || currentExercise.name}`);
         }
@@ -78,21 +105,24 @@ export function usePlayerLogic({
       setTotalElapsedTime(t => t + 1);
 
       if (phase === 'exercise') {
-        setTimeLeft(prev => {
-          if (!isMuted) {
-            if (prev === 11 && voiceCoachEnabled) {
-              sounds.speak('متبقي عشر ثوانٍ');
-            } else if (prev <= 4 && prev > 1) {
-              sounds.playCountdownTick();
+        // Only run continuous timer if exercise is continuous and ready countdown finished
+        if (setTracker.exerciseMode === 'continuous' && setTracker.readyCountdown === null) {
+          setTimeLeft(prev => {
+            if (!isMuted) {
+              if (prev === 11 && voiceCoachEnabled) {
+                sounds.speak('متبقي عشر ثوانٍ');
+              } else if (prev <= 4 && prev > 1) {
+                sounds.playCountdownTick();
+              }
             }
-          }
 
-          if (prev <= 1) {
-            handleExerciseFinish();
-            return 0;
-          }
-          return prev - 1;
-        });
+            if (prev <= 1) {
+              handleExerciseFinish();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }
       } else if (phase === 'rest') {
         setRestTimeLeft(prev => {
           if (!isMuted && prev <= 4 && prev > 1) {
@@ -111,24 +141,9 @@ export function usePlayerLogic({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [phase, isPaused, isMuted, voiceCoachEnabled, currentIndex]);
+  }, [phase, isPaused, isMuted, voiceCoachEnabled, currentIndex, setTracker.exerciseMode, setTracker.readyCountdown]);
 
-  const handleExerciseFinish = () => {
-    if (currentIndex < sessionExercises.length - 1) {
-      setPhase('rest');
-      const restSec = currentExercise?.restAfterSeconds || defaultRestSeconds;
-      setRestTimeLeft(restSec);
 
-      if (!isMuted) {
-        sounds.playRestChime();
-        if (voiceCoachEnabled && nextExercise) {
-          sounds.speak(`استراحة. التمرين التالي: ${nextExercise.arabicName || nextExercise.name}`);
-        }
-      }
-    } else {
-      setPhase('completed');
-    }
-  };
 
   const startNextExercise = () => {
     if (currentIndex < sessionExercises.length - 1) {
@@ -205,5 +220,6 @@ export function usePlayerLogic({
     handleAddRestSeconds,
     handleSwapExercise,
     formatTime,
+    setTracker,
   };
 }

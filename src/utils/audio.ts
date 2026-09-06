@@ -17,6 +17,29 @@ class SoundManager {
     return this.ctx;
   }
 
+  // Pitch-ascending ready countdown beeps (3, 2, 1)
+  playReadyTick(count: number) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      // 3 -> 660Hz, 2 -> 770Hz, 1 -> 880Hz
+      const freq = count === 1 ? 880 : count === 2 ? 770 : 660;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } catch {
+      // Audio context might be restricted before first user interaction
+    }
+  }
+
   // Countdown short tick (e.g. 3, 2, 1)
   playCountdownTick() {
     const ctx = this.getContext();
