@@ -1,13 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Dumbbell, Calendar, BarChart3, Settings } from 'lucide-react';
+import { Home, LayoutGrid, BarChart3, Settings } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 
 const TABS = [
-  { path: '/', id: 'home', labelKey: 'navHome' as const, icon: Home },
-  { path: '/exercises', id: 'exercises', labelKey: 'navExercises' as const, icon: Dumbbell },
-  { path: '/planner', id: 'planner', labelKey: 'navPlanner' as const, icon: Calendar },
-  { path: '/stats', id: 'stats', labelKey: 'navStats' as const, icon: BarChart3 },
+  { path: '/', id: 'today', labelKey: 'navToday' as const, icon: Home },
+  { path: '/spaces', id: 'spaces', labelKey: 'navSpaces' as const, icon: LayoutGrid },
+  { path: '/stats', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
   { path: '/settings', id: 'settings', labelKey: 'navSettings' as const, icon: Settings },
 ];
 
@@ -26,9 +25,27 @@ export const MobileDock: React.FC = () => {
     opacity: 0,
   });
 
+  const getActiveTabPath = () => {
+    if (
+      currentPath.startsWith('/spaces') ||
+      currentPath.startsWith('/worship') ||
+      currentPath.startsWith('/health') ||
+      currentPath.startsWith('/work') ||
+      currentPath.startsWith('/home') ||
+      currentPath.startsWith('/plans')
+    ) {
+      return '/spaces';
+    }
+    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/stats';
+    if (currentPath.startsWith('/settings')) return '/settings';
+    return '/';
+  };
+
+  const activeTabPath = getActiveTabPath();
+
   useEffect(() => {
     const updateIndicator = () => {
-      const activeBtn = mobileTabRefs.current[currentPath] || mobileTabRefs.current['/'];
+      const activeBtn = mobileTabRefs.current[activeTabPath] || mobileTabRefs.current['/'];
       const nav = mobileNavRef.current;
       if (activeBtn && nav) {
         const navRect = nav.getBoundingClientRect();
@@ -51,7 +68,7 @@ export const MobileDock: React.FC = () => {
       clearTimeout(timer);
       window.removeEventListener('resize', updateIndicator);
     };
-  }, [currentPath]);
+  }, [currentPath, activeTabPath]);
 
   return (
     <div className="md:hidden fixed bottom-3 inset-x-3 z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom)]">

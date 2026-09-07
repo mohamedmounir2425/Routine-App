@@ -1,12 +1,20 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
+import { SpaceContextBar } from './components/layout/SpaceContextBar';
 import { HomeDashboard } from './features/dashboard/HomeDashboard';
 import { ExerciseLibrary } from './features/exercises';
 import { PlannerPage, RoutineBuilderModal } from './features/planner';
 import { ProgressStats } from './features/stats';
 import { SettingsView } from './features/settings';
 import { WorkoutPlayer } from './features/player';
+import { SpacesPage } from './features/spaces/SpacesPage';
+import { SpacesOnboardingModal } from './features/spaces/components/SpacesOnboardingModal';
+import { WorshipSpace } from './features/worship/WorshipSpace';
+import { WorkSpace } from './features/work/WorkSpace';
+import { HomeSpace } from './features/home/HomeSpace';
+import { PlansSpace } from './features/plans/PlansSpace';
+import { LifeSpaceId } from './types/spaces';
 
 export function App() {
   const {
@@ -50,6 +58,14 @@ export function App() {
     loadAppData,
     miniRescueRoutine,
   } = useAppController();
+
+  const handleCompleteOnboarding = (enabledSpaces: LifeSpaceId[]) => {
+    handleUpdateSettings({
+      ...settings,
+      enabledSpaces,
+      hasCompletedOnboarding: true,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -104,9 +120,13 @@ export function App() {
         onToggleTheme={handleToggleTheme}
       />
 
+      {/* Context Navigation Sub-Bar (Only active when inside a space) */}
+      <SpaceContextBar />
+
       {/* Main Routed Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-28 md:pb-12 relative z-10">
         <Routes>
+          {/* Today View (Command Center) */}
           <Route
             path="/"
             element={
@@ -121,8 +141,39 @@ export function App() {
               />
             }
           />
+
+          {/* Spaces Master Directory */}
           <Route
-            path="/exercises"
+            path="/spaces"
+            element={
+              <SpacesPage
+                streakCount={streakStats.currentStreak}
+                todayRoutineName={todayRoutine?.name}
+                onStartRoutine={() => todayRoutine && startRoutinePlayback(todayRoutine)}
+              />
+            }
+          />
+
+          {/* 🕌 Worship Space */}
+          <Route path="/worship/*" element={<WorshipSpace />} />
+
+          {/* 🏋️ Health Space */}
+          <Route
+            path="/health"
+            element={
+              <HomeDashboard
+                todayRoutine={todayRoutine}
+                isRestDay={isRestDay}
+                streakStats={streakStats}
+                miniRescueRoutine={miniRescueRoutine}
+                weeklyCompletion={weeklyCompletion}
+                exercises={exercises}
+                onStartRoutine={(r) => startRoutinePlayback(r)}
+              />
+            }
+          />
+          <Route
+            path="/health/exercises"
             element={
               <ExerciseLibrary
                 exercises={exercises}
@@ -133,7 +184,7 @@ export function App() {
             }
           />
           <Route
-            path="/planner"
+            path="/health/plans"
             element={
               <PlannerPage
                 exercises={exercises}
@@ -149,7 +200,7 @@ export function App() {
             }
           />
           <Route
-            path="/stats"
+            path="/health/progress"
             element={
               <ProgressStats
                 streakStats={streakStats}
@@ -157,6 +208,22 @@ export function App() {
               />
             }
           />
+
+          {/* 💼 Work Space */}
+          <Route path="/work/*" element={<WorkSpace />} />
+
+          {/* 🏠 Home Space */}
+          <Route path="/home/*" element={<HomeSpace />} />
+
+          {/* 🎯 Plans Space */}
+          <Route path="/plans/*" element={<PlansSpace />} />
+
+          {/* Legacy Redirects */}
+          <Route path="/exercises" element={<Navigate to="/health/exercises" replace />} />
+          <Route path="/planner" element={<Navigate to="/health/plans" replace />} />
+          <Route path="/stats" element={<Navigate to="/health/progress" replace />} />
+
+          {/* Settings */}
           <Route
             path="/settings"
             element={
@@ -185,6 +252,12 @@ export function App() {
         onSave={handleSaveCustomRoutine}
         availableExercises={exercises}
         initialRoutine={editingRoutine}
+      />
+
+      {/* Spaces First-Launch Onboarding Modal */}
+      <SpacesOnboardingModal
+        isOpen={!settings.hasCompletedOnboarding}
+        onSave={handleCompleteOnboarding}
       />
 
       {/* Active Workout Player Modal / Screen */}

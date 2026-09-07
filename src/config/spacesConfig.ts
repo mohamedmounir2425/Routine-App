@@ -1,0 +1,75 @@
+import { LifeSpaceConfig } from '../types/spaces';
+
+export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
+  {
+    id: 'worship',
+    titleKey: 'spaceWorshipTitle',
+    descriptionKey: 'spaceWorshipDesc',
+    icon: '🕌',
+    accentColor: 'emerald',
+    route: '/worship',
+    defaultEnabled: true,
+    navigation: [
+      { id: 'worship-hub', path: '/worship', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'worship-azkar', path: '/worship/azkar', labelKey: 'spaceNavAzkar', iconName: 'BookOpen' },
+      { id: 'worship-tasbeeh', path: '/worship/tasbeeh', labelKey: 'spaceNavTasbeeh', iconName: 'CircleDot' },
+      { id: 'worship-prayers', path: '/worship/prayers', labelKey: 'spaceNavPrayers', iconName: 'Clock' },
+      { id: 'worship-quran', path: '/worship/quran', labelKey: 'spaceNavQuran', iconName: 'BookMarked' },
+    ],
+  },
+  {
+    id: 'health',
+    titleKey: 'spaceHealthTitle',
+    descriptionKey: 'spaceHealthDesc',
+    icon: '🏋️',
+    accentColor: 'teal',
+    route: '/health',
+    defaultEnabled: true,
+    navigation: [
+      { id: 'health-dashboard', path: '/health', labelKey: 'spaceNavTodayWorkout', iconName: 'Activity' },
+      { id: 'health-exercises', path: '/health/exercises', labelKey: 'spaceNavExercises', iconName: 'Dumbbell' },
+      { id: 'health-plans', path: '/health/plans', labelKey: 'spaceNavPlans', iconName: 'Calendar' },
+      { id: 'health-progress', path: '/health/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
+    ],
+  },
+  {
+    id: 'work',
+    titleKey: 'spaceWorkTitle',
+    descriptionKey: 'spaceWorkDesc',
+    icon: '💼',
+    accentColor: 'sky',
+    route: '/work',
+    defaultEnabled: true,
+    navigation: [
+      { id: 'work-dashboard', path: '/work', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'work-tasks', path: '/work/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
+      { id: 'work-focus', path: '/work/focus', labelKey: 'spaceNavFocus', iconName: 'Timer' },
+    ],
+  },
+  {
+    id: 'home',
+    titleKey: 'spaceHomeTitle',
+    descriptionKey: 'spaceHomeDesc',
+    icon: '🏠',
+    accentColor: 'amber',
+    route: '/home',
+    defaultEnabled: false,
+    navigation: [
+      { id: 'home-dashboard', path: '/home', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'home-routines', path: '/home/routines', labelKey: 'spaceNavRoutines', iconName: 'ListChecks' },
+    ],
+  },
+  {
+    id: 'plans',
+    titleKey: 'spacePlansTitle',
+    descriptionKey: 'spacePlansDesc',
+    icon: '🎯',
+    accentColor: 'indigo',
+    route: '/plans',
+    defaultEnabled: true,
+    navigation: [
+      { id: 'plans-active', path: '/plans', labelKey: 'spaceNavActivePlans', iconName: 'Target' },
+      { id: 'plans-milestones', path: '/plans/milestones', labelKey: 'spaceNavMilestones', iconName: 'Milestone' },
+    ],
+  },
+];

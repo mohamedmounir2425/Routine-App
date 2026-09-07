@@ -1,15 +1,46 @@
 import { TranslationDictionary } from './types';
 
 export const en: TranslationDictionary = {
-  // Navigation & Brand
   appName: 'Routine',
-  appBadge: 'Daily',
-  appSlogan: 'Daily Workout & Back Care Companion',
+  appBadge: 'Life OS',
+  appSlogan: 'Your Balanced Life Companion',
   navHome: 'Today',
+  navToday: 'Today',
+  navSpaces: 'Spaces',
+  navProgress: 'Progress',
   navExercises: 'Exercises',
   navPlanner: 'Plan',
   navStats: 'Progress',
   navSettings: 'Settings',
+  navWorship: 'Worship',
+
+  // Spaces
+  spaceWorshipTitle: 'Worship & Spirituality',
+  spaceWorshipDesc: 'Morning & Evening Azkar, Daily Prayers, Quran & Tasbeeh',
+  spaceHealthTitle: 'Health & Physical Therapy',
+  spaceHealthDesc: 'Back health, mobility routines, and daily recovery',
+  spaceWorkTitle: 'Work & Productivity',
+  spaceWorkDesc: 'Focus pomodoro, key tasks, and desk breaks',
+  spaceHomeTitle: 'Home & Family',
+  spaceHomeDesc: 'Household chores, routines, and groceries',
+  spacePlansTitle: 'Plans & Goals',
+  spacePlansDesc: 'Strategic multi-week roadmaps and habit goals',
+
+  // Context Nav
+  spaceNavOverview: 'Overview',
+  spaceNavAzkar: 'Azkar',
+  spaceNavTasbeeh: 'Tasbeeh',
+  spaceNavPrayers: 'Prayers',
+  spaceNavQuran: 'Quran',
+  spaceNavTodayWorkout: "Today's Workout",
+  spaceNavExercises: 'Exercise Library',
+  spaceNavPlans: 'Weekly Plans',
+  spaceNavProgress: 'Recovery Stats',
+  spaceNavTasks: 'Tasks',
+  spaceNavFocus: 'Focus Timer',
+  spaceNavRoutines: 'Routines',
+  spaceNavActivePlans: 'Active Plans',
+  spaceNavMilestones: 'Milestones',
 
   // Common
   today: 'Today',

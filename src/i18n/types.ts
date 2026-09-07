@@ -6,10 +6,42 @@ export interface TranslationDictionary {
   appBadge: string;
   appSlogan: string;
   navHome: string;
+  navToday: string;
+  navSpaces: string;
+  navProgress: string;
   navExercises: string;
   navPlanner: string;
   navStats: string;
   navSettings: string;
+  navWorship: string;
+
+  // Spaces Translation Keys
+  spaceWorshipTitle: string;
+  spaceWorshipDesc: string;
+  spaceHealthTitle: string;
+  spaceHealthDesc: string;
+  spaceWorkTitle: string;
+  spaceWorkDesc: string;
+  spaceHomeTitle: string;
+  spaceHomeDesc: string;
+  spacePlansTitle: string;
+  spacePlansDesc: string;
+
+  // Space Context Nav Keys
+  spaceNavOverview: string;
+  spaceNavAzkar: string;
+  spaceNavTasbeeh: string;
+  spaceNavPrayers: string;
+  spaceNavQuran: string;
+  spaceNavTodayWorkout: string;
+  spaceNavExercises: string;
+  spaceNavPlans: string;
+  spaceNavProgress: string;
+  spaceNavTasks: string;
+  spaceNavFocus: string;
+  spaceNavRoutines: string;
+  spaceNavActivePlans: string;
+  spaceNavMilestones: string;
 
   // Common
   today: string;

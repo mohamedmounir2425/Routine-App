@@ -1,15 +1,46 @@
 import { TranslationDictionary } from './types';
 
 export const ar: TranslationDictionary = {
-  // Navigation & Brand
   appName: 'روتين',
-  appBadge: 'اليومي',
-  appSlogan: 'رفيق التمارين وعلاج الظهر',
+  appBadge: 'لايف OS',
+  appSlogan: 'رفيقك اليومي لحياة متوازنة',
   navHome: 'اليوم',
+  navToday: 'اليوم',
+  navSpaces: 'المساحات',
+  navProgress: 'التقدم',
   navExercises: 'التمارين',
   navPlanner: 'خطة التمارين',
   navStats: 'الإحصائيات',
   navSettings: 'الإعدادات',
+  navWorship: 'العبادات',
+
+  // Spaces
+  spaceWorshipTitle: 'العبادات والروحانيات',
+  spaceWorshipDesc: 'أذكار الصباح والمساء، الصلوات، الورد القرآني والسبحة',
+  spaceHealthTitle: 'الصحة والعلاج الطبيعي',
+  spaceHealthDesc: 'تمارين الظهر، المرونة، والاستشفاء الحركي اليومي',
+  spaceWorkTitle: 'العمل والإنتاجية',
+  spaceWorkDesc: 'جلسات التركيز والمهام اليومية واستراحات المكتب',
+  spaceHomeTitle: 'المنزل والأسرة',
+  spaceHomeDesc: 'المسؤوليات المنزلية، الروتين العائلي، وقوائم المشتريات',
+  spacePlansTitle: 'الخطط والأهداف',
+  spacePlansDesc: 'الخطط الاستراتيجية والأهداف ومتابعة العادات',
+
+  // Context Nav
+  spaceNavOverview: 'نظرة عامة',
+  spaceNavAzkar: 'الأذكار',
+  spaceNavTasbeeh: 'السبحة',
+  spaceNavPrayers: 'الصلوات',
+  spaceNavQuran: 'الورد القرآني',
+  spaceNavTodayWorkout: 'تمرين اليوم',
+  spaceNavExercises: 'مكتبة التمارين',
+  spaceNavPlans: 'الجداول والخطط',
+  spaceNavProgress: 'سجل التحسن',
+  spaceNavTasks: 'المهام',
+  spaceNavFocus: 'جلسات التركيز',
+  spaceNavRoutines: 'الروتينات',
+  spaceNavActivePlans: 'الخطط النشطة',
+  spaceNavMilestones: 'المراحل والإنجازات',
 
   // Common
   today: 'اليوم',

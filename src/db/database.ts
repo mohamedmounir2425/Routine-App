@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings } from '../types';
+import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings, LifeTask } from '../types';
+import { AzkarLog } from '../features/worship/types';
 import { 
   INITIAL_EXERCISES, 
   INITIAL_ROUTINES, 
@@ -14,6 +15,8 @@ export class RoutineDatabase extends Dexie {
   weeklySchedule!: Table<WeeklyScheduleItem, number>;
   workoutLogs!: Table<WorkoutLog, string>;
   settings!: Table<UserSettings, string>;
+  azkarLogs!: Table<AzkarLog, string>;
+  tasks!: Table<LifeTask, string>;
 
   constructor() {
     super('RoutineAppDB');
@@ -23,6 +26,16 @@ export class RoutineDatabase extends Dexie {
       weeklySchedule: 'dayOfWeek, routineId',
       workoutLogs: 'id, routineId, completedAt, weekNumber, sessionCode',
       settings: 'id'
+    });
+
+    this.version(2).stores({
+      exercises: 'id, category, isFavorite, createdAt',
+      routines: 'id, isDefault, isMiniRescue, weekNumber, sessionCode',
+      weeklySchedule: 'dayOfWeek, routineId',
+      workoutLogs: 'id, routineId, completedAt, weekNumber, sessionCode',
+      settings: 'id',
+      azkarLogs: 'id, date, categoryKey, isFullyCompleted, completedAt',
+      tasks: 'id, spaceId, isCompleted, dueDate, priority'
     });
   }
 }

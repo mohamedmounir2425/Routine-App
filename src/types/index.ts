@@ -129,4 +129,9 @@ export interface UserSettings {
   workoutVideoMuted?: boolean; // كتم صوت فيديو اليوتيوب
   workoutVideoLoop?: boolean; // تكرار تشغيل الفيديو عند انتهائه
   workoutDefaultViewMode?: 'video' | 'animation'; // نمط العرض الافتراضي
+  enabledSpaces?: string[]; // IDs of enabled spaces (e.g. 'worship', 'health', 'work', etc.)
+  hasCompletedOnboarding?: boolean; // هل أكمل شاشة الإعداد الأولى
 }
+
+export * from './spaces';
+export * from './tasks';

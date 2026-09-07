@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Flame, Home, Dumbbell, Calendar, BarChart3, Settings, Tv, Sun, Moon } from 'lucide-react';
+import { Flame, Home, LayoutGrid, BarChart3, Settings, Tv, Sun, Moon } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import { LanguageToggle } from './LanguageToggle';
 import { MobileDock } from './MobileDock';
 
-export type TabType = 'home' | 'exercises' | 'planner' | 'stats' | 'settings';
+export type TabType = 'today' | 'spaces' | 'progress' | 'settings';
 
 interface NavbarProps {
   streakCount: number;
@@ -16,10 +16,9 @@ interface NavbarProps {
 }
 
 const TABS = [
-  { path: '/', id: 'home', labelKey: 'navHome' as const, icon: Home },
-  { path: '/exercises', id: 'exercises', labelKey: 'navExercises' as const, icon: Dumbbell },
-  { path: '/planner', id: 'planner', labelKey: 'navPlanner' as const, icon: Calendar },
-  { path: '/stats', id: 'stats', labelKey: 'navStats' as const, icon: BarChart3 },
+  { path: '/', id: 'today', labelKey: 'navToday' as const, icon: Home },
+  { path: '/spaces', id: 'spaces', labelKey: 'navSpaces' as const, icon: LayoutGrid },
+  { path: '/stats', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
   { path: '/settings', id: 'settings', labelKey: 'navSettings' as const, icon: Settings },
 ];
 
@@ -43,9 +42,27 @@ export const Navbar: React.FC<NavbarProps> = ({
     opacity: 0,
   });
 
+  const getActiveTabPath = () => {
+    if (
+      currentPath.startsWith('/spaces') ||
+      currentPath.startsWith('/worship') ||
+      currentPath.startsWith('/health') ||
+      currentPath.startsWith('/work') ||
+      currentPath.startsWith('/home') ||
+      currentPath.startsWith('/plans')
+    ) {
+      return '/spaces';
+    }
+    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/stats';
+    if (currentPath.startsWith('/settings')) return '/settings';
+    return '/';
+  };
+
+  const activeTabPath = getActiveTabPath();
+
   useEffect(() => {
     const updateIndicator = () => {
-      const activeBtn = desktopTabRefs.current[currentPath] || desktopTabRefs.current['/'];
+      const activeBtn = desktopTabRefs.current[activeTabPath] || desktopTabRefs.current['/'];
       const nav = desktopNavRef.current;
       if (activeBtn && nav) {
         const navRect = nav.getBoundingClientRect();
@@ -68,7 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       clearTimeout(timer);
       window.removeEventListener('resize', updateIndicator);
     };
-  }, [currentPath]);
+  }, [currentPath, activeTabPath]);
 
   return (
     <>
@@ -81,7 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 p-0.5 shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform shrink-0 liquid-button">
               <div className="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[14px] flex items-center justify-center">
-                <span className="text-lg sm:text-xl">🧘‍♂️</span>
+                <span className="text-lg sm:text-xl">🌟</span>
               </div>
             </div>
             <div>
@@ -110,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {TABS.map((tab) => {
               const Icon = tab.icon;
-              const isActive = currentPath === tab.path || (tab.path === '/' && currentPath === '');
+              const isActive = tab.path === activeTabPath;
               return (
                 <button
                   key={tab.id}
