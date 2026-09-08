@@ -3,6 +3,7 @@ import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
 import { SpaceContextBar } from './components/layout/SpaceContextBar';
 import { HomeDashboard } from './features/dashboard/HomeDashboard';
+import { TodayPage } from './features/today';
 import { ExerciseLibrary } from './features/exercises';
 import { PlannerPage, RoutineBuilderModal } from './features/planner';
 import { ProgressStats } from './features/stats';
@@ -14,7 +15,10 @@ import { WorshipSpace } from './features/worship/WorshipSpace';
 import { WorkSpace } from './features/work/WorkSpace';
 import { HomeSpace } from './features/home/HomeSpace';
 import { PlansSpace } from './features/plans/PlansSpace';
+import { GlobalProgressSpace } from './features/progress/GlobalProgressSpace';
+import { AuthModal } from './components/auth/AuthModal';
 import { LifeSpaceId } from './types/spaces';
+import { useReminderScheduler } from './app/useReminderScheduler';
 
 export function App() {
   const {
@@ -58,6 +62,9 @@ export function App() {
     loadAppData,
     miniRescueRoutine,
   } = useAppController();
+
+  // Background reminder scheduler (workout & desk breaks)
+  useReminderScheduler(settings, streakStats.hasWorkedOutToday);
 
   const handleCompleteOnboarding = (enabledSpaces: LifeSpaceId[]) => {
     handleUpdateSettings({
@@ -126,20 +133,11 @@ export function App() {
       {/* Main Routed Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-28 md:pb-12 relative z-10">
         <Routes>
-          {/* Today View (Command Center) */}
+          {/* Canonical Today Route */}
+          <Route path="/" element={<Navigate to="/today" replace />} />
           <Route
-            path="/"
-            element={
-              <HomeDashboard
-                todayRoutine={todayRoutine}
-                isRestDay={isRestDay}
-                streakStats={streakStats}
-                miniRescueRoutine={miniRescueRoutine}
-                weeklyCompletion={weeklyCompletion}
-                exercises={exercises}
-                onStartRoutine={(r) => startRoutinePlayback(r)}
-              />
-            }
+            path="/today"
+            element={<TodayPage onStartRoutine={(r) => startRoutinePlayback(r)} />}
           />
 
           {/* Spaces Master Directory */}
@@ -147,6 +145,7 @@ export function App() {
             path="/spaces"
             element={
               <SpacesPage
+                enabledSpaces={settings.enabledSpaces}
                 streakCount={streakStats.currentStreak}
                 todayRoutineName={todayRoutine?.name}
                 onStartRoutine={() => todayRoutine && startRoutinePlayback(todayRoutine)}
@@ -218,10 +217,13 @@ export function App() {
           {/* 🎯 Plans Space */}
           <Route path="/plans/*" element={<PlansSpace />} />
 
+          {/* 📊 Global Progress */}
+          <Route path="/progress/*" element={<GlobalProgressSpace />} />
+
           {/* Legacy Redirects */}
           <Route path="/exercises" element={<Navigate to="/health/exercises" replace />} />
           <Route path="/planner" element={<Navigate to="/health/plans" replace />} />
-          <Route path="/stats" element={<Navigate to="/health/progress" replace />} />
+          <Route path="/stats" element={<Navigate to="/progress" replace />} />
 
           {/* Settings */}
           <Route
@@ -238,7 +240,7 @@ export function App() {
               />
             }
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
       </main>
 
@@ -259,6 +261,9 @@ export function App() {
         isOpen={!settings.hasCompletedOnboarding}
         onSave={handleCompleteOnboarding}
       />
+
+      {/* Cloud Authentication Modal */}
+      <AuthModal />
 
       {/* Active Workout Player Modal / Screen */}
       {activeRoutine && activeRoutineExercises.length > 0 && (

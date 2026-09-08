@@ -17,7 +17,9 @@ import {
   ListChecks, 
   Target, 
   Milestone,
-  ArrowRight
+  ArrowRight,
+  FolderKanban,
+  Wrench
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
@@ -35,6 +37,8 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   ListChecks,
   Target,
   Milestone,
+  FolderKanban,
+  Wrench,
 };
 
 export const SpaceContextBar: React.FC = () => {

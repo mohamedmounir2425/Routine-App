@@ -75,7 +75,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   workoutVideoMuted: true,
   workoutVideoLoop: true,
   workoutDefaultViewMode: 'video',
-  enabledSpaces: ['worship', 'health', 'work', 'plans'],
+  enabledSpaces: ['worship', 'health', 'work', 'home', 'plans'],
   hasCompletedOnboarding: false,
 };
 

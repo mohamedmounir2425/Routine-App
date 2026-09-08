@@ -38,8 +38,12 @@ export interface TranslationDictionary {
   spaceNavPlans: string;
   spaceNavProgress: string;
   spaceNavTasks: string;
+  spaceNavProjects: string;
   spaceNavFocus: string;
   spaceNavRoutines: string;
+  spaceNavMaintenance: string;
+  spaceNavPlansList: string;
+  spaceNavGoals: string;
   spaceNavActivePlans: string;
   spaceNavMilestones: string;
 

@@ -6,6 +6,11 @@ import { AudioVoiceSettings } from './components/AudioVoiceSettings';
 import { DailyRemindersSettings } from './components/DailyRemindersSettings';
 import { AppearanceLanguageSettings } from './components/AppearanceLanguageSettings';
 import { BackupDataSettings } from './components/BackupDataSettings';
+import { 
+  getNotificationPermission, 
+  requestNotificationPermission, 
+  sendTestNotification 
+} from '../../utils/reminderService';
 
 interface Props {
   settings: UserSettings;
@@ -27,31 +32,23 @@ export const SettingsView: React.FC<Props> = ({
   onSetTheme,
 }) => {
   const [notificationStatus, setNotificationStatus] = useState<string>(
-    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+    getNotificationPermission()
   );
   const [savedAlert, setSavedAlert] = useState(false);
 
   const handleRequestNotification = async () => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationStatus(permission);
-      if (permission === 'granted') {
-        new Notification('روتين | MoveCare 🧘‍♂️', {
-          body: 'تم تفعيل التنبيهات بنجاح! سنذكرك بموعد تمرينك اليومي لصحة ظهرك.',
-          icon: '/favicon.ico',
-        });
-      }
+    const permission = await requestNotificationPermission();
+    setNotificationStatus(permission);
+    if (permission === 'granted') {
+      await sendTestNotification();
     }
   };
 
-  const handleSendTestNotification = () => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('🏋️ وقت تمرينك اليومي', {
-        body: '15 دقيقة فقط لنفسك ولتخفيف الضغط عن عمودك الفقري. جاهز للبدء؟',
-        icon: '/favicon.ico',
-      });
+  const handleSendTestNotification = async () => {
+    if (notificationStatus === 'granted') {
+      await sendTestNotification();
     } else {
-      handleRequestNotification();
+      await handleRequestNotification();
     }
   };
 

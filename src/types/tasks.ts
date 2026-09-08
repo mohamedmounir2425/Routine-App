@@ -15,5 +15,13 @@ export interface LifeTask {
   completedAt?: string;
   isRecurring?: boolean;
   recurrenceRule?: 'daily' | 'weekdays' | 'weekly';
+  // Source Lineage & Linking
+  sourceType?: 'manual' | 'plan' | 'project' | 'routine';
+  sourceId?: string;
+  projectId?: string;
+  planId?: string;
+  milestoneId?: string;
+  // History of completion dates for recurring tasks (preserves state without mutating source definition)
+  recurringCompletionDates?: string[];
   createdAt: string;
 }

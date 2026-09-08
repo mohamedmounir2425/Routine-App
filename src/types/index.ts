@@ -135,3 +135,4 @@ export interface UserSettings {
 
 export * from './spaces';
 export * from './tasks';
+export * from './lifeOs';

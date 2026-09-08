@@ -2,6 +2,7 @@ import React from 'react';
 import { Flame, Clock, CheckCircle2, HeartHandshake, TrendingDown, Calendar as CalendarIcon, Smile, Meh } from 'lucide-react';
 import { WorkoutLog } from '../../types';
 import { StreakStats } from '../../db';
+import { SpaceShell } from '../../components/layout/SpaceShell';
 
 interface Props {
   streakStats: StreakStats;
@@ -36,16 +37,18 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
   });
 
   return (
-    <div className="space-y-6 pb-20">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white font-['Tajawal'] tracking-tight">
-          سجل الإنجاز ومؤشرات التحسن 📊
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          متابعة مستمرة لالتزامك وتطور مستوى راحة ظهرك وانخفاض الألم مع التمارين.
-        </p>
-      </div>
+    <SpaceShell
+      icon="📊"
+      title="سجل الإنجاز ومؤشرات التحسن"
+      subtitle="متابعة مستمرة لالتزامك وتطور مستوى راحة ظهرك وانخفاض الألم مع التمارين"
+      badge={
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-bold text-amber-400">
+          <Flame className="w-4 h-4 fill-amber-400" />
+          <span>{streakStats.currentStreak} أيام التزام</span>
+        </div>
+      }
+    >
+      <div className="space-y-6 pb-20">
 
       {/* Hero Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -220,6 +223,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </SpaceShell>
   );
 };

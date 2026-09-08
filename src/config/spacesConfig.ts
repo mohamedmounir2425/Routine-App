@@ -10,11 +10,12 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/worship',
     defaultEnabled: true,
     navigation: [
-      { id: 'worship-hub', path: '/worship', labelKey: 'spaceNavOverview', iconName: 'Compass' },
-      { id: 'worship-azkar', path: '/worship/azkar', labelKey: 'spaceNavAzkar', iconName: 'BookOpen' },
-      { id: 'worship-tasbeeh', path: '/worship/tasbeeh', labelKey: 'spaceNavTasbeeh', iconName: 'CircleDot' },
+      { id: 'worship-overview', path: '/worship', labelKey: 'spaceNavOverview', iconName: 'Compass' },
       { id: 'worship-prayers', path: '/worship/prayers', labelKey: 'spaceNavPrayers', iconName: 'Clock' },
+      { id: 'worship-azkar', path: '/worship/azkar', labelKey: 'spaceNavAzkar', iconName: 'BookOpen' },
       { id: 'worship-quran', path: '/worship/quran', labelKey: 'spaceNavQuran', iconName: 'BookMarked' },
+      { id: 'worship-tasbeeh', path: '/worship/tasbeeh', labelKey: 'spaceNavTasbeeh', iconName: 'CircleDot' },
+      { id: 'worship-progress', path: '/worship/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
     ],
   },
   {
@@ -26,7 +27,7 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/health',
     defaultEnabled: true,
     navigation: [
-      { id: 'health-dashboard', path: '/health', labelKey: 'spaceNavTodayWorkout', iconName: 'Activity' },
+      { id: 'health-overview', path: '/health', labelKey: 'spaceNavOverview', iconName: 'Compass' },
       { id: 'health-exercises', path: '/health/exercises', labelKey: 'spaceNavExercises', iconName: 'Dumbbell' },
       { id: 'health-plans', path: '/health/plans', labelKey: 'spaceNavPlans', iconName: 'Calendar' },
       { id: 'health-progress', path: '/health/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
@@ -41,9 +42,11 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/work',
     defaultEnabled: true,
     navigation: [
-      { id: 'work-dashboard', path: '/work', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'work-overview', path: '/work', labelKey: 'spaceNavOverview', iconName: 'Compass' },
       { id: 'work-tasks', path: '/work/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
+      { id: 'work-projects', path: '/work/projects', labelKey: 'spaceNavProjects', iconName: 'FolderKanban' },
       { id: 'work-focus', path: '/work/focus', labelKey: 'spaceNavFocus', iconName: 'Timer' },
+      { id: 'work-progress', path: '/work/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
     ],
   },
   {
@@ -53,10 +56,13 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     icon: '🏠',
     accentColor: 'amber',
     route: '/home',
-    defaultEnabled: false,
+    defaultEnabled: true,
     navigation: [
-      { id: 'home-dashboard', path: '/home', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'home-overview', path: '/home', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'home-tasks', path: '/home/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
+      { id: 'home-projects', path: '/home/projects', labelKey: 'spaceNavProjects', iconName: 'FolderKanban' },
       { id: 'home-routines', path: '/home/routines', labelKey: 'spaceNavRoutines', iconName: 'ListChecks' },
+      { id: 'home-maintenance', path: '/home/maintenance', labelKey: 'spaceNavMaintenance', iconName: 'Wrench' },
     ],
   },
   {
@@ -68,8 +74,18 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/plans',
     defaultEnabled: true,
     navigation: [
-      { id: 'plans-active', path: '/plans', labelKey: 'spaceNavActivePlans', iconName: 'Target' },
-      { id: 'plans-milestones', path: '/plans/milestones', labelKey: 'spaceNavMilestones', iconName: 'Milestone' },
+      { id: 'plans-overview', path: '/plans', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'plans-list', path: '/plans/list', labelKey: 'spaceNavPlansList', iconName: 'FolderKanban' },
+      { id: 'plans-goals', path: '/plans/goals', labelKey: 'spaceNavGoals', iconName: 'Milestone' },
+      { id: 'plans-progress', path: '/plans/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
     ],
   },
 ];
+
+export function getEnabledSpaceConfigs(enabledSpaces?: string[]): LifeSpaceConfig[] {
+  if (Array.isArray(enabledSpaces) && enabledSpaces.length > 0) {
+    const configs = LIFE_SPACES_CONFIG.filter((space) => enabledSpaces.includes(space.id));
+    return configs.length > 0 ? configs : LIFE_SPACES_CONFIG.filter((s) => s.defaultEnabled);
+  }
+  return LIFE_SPACES_CONFIG.filter((s) => s.defaultEnabled);
+}

@@ -15,6 +15,7 @@ export const SpacesOnboardingModal: React.FC<Props> = ({ isOpen, onSave }) => {
     'worship',
     'health',
     'work',
+    'home',
     'plans',
   ]);
 

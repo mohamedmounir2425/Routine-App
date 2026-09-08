@@ -4,9 +4,9 @@ import { Home, LayoutGrid, BarChart3, Settings } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 
 const TABS = [
-  { path: '/', id: 'today', labelKey: 'navToday' as const, icon: Home },
+  { path: '/today', id: 'today', labelKey: 'navToday' as const, icon: Home },
   { path: '/spaces', id: 'spaces', labelKey: 'navSpaces' as const, icon: LayoutGrid },
-  { path: '/stats', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
+  { path: '/progress', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
   { path: '/settings', id: 'settings', labelKey: 'navSettings' as const, icon: Settings },
 ];
 
@@ -26,6 +26,9 @@ export const MobileDock: React.FC = () => {
   });
 
   const getActiveTabPath = () => {
+    if (currentPath === '/' || currentPath.startsWith('/today')) {
+      return '/today';
+    }
     if (
       currentPath.startsWith('/spaces') ||
       currentPath.startsWith('/worship') ||
@@ -36,16 +39,16 @@ export const MobileDock: React.FC = () => {
     ) {
       return '/spaces';
     }
-    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/stats';
+    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/progress';
     if (currentPath.startsWith('/settings')) return '/settings';
-    return '/';
+    return '/today';
   };
 
   const activeTabPath = getActiveTabPath();
 
   useEffect(() => {
     const updateIndicator = () => {
-      const activeBtn = mobileTabRefs.current[activeTabPath] || mobileTabRefs.current['/'];
+      const activeBtn = mobileTabRefs.current[activeTabPath] || mobileTabRefs.current['/today'];
       const nav = mobileNavRef.current;
       if (activeBtn && nav) {
         const navRect = nav.getBoundingClientRect();
@@ -88,13 +91,13 @@ export const MobileDock: React.FC = () => {
 
         {TABS.map((tab) => {
           const Icon = tab.icon;
-          const isActive = currentPath === tab.path || (tab.path === '/' && currentPath === '');
+          const isActive = tab.path === activeTabPath;
           return (
             <button
               key={tab.id}
               ref={(el) => { mobileTabRefs.current[tab.path] = el; }}
               onClick={() => navigate(tab.path)}
-              className={`relative z-10 flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-2xl text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 ${
+              className={`relative z-10 flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-2xl text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
                 isActive
                   ? 'text-emerald-400'
                   : 'text-slate-400 hover:text-slate-200'

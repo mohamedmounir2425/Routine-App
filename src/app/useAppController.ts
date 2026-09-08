@@ -10,6 +10,8 @@ import {
 } from '../db';
 import { Exercise, Routine, WeeklyScheduleItem, WorkoutLog, UserSettings } from '../types';
 import { DEFAULT_USER_SETTINGS, INITIAL_WEEKLY_SCHEDULE } from '../db/seedData';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { syncSingleWorkoutLog } from '../db/syncEngine';
 import { useAppTheme } from './useAppTheme';
 import { useCustomRoutines } from './useCustomRoutines';
 
@@ -176,6 +178,15 @@ export function useAppController() {
     };
 
     await db.workoutLogs.add(newLog);
+
+    if (isSupabaseConfigured()) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          syncSingleWorkoutLog(session.user.id, newLog);
+        }
+      });
+    }
+
     setActiveRoutine(null);
     setActiveRoutineExercises([]);
     await loadAppData();

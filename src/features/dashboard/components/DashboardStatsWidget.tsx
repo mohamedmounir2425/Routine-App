@@ -22,8 +22,8 @@ export const DashboardStatsWidget: React.FC<Props> = ({ streakStats }) => {
         </h3>
         <button
           type="button"
-          onClick={() => navigate('/stats')}
-          className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition-colors"
+          onClick={() => navigate('/health/progress')}
+          className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
         >
           <span>{isRTL ? 'التفاصيل' : 'Details'}</span>
           <ArrowIcon className="w-3.5 h-3.5" />

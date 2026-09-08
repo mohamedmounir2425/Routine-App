@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Flame, Home, LayoutGrid, BarChart3, Settings, Tv, Sun, Moon } from 'lucide-react';
+import { Flame, Home, LayoutGrid, BarChart3, Settings, Tv, Sun, Moon, Cloud, LogOut, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { useAuth } from '../../context/AuthContext';
 import { LanguageToggle } from './LanguageToggle';
 import { MobileDock } from './MobileDock';
 
@@ -16,9 +17,9 @@ interface NavbarProps {
 }
 
 const TABS = [
-  { path: '/', id: 'today', labelKey: 'navToday' as const, icon: Home },
+  { path: '/today', id: 'today', labelKey: 'navToday' as const, icon: Home },
   { path: '/spaces', id: 'spaces', labelKey: 'navSpaces' as const, icon: LayoutGrid },
-  { path: '/stats', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
+  { path: '/progress', id: 'progress', labelKey: 'navProgress' as const, icon: BarChart3 },
   { path: '/settings', id: 'settings', labelKey: 'navSettings' as const, icon: Settings },
 ];
 
@@ -32,7 +33,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, syncStatus, openAuthModal, signOut, triggerSync } = useAuth();
   const currentPath = location.pathname;
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const desktopNavRef = useRef<HTMLElement>(null);
   const desktopTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -43,6 +46,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   });
 
   const getActiveTabPath = () => {
+    if (currentPath === '/' || currentPath.startsWith('/today')) {
+      return '/today';
+    }
     if (
       currentPath.startsWith('/spaces') ||
       currentPath.startsWith('/worship') ||
@@ -53,16 +59,16 @@ export const Navbar: React.FC<NavbarProps> = ({
     ) {
       return '/spaces';
     }
-    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/stats';
+    if (currentPath.startsWith('/stats') || currentPath.startsWith('/progress')) return '/progress';
     if (currentPath.startsWith('/settings')) return '/settings';
-    return '/';
+    return '/today';
   };
 
   const activeTabPath = getActiveTabPath();
 
   useEffect(() => {
     const updateIndicator = () => {
-      const activeBtn = desktopTabRefs.current[activeTabPath] || desktopTabRefs.current['/'];
+      const activeBtn = desktopTabRefs.current[activeTabPath] || desktopTabRefs.current['/today'];
       const nav = desktopNavRef.current;
       if (activeBtn && nav) {
         const navRect = nav.getBoundingClientRect();
@@ -93,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
           {/* Brand */}
           <div 
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/today')}
             className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group"
           >
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 p-0.5 shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform shrink-0 liquid-button">
@@ -189,6 +195,89 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Tv className="w-4 h-4" />
             </button>
+
+            {/* Cloud Sync & User Profile */}
+            <div className="relative">
+              {user ? (
+                <div>
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    title={user.email}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl liquid-glass-pill border border-emerald-500/30 hover:border-emerald-500/60 text-slate-200 hover:text-white transition-all cursor-pointer"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold text-[10px]">
+                      {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs font-bold hidden lg:inline max-w-[80px] truncate">
+                      {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                    </span>
+                    <span 
+                      className={`w-2 h-2 rounded-full ${
+                        syncStatus === 'syncing' 
+                          ? 'bg-amber-400 animate-ping' 
+                          : syncStatus === 'error'
+                          ? 'bg-rose-400'
+                          : 'bg-emerald-400'
+                      }`}
+                      title={
+                        syncStatus === 'syncing'
+                          ? 'جاري المزامنة...'
+                          : syncStatus === 'error'
+                          ? 'خطأ في المزامنة'
+                          : 'متزامن مع السحابة'
+                      }
+                    />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setIsUserMenuOpen(false)} 
+                      />
+                      <div className="absolute left-0 mt-2 w-56 rounded-2xl liquid-glass-card p-3 shadow-2xl border border-white/15 z-50 animate-in fade-in zoom-in-95 font-['Tajawal'] text-xs">
+                        <div className="px-2 py-1.5 border-b border-white/10 mb-2">
+                          <p className="font-bold text-white truncate">{user.user_metadata?.full_name || 'بطل الروتين'}</p>
+                          <p className="text-[11px] text-slate-400 truncate" dir="ltr">{user.email}</p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            triggerSync();
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/5 transition-all text-right"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                          <span>مزامنة البيانات الآن</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            signOut();
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-all text-right mt-1"
+                        >
+                          <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                          <span>تسجيل الخروج</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => openAuthModal('signin')}
+                  title="تسجيل الدخول لمزامنة البيانات بين الأجهزة"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all shadow-sm shadow-emerald-500/10 cursor-pointer"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">مزامنة</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
