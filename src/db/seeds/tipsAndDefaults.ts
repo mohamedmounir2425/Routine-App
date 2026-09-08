@@ -1,4 +1,4 @@
-import { UserSettings, WeeklyScheduleItem } from '../../types';
+import { UserSettings, WeeklyScheduleItem, DEFAULT_TODAY_PREFERENCES } from '../../types';
 
 export interface BackSafetyTip {
   id: number;
@@ -77,5 +77,6 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   workoutDefaultViewMode: 'video',
   enabledSpaces: ['worship', 'health', 'work', 'home', 'plans'],
   hasCompletedOnboarding: false,
+  todayPreferences: DEFAULT_TODAY_PREFERENCES,
 };
 

@@ -141,8 +141,27 @@ export async function initializeDatabase(forceRefresh: boolean = false): Promise
 export async function getUserSettings(): Promise<UserSettings> {
   let settings = await db.settings.get('current_settings');
   if (!settings) {
-    settings = DEFAULT_USER_SETTINGS;
+    settings = { ...DEFAULT_USER_SETTINGS };
     await db.settings.put(settings);
+  } else {
+    let needsUpdate = false;
+    if (!settings.todayPreferences) {
+      settings = {
+        ...settings,
+        todayPreferences: DEFAULT_USER_SETTINGS.todayPreferences,
+      };
+      needsUpdate = true;
+    }
+    if (!settings.enabledSpaces || settings.enabledSpaces.length === 0) {
+      settings = {
+        ...settings,
+        enabledSpaces: DEFAULT_USER_SETTINGS.enabledSpaces,
+      };
+      needsUpdate = true;
+    }
+    if (needsUpdate) {
+      await db.settings.put(settings);
+    }
   }
   return settings;
 }
@@ -151,5 +170,14 @@ export async function updateUserSettings(partial: Partial<UserSettings>): Promis
   const current = await getUserSettings();
   const updated = { ...current, ...partial };
   await db.settings.put(updated);
+
+  if (partial.todayPreferences && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem('routine_today_preferences', JSON.stringify(partial.todayPreferences));
+    } catch {
+      // ignore
+    }
+  }
+
   return updated;
 }

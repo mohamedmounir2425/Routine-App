@@ -89,7 +89,25 @@ export const WorkoutVideoSettings: React.FC<WorkoutVideoSettingsProps> = ({
         />
       </div>
 
-      {/* 4. Default View Mode in Player */}
+      {/* 4. Screen Wake Lock */}
+      <div className="flex items-center justify-between py-2 border-b border-slate-800/80">
+        <div className="space-y-0.5 pr-1">
+          <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
+            <span>منع قفل الشاشة أثناء التمرين (Keep Screen Awake)</span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            إبقاء إضاءة الشاشة مستمرة طوال فترة أداء التمارين وعدم الدخول في وضع السكون
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          checked={settings.screenWakeLock ?? true}
+          onChange={(e) => onToggle('screenWakeLock', e.target.checked)}
+          className="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0"
+        />
+      </div>
+
+      {/* 5. Default View Mode in Player */}
       <div className="py-2">
         <div className="text-xs font-bold text-slate-200 mb-1">
           طريقة العرض الافتراضية للتمرين في المشغل

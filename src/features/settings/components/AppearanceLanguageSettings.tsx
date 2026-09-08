@@ -1,10 +1,12 @@
 import React from 'react';
-import { Palette, Moon, Sun, Smartphone, Globe } from 'lucide-react';
+import { Palette, Moon, Sun, Smartphone, Globe, Tv } from 'lucide-react';
 import { LanguageToggle } from '../../../components/common/LanguageToggle';
 
 interface AppearanceLanguageSettingsProps {
   theme?: 'dark' | 'light';
   onSetTheme?: (theme: 'dark' | 'light') => void;
+  isTvMode?: boolean;
+  onToggleTvMode?: () => void;
   canInstallPwa?: boolean;
   onInstallPwa?: () => void;
 }
@@ -12,6 +14,8 @@ interface AppearanceLanguageSettingsProps {
 export const AppearanceLanguageSettings: React.FC<AppearanceLanguageSettingsProps> = ({
   theme = 'dark',
   onSetTheme,
+  isTvMode = false,
+  onToggleTvMode,
   canInstallPwa,
   onInstallPwa,
 }) => {
@@ -80,6 +84,32 @@ export const AppearanceLanguageSettings: React.FC<AppearanceLanguageSettingsProp
               <span>الوضع الفاتح (Light)</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* TV / Large Screen Mode Row */}
+      {onToggleTvMode && (
+        <div className="flex items-center justify-between py-2 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <Tv className="w-4 h-4 text-sky-400" />
+            <div>
+              <div className="text-xs font-bold text-slate-200">وضع الشاشات الكبيرة والتلفاز (TV Mode)</div>
+              <div className="text-[11px] text-slate-400">تكبير العناصر ومواءمة الخطوط للمشاهدة عن بعد</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleTvMode}
+            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+              isTvMode ? 'bg-sky-500' : 'bg-slate-800'
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
+                isTvMode ? 'right-1' : 'right-6'
+              }`}
+            />
+          </button>
         </div>
       )}
 

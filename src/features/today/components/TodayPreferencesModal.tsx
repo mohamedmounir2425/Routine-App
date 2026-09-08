@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { TodayPreferences, DEFAULT_TODAY_PREFERENCES } from '../../../types';
 import { saveTodayPreferences } from '../todayPreferencesService';
+import { updateUserSettings } from '../../../db';
 
 interface TodayPreferencesModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const TodayPreferencesModal: React.FC<TodayPreferencesModalProps> = ({
 
   const handleSave = () => {
     saveTodayPreferences(prefs);
+    updateUserSettings({ todayPreferences: prefs }).catch(console.error);
     onSavePreferences(prefs);
     onClose();
   };

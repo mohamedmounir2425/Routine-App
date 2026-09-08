@@ -30,6 +30,8 @@ import {
 import { createProject, createWorkProject, createHomeProject } from '../../db/projectQueries';
 import { createPlan, calculatePlanProgress } from '../../db/goalPlanQueries';
 import { getGlobalProgressSnapshot, getWeeklyProgress } from '../progress/progressAggregator';
+import { getUserSettings, updateUserSettings } from '../../db/database';
+import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 import { DEFAULT_TODAY_PREFERENCES } from '../../types';
 
 // In-memory localStorage polyfill for Node.js test environment
@@ -1168,6 +1170,114 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     });
   } catch (err: any) {
     results.push({ scenario: '15. Global Progress Aggregation', passed: false, details: err.message });
+  }
+
+  // =========================================================================
+  // SCENARIO 16: Life OS Settings & Personalization (Single Source of Truth)
+  // =========================================================================
+  try {
+    // 1. Reset tasks & projects for clean isolation
+    await db.tasks.clear();
+    await db.projects.clear();
+
+    // 2. Fetch initial settings - verify enabledSpaces & todayPreferences exist
+    const initialSettings = await getUserSettings();
+    const hasInitialSpaces = Array.isArray(initialSettings.enabledSpaces) && initialSettings.enabledSpaces.length === 5;
+    const hasInitialPrefs = Boolean(initialSettings.todayPreferences && initialSettings.todayPreferences.showWorship);
+
+    // 3. Test Disabling a Space: Disable 'work' space
+    const updatedSettings1 = await updateUserSettings({
+      enabledSpaces: ['worship', 'health', 'home', 'plans'],
+      todayPreferences: {
+        ...DEFAULT_TODAY_PREFERENCES,
+        showWork: false,
+      },
+    });
+
+    // 4. Verify enabledSpaces single source of truth
+    const enabledConfigs = getEnabledSpaceConfigs(updatedSettings1.enabledSpaces);
+    const spaceDisabledValid = enabledConfigs.length === 4 && !enabledConfigs.some((s) => s.id === 'work');
+
+    // 5. Verify Settings Affecting Today: Create a work task
+    await db.tasks.put({
+      id: 'task-work-s16',
+      title: 'مهمة عمل برمجية',
+      spaceId: 'work',
+      dueDate: testDate,
+      isCompleted: false,
+      priority: 'high',
+      createdAt: new Date().toISOString(),
+    });
+
+    // Feed with showWork: false -> task-work-s16 MUST be hidden
+    const feedHiddenWork = await aggregateTodayFeed({
+      preferences: updatedSettings1.todayPreferences,
+      customDateStr: testDate,
+    });
+    const workTaskHidden = !feedHiddenWork.items.some((item) => item.sourceId === 'task-work-s16');
+
+    // Feed with showWork: true -> task-work-s16 MUST appear
+    const feedVisibleWork = await aggregateTodayFeed({
+      preferences: {
+        ...updatedSettings1.todayPreferences!,
+        showWork: true,
+      },
+      customDateStr: testDate,
+    });
+    const workTaskAppears = feedVisibleWork.items.some((item) => item.sourceId === 'task-work-s16');
+
+    // 6. Verify Settings Affecting Progress: Weights scale dynamically when a space is disabled/hidden
+    // Active spaces: Worship 30, Health 25, Home 20 (Total: 75)
+    // Normalized: Worship = 30/75 = 40%, Health = 25/75 = 33.3%, Home = 20/75 = 26.7%
+    const progressWithoutWork = await getGlobalProgressSnapshot(testDate, updatedSettings1.todayPreferences);
+    const expectedScaledOverall = Math.round(
+      progressWithoutWork.spaces.worship.score * (30 / 75) +
+      progressWithoutWork.spaces.health.score * (25 / 75) +
+      progressWithoutWork.spaces.home.score * (20 / 75)
+    );
+    const progressWeightsScaled = progressWithoutWork.overallScore === expectedScaledOverall;
+
+    // 7. Verify Reload Persistence: Fresh read from db.settings table directly (simulating page reload)
+    const freshFromDb = await db.settings.get('current_settings');
+    const dbReloadValid = Boolean(
+      freshFromDb &&
+      freshFromDb.enabledSpaces?.length === 4 &&
+      !freshFromDb.enabledSpaces.includes('work') &&
+      freshFromDb.todayPreferences?.showWork === false
+    );
+
+    // 8. Verify LocalStorage synchronization for TodayPreferences (no duplicate store, synchronized by updateUserSettings)
+    const storedLocalStorage = globalThis.localStorage.getItem('routine_today_preferences');
+    const parsedLocalStorage = storedLocalStorage ? JSON.parse(storedLocalStorage) : null;
+    const localStorageSyncValid = Boolean(parsedLocalStorage && parsedLocalStorage.showWork === false);
+
+    // 9. Restore settings back to all 5 enabled spaces
+    await updateUserSettings({
+      enabledSpaces: ['worship', 'health', 'work', 'home', 'plans'],
+      todayPreferences: DEFAULT_TODAY_PREFERENCES,
+    });
+    const restoredSettings = await getUserSettings();
+    const restoredValid = restoredSettings.enabledSpaces?.length === 5 && restoredSettings.todayPreferences?.showWork === true;
+
+    const passed = Boolean(
+      hasInitialSpaces &&
+      hasInitialPrefs &&
+      spaceDisabledValid &&
+      workTaskHidden &&
+      workTaskAppears &&
+      progressWeightsScaled &&
+      dbReloadValid &&
+      localStorageSyncValid &&
+      restoredValid
+    );
+
+    results.push({
+      scenario: '16. Life OS Settings & Personalization (Single Source of Truth)',
+      passed,
+      details: `Space Toggle: 5->${enabledConfigs.length} spaces (work disabled), Today Filter: hidden=${workTaskHidden}/shown=${workTaskAppears}, Progress Scaled: ${progressWithoutWork.overallScore}% (expected ${expectedScaledOverall}%), Reload DB: ${dbReloadValid}, LocalStorage Sync: ${localStorageSyncValid}, Restored: ${restoredValid}`,
+    });
+  } catch (err: any) {
+    results.push({ scenario: '16. Life OS Settings & Personalization', passed: false, details: err.message });
   }
 
   // Print Summary Table

@@ -131,6 +131,7 @@ export interface UserSettings {
   workoutDefaultViewMode?: 'video' | 'animation'; // نمط العرض الافتراضي
   enabledSpaces?: string[]; // IDs of enabled spaces (e.g. 'worship', 'health', 'work', etc.)
   hasCompletedOnboarding?: boolean; // هل أكمل شاشة الإعداد الأولى
+  todayPreferences?: import('./lifeOs').TodayPreferences; // تفضيلات شاشة اليوم
 }
 
 export * from './spaces';

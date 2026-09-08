@@ -237,6 +237,8 @@ export function App() {
                 onRefreshData={loadAppData}
                 theme={theme}
                 onSetTheme={handleSetTheme}
+                isTvMode={isTvMode}
+                onToggleTvMode={() => setIsTvMode(!isTvMode)}
               />
             }
           />
