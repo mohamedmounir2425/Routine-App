@@ -28,7 +28,7 @@ import {
   getQuranDailyStatus 
 } from '../../db/worshipQueries';
 import { createProject, createWorkProject, createHomeProject } from '../../db/projectQueries';
-import { createPlan, calculatePlanProgress } from '../../db/goalPlanQueries';
+import { createPlan, calculatePlanProgress, getPlanMilestones } from '../../db/goalPlanQueries';
 import { getGlobalProgressSnapshot, getWeeklyProgress } from '../progress/progressAggregator';
 import { getUserSettings, updateUserSettings } from '../../db/database';
 import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
@@ -1278,6 +1278,199 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     });
   } catch (err: any) {
     results.push({ scenario: '16. Life OS Settings & Personalization', passed: false, details: err.message });
+  }
+
+  // =========================================================================
+  // SCENARIO 17: Full Life OS Unified Lifecycle & Cross-Domain Regression
+  // =========================================================================
+  try {
+    // 1. Reset all domain tables for complete isolation
+    await db.tasks.clear();
+    await db.projects.clear();
+    await db.azkarLogs.clear();
+    await db.workoutLogs.clear();
+    await db.workoutSchedules.clear();
+    await db.plans.clear();
+    await db.planMilestones.clear();
+    globalThis.localStorage.removeItem(`routine_prayers_${testDate}`);
+    globalThis.localStorage.removeItem(`routine_quran_${testDate}`);
+    globalThis.localStorage.removeItem('routine_tasbeeh_count');
+
+    // 2. Set up multi-domain entries for testDate (Tuesday = 2)
+    // A. Health: Scheduled routine for Tuesday
+    await db.routines.put({
+      id: 'routine-health-s17',
+      name: 'تمرين استطالة الظهر الصباحي',
+      description: 'تمارين استطالة',
+      tag: 'morning',
+      level: 'gentle',
+      totalEstimatedMinutes: 15,
+      exerciseIds: ['ex-1', 'ex-2'],
+    });
+    await db.workoutSchedules.put({
+      id: 'sched-s17',
+      dayOfWeek: 2, // Tuesday
+      routineId: 'routine-health-s17',
+      scheduledTime: '07:30',
+      sessionLabel: 'جلسة الصباح لصحة العمود الفقري',
+      durationMinutes: 15,
+      isEnabled: true,
+    });
+
+    // B. Work: LifeProject with 2 sequential steps
+    await createWorkProject({
+      title: 'تطوير نظام المصادقة السحابية',
+      description: 'مشروع عمل تقني',
+      status: 'in_progress',
+      targetDate: testDate,
+      steps: [
+        { id: 'step-1', title: 'كتابة المواصفات الفنية', order: 1, isCompleted: false },
+        { id: 'step-2', title: 'مراجعة الكود والاعتماد', order: 2, isCompleted: false },
+      ],
+    });
+
+    // C. Home: Recurring domestic routine
+    await db.tasks.put({
+      id: 'task-home-routine-s17',
+      title: 'تهوية المنزل وترتيب المكتب',
+      spaceId: 'home',
+      dueDate: testDate,
+      isCompleted: false,
+      isRecurring: true,
+      recurrenceRule: 'daily',
+      recurringCompletionDates: [],
+      priority: 'medium',
+      createdAt: new Date().toISOString(),
+    });
+
+    // D. Plans: Strategic plan with a linked Work task
+    const careerPlan = await createPlan(
+      {
+        title: 'إتقان بنية الأنظمة السحابية',
+        category: 'career',
+        description: 'خطة استراتيجية لتطوير المهارات',
+        targetDate: '2026-12-31',
+        status: 'active',
+      },
+      [
+        { title: 'الحصول على شهادة AWS', order: 1 },
+        { title: 'بناء مشروع عملي متكامل', order: 2 },
+      ]
+    );
+    const planMilestones = await getPlanMilestones(careerPlan.id);
+    await db.tasks.put({
+      id: 'task-work-plan-s17',
+      title: 'بناء معمارية الخدمات السحابية بالـ Docker',
+      spaceId: 'work',
+      planId: careerPlan.id,
+      milestoneId: planMilestones[0]?.id,
+      dueDate: testDate,
+      isCompleted: false,
+      priority: 'high',
+      createdAt: new Date().toISOString(),
+    });
+
+    // 3. Aggregate Today Feed - verify Single Execution Center & Deduplication
+    const feed1 = await aggregateTodayFeed({
+      customDateStr: testDate,
+      preferences: DEFAULT_TODAY_PREFERENCES,
+    });
+
+    // Deduplication check: task-work-plan-s17 appears ONCE
+    const planTaskInstances = feed1.items.filter((item) => item.sourceId === 'task-work-plan-s17');
+    const deduplicationValid = planTaskInstances.length === 1 && planTaskInstances[0].subtitle?.includes(careerPlan.title);
+
+    // Next action check: Only Step 1 appears for Work project
+    const workProjectItems = feed1.items.filter((item) => item.type === 'project_action' && item.space === 'work');
+    const nextActionValid = workProjectItems.length === 1 && workProjectItems[0].title === 'كتابة المواصفات الفنية';
+
+    // 4. Execute all actions through Today handlers
+    // - 5 Daily Prayers
+    for (const p of ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']) {
+      executeTogglePrayer(p, testDate);
+    }
+    // - Morning & Evening Azkar
+    await executeCompleteAzkar('morning', testDate);
+    await executeCompleteAzkar('evening', testDate);
+    // - Quran: Read 4 pages
+    executeAddQuranPage(4, testDate);
+    globalThis.localStorage.setItem('routine_tasbeeh_count', '33');
+    // - Workout log
+    await db.workoutLogs.put({
+      id: 'log-s17',
+      routineId: 'routine-health-s17',
+      routineName: 'تمرين استطالة الظهر الصباحي',
+      completedAt: `${testDate}T08:00:00Z`,
+      durationMinutes: 15,
+      exercisesCompleted: 2,
+      totalExercises: 2,
+    });
+    // - Work project Next Action (complete step-1 then step-2 to finish project)
+    const workProj = (await db.projects.toArray()).find((p) => p.title === 'تطوير نظام المصادقة السحابية');
+    if (workProj?.nextActionId) {
+      await executeCompleteProjectAction(workProj.id, workProj.nextActionId);
+    }
+    const workProjUpdated = await db.projects.get(workProj!.id);
+    if (workProjUpdated?.nextActionId) {
+      await executeCompleteProjectAction(workProjUpdated.id, workProjUpdated.nextActionId);
+    }
+    // - Home recurring routine
+    await executeToggleTask('task-home-routine-s17', testDate);
+    // - Plan-linked work task
+    await executeToggleTask('task-work-plan-s17', testDate);
+
+    // 5. Verify Global Progress reaches 100% daily execution score
+    const progressFull = await getGlobalProgressSnapshot(testDate);
+    const healthScore100 = progressFull.spaces.health.score === 100;
+    const workScore100 = progressFull.spaces.work.score === 100;
+    const homeScore100 = progressFull.spaces.home.score === 100;
+    const overallScore100 = progressFull.overallScore >= 95; // 100% normalized execution
+
+    // 6. Test Settings Space Toggle & Dynamic Weight Scaling
+    const settingsWithoutHome = await updateUserSettings({
+      enabledSpaces: ['worship', 'health', 'work', 'plans'],
+      todayPreferences: {
+        ...DEFAULT_TODAY_PREFERENCES,
+        showHome: false,
+      },
+    });
+
+    const feedNoHome = await aggregateTodayFeed({
+      customDateStr: testDate,
+      preferences: settingsWithoutHome.todayPreferences,
+    });
+    const homeItemsHidden = !feedNoHome.items.some((item) => item.space === 'home');
+
+    const progressNoHome = await getGlobalProgressSnapshot(testDate, settingsWithoutHome.todayPreferences);
+    const scaledWeightsValid = progressNoHome.overallScore >= 95;
+
+    // 7. Restore settings & verify reload persistence
+    await updateUserSettings({
+      enabledSpaces: ['worship', 'health', 'work', 'home', 'plans'],
+      todayPreferences: DEFAULT_TODAY_PREFERENCES,
+    });
+    const freshDbSettings = await db.settings.get('current_settings');
+    const restoredPersisted = freshDbSettings?.enabledSpaces?.length === 5;
+
+    const passed = Boolean(
+      deduplicationValid &&
+      nextActionValid &&
+      healthScore100 &&
+      workScore100 &&
+      homeScore100 &&
+      overallScore100 &&
+      homeItemsHidden &&
+      scaledWeightsValid &&
+      restoredPersisted
+    );
+
+    results.push({
+      scenario: '17. Full Life OS Unified Lifecycle & Cross-Domain Regression',
+      passed,
+      details: `Today Deduplication: ${deduplicationValid} (1 instance), NextAction Atomic: ${nextActionValid}, Execution Scores: Health=${progressFull.spaces.health.score}%, Work=${progressFull.spaces.work.score}%, Home=${progressFull.spaces.home.score}%, Overall=${progressFull.overallScore}%, Space Toggle Reactivity: hidden=${homeItemsHidden}, Scaled Score: ${progressNoHome.overallScore}%, Restored DB: ${restoredPersisted}`,
+    });
+  } catch (err: any) {
+    results.push({ scenario: '17. Full Life OS Unified Lifecycle & Cross-Domain Regression', passed: false, details: err.message });
   }
 
   // Print Summary Table

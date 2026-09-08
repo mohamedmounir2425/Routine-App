@@ -47,6 +47,17 @@ export const TodayPage: React.FC<TodayPageProps> = ({ onStartRoutine }) => {
 
   useEffect(() => {
     loadFeed();
+
+    // Listen for cross-tab or settings updates
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'routine_today_preferences') {
+        const fresh = getSavedTodayPreferences();
+        setPreferences(fresh);
+        loadFeed(fresh);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [loadFeed]);
 
   // Handle Primary Actions

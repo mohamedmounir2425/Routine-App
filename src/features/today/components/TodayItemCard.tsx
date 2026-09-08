@@ -88,9 +88,11 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
     if (item.actionType === 'start_workout') {
       return (
         <button
+          type="button"
           onClick={() => onExecuteAction(item)}
           disabled={item.isCompleted}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+          aria-label={item.isCompleted ? `التمرين منجز: ${item.title}` : `بدء تمرين: ${item.title}`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${
             item.isCompleted
               ? 'bg-white/5 text-slate-400 border border-white/10 opacity-60'
               : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/35 hover:scale-105 active:scale-95'
@@ -107,23 +109,29 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
       return (
         <div className="flex items-center gap-1.5">
           <button
+            type="button"
             onClick={() => onAddQuranPage ? onAddQuranPage(1) : onExecuteAction(item)}
-            className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            aria-label="إضافة صفحة واحدة للورد القرآني"
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             <Plus className="w-3 h-3" />
             <span>صفحة</span>
           </button>
 
           <button
+            type="button"
             onClick={() => onAddQuranPage ? onAddQuranPage(5) : onExecuteAction(item)}
-            className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] font-bold cursor-pointer transition-all active:scale-95 hidden sm:block"
+            aria-label="إضافة 5 صفحات للورد القرآني"
+            className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] font-bold cursor-pointer transition-all active:scale-95 hidden sm:block focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             +٥
           </button>
 
           <button
+            type="button"
             onClick={() => onExecuteAction(item)}
-            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 cursor-pointer transition-all"
+            aria-label="فتح الورد القرآني في مساحة العبادة"
+            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             title="فتح الورد القرآني"
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -136,8 +144,10 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
     if (item.actionType === 'complete_project_step') {
       return (
         <button
+          type="button"
           onClick={() => onExecuteAction(item)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs cursor-pointer transition-all hover:scale-105 active:scale-95"
+          aria-label={`إنجاز خطوة المشروع: ${item.title}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs cursor-pointer transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
         >
           <Check className="w-3.5 h-3.5" />
           <span>إنجاز الخطوة</span>
@@ -150,9 +160,11 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
       return (
         <div className="flex items-center gap-1.5">
           <button
+            type="button"
             onClick={() => onExecuteAction(item)}
             disabled={item.isCompleted}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+            aria-label={`فتح وقراءة: ${item.title}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
               item.isCompleted
                 ? 'bg-white/5 text-slate-400 border border-white/10 opacity-60'
                 : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/35 hover:scale-105 active:scale-95'
@@ -168,8 +180,10 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
     // 5. Default Task / Prayer Checkbox Toggle
     return (
       <button
+        type="button"
         onClick={() => onExecuteAction(item)}
-        className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition-all duration-200 ${
+        aria-label={item.isCompleted ? `إلغاء إكمال: ${item.title}` : `إكمال: ${item.title}`}
+        className={`w-7 h-7 rounded-xl border flex items-center justify-center cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
           item.isCompleted
             ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/20'
             : 'border-white/20 bg-white/5 hover:border-emerald-500/50 text-transparent hover:text-white/40'

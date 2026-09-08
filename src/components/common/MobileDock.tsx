@@ -95,9 +95,11 @@ export const MobileDock: React.FC = () => {
           return (
             <button
               key={tab.id}
+              type="button"
               ref={(el) => { mobileTabRefs.current[tab.path] = el; }}
               onClick={() => navigate(tab.path)}
-              className={`relative z-10 flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-2xl text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+              aria-label={t(tab.labelKey)}
+              className={`relative z-10 flex-1 flex flex-col items-center justify-center min-h-[44px] gap-0.5 py-1 px-1 rounded-2xl text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
                 isActive
                   ? 'text-emerald-400'
                   : 'text-slate-400 hover:text-slate-200'

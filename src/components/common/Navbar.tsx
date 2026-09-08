@@ -118,6 +118,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Desktop Nav Items with Sliding Indicator */}
           <nav 
             ref={desktopNavRef}
+            role="navigation"
+            aria-label="شريط التنقل الرئيسي"
             className="hidden md:flex items-center gap-1 px-2 py-1.5 liquid-glass-dock rounded-2xl shadow-xl relative"
           >
             <div
@@ -137,9 +139,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   ref={(el) => { desktopTabRefs.current[tab.path] = el; }}
                   onClick={() => navigate(tab.path)}
-                  className={`relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm transition-colors duration-200 cursor-pointer select-none ${
+                  aria-label={t(tab.labelKey)}
+                  className={`relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm transition-colors duration-200 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
                     isActive
                       ? 'text-white font-bold'
                       : 'text-slate-400 hover:text-white font-medium hover:bg-white/5'
@@ -159,9 +163,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Streak Counter */}
             <div 
-              onClick={() => navigate('/stats')}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/progress')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/progress'); }}
+              aria-label={`سلسلة الالتزام الحالية: ${streakCount} أيام متتالية`}
               title={`سلسلة الالتزام الحالية: ${streakCount} أيام متتالية`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill cursor-pointer transition-all hover:scale-105"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill cursor-pointer transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
             >
               <Flame className={`w-4 h-4 ${streakCount > 0 ? 'text-amber-400 fill-amber-400 animate-pulse' : 'text-slate-500'}`} />
               <span className="text-xs font-black text-amber-400">{streakCount}</span>
@@ -171,9 +179,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Dark/Light Mode Toggle */}
             {onToggleTheme && (
               <button
+                type="button"
                 onClick={onToggleTheme}
+                aria-label={theme === 'dark' ? 'التبديل إلى الوضع النهاري' : 'التبديل إلى الوضع الليلي'}
                 title={theme === 'dark' ? 'التبديل إلى الوضع النهاري (Light Mode)' : 'التبديل إلى الوضع الليلي (Dark Mode)'}
-                className="p-1.5 sm:p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all duration-300 active:scale-90 relative overflow-hidden"
+                className="p-1.5 sm:p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all duration-300 active:scale-90 relative overflow-hidden focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               >
                 {theme === 'dark' ? (
                   <Sun key="sun-icon" className="w-4 h-4 text-amber-300 theme-icon-animate" />
@@ -185,9 +195,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* TV Mode Toggle */}
             <button
+              type="button"
               onClick={onToggleTvMode}
+              aria-label={isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'تشغيل وضع الشاشة الكبيرة'}
               title={isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'تشغيل وضع الشاشة الكبيرة (TV Mode)'}
-              className={`p-1.5 sm:p-2 rounded-xl border transition-all ${
+              className={`p-1.5 sm:p-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-sky-500/50 ${
                 isTvMode
                   ? 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/30'
                   : 'liquid-glass-pill text-slate-300 hover:text-white'

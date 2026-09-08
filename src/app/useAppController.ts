@@ -191,7 +191,7 @@ export function useAppController() {
     setActiveRoutineExercises([]);
     await loadAppData();
     startTransition(() => {
-      navigate('/stats');
+      navigate('/progress');
     });
   };
 
