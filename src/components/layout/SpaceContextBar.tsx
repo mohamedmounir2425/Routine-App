@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LIFE_SPACES_CONFIG } from "../../config/spacesConfig";
 import { useTranslation } from "../../i18n";
@@ -48,13 +48,33 @@ export const SpaceContextBar: React.FC = () => {
   const { t } = useTranslation();
   const currentPath = location.pathname;
 
+  const isAzkarSessionActive = () => {
+    return (
+      (typeof document !== 'undefined' && document.body.classList.contains('azkar-session-active')) ||
+      (currentPath.startsWith('/worship/azkar') && location.search.includes('session'))
+    );
+  };
+
+  const [sessionActive, setSessionActive] = useState(isAzkarSessionActive);
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      setSessionActive(isAzkarSessionActive());
+    };
+
+    window.addEventListener('azkar-session-change', handleSessionChange);
+    return () => {
+      window.removeEventListener('azkar-session-change', handleSessionChange);
+    };
+  }, [currentPath, location.search]);
+
   const activeSpace = LIFE_SPACES_CONFIG.find(
     (space) =>
       currentPath === space.route ||
       currentPath.startsWith(`${space.route}/`)
   );
 
-  if (!activeSpace) {
+  if (!activeSpace || sessionActive || isAzkarSessionActive()) {
     return null;
   }
 

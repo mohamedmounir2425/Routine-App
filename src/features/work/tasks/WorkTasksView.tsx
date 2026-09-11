@@ -4,6 +4,7 @@ import { LifeTask, HomeProject } from '../../../types';
 import { getTasksBySpace, toggleTaskCompletion, deleteTask } from '../../../db/taskQueries';
 import { getWorkProjects } from '../../../db/projectQueries';
 import { SpaceShell } from '../../../components/layout/SpaceShell';
+import { EmptyState } from '../../../components/common/EmptyState';
 import { WorkTaskModal } from './WorkTaskModal';
 
 export const WorkTasksView: React.FC = () => {
@@ -152,12 +153,16 @@ export const WorkTasksView: React.FC = () => {
         {/* Task List */}
         <div className="space-y-2.5">
           {filteredTasks.length === 0 ? (
-            <div className="liquid-glass-card rounded-3xl p-12 text-center space-y-3">
-              <CheckSquare className="w-12 h-12 text-slate-600 mx-auto" />
-              <p className="text-sm font-bold text-slate-400 font-['Tajawal']">
-                لا توجد مهام تطابق هذا التصنيف
-              </p>
-            </div>
+            <EmptyState
+              icon={<CheckSquare className="w-7 h-7 text-slate-400" />}
+              title="لا توجد مهام تطابق هذا التصنيف"
+              description="يمكنك إضافة مهمة جديدة أو تغيير فلاتر البحث الحالية"
+              actionLabel="+ إضافة مهمة عمل"
+              onAction={() => {
+                setEditingTask(null);
+                setIsModalOpen(true);
+              }}
+            />
           ) : (
             filteredTasks.map((task) => {
               const isDone = task.isRecurring

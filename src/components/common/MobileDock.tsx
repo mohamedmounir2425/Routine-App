@@ -16,6 +16,27 @@ export const MobileDock: React.FC = () => {
   const { t } = useTranslation();
 
   const currentPath = location.pathname;
+
+  const isAzkarSessionActive = () => {
+    return (
+      (typeof document !== 'undefined' && document.body.classList.contains('azkar-session-active')) ||
+      (location.pathname.startsWith('/worship/azkar') && location.search.includes('session'))
+    );
+  };
+
+  const [sessionActive, setSessionActive] = useState(isAzkarSessionActive);
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      setSessionActive(isAzkarSessionActive());
+    };
+
+    window.addEventListener('azkar-session-change', handleSessionChange);
+    return () => {
+      window.removeEventListener('azkar-session-change', handleSessionChange);
+    };
+  }, [location.pathname, location.search]);
+
   const mobileNavRef = useRef<HTMLElement>(null);
   const mobileTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -24,6 +45,10 @@ export const MobileDock: React.FC = () => {
     width: 0,
     opacity: 0,
   });
+
+  if (sessionActive || isAzkarSessionActive()) {
+    return null;
+  }
 
   const getActiveTabPath = () => {
     if (currentPath === '/' || currentPath.startsWith('/today')) {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Sparkles, Folder } from 'lucide-react';
+import { Calendar, Clock, Sparkles, Folder } from 'lucide-react';
 import { LifeTask, TaskPriority, HomeProject } from '../../../types';
 import { saveTask } from '../../../db/taskQueries';
+import { Modal } from '../../../components/common/Modal';
 
 interface WorkTaskModalProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export const WorkTaskModal: React.FC<WorkTaskModalProps> = ({
     } else {
       setTitle('');
       setDescription('');
-      setPriority('high');
+      setPriority('medium');
       setDueDate(new Date().toISOString().split('T')[0]);
       setScheduledTime('');
       setEstimatedMinutes(25);
@@ -51,8 +52,6 @@ export const WorkTaskModal: React.FC<WorkTaskModalProps> = ({
       setRecurrenceRule('daily');
     }
   }, [initialTask, isOpen]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,27 +81,19 @@ export const WorkTaskModal: React.FC<WorkTaskModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">💼</span>
-            <h2 className="text-lg font-black text-white font-['Tajawal']">
-              {initialTask ? 'تعديل مهمة عمل' : 'إضافة مهمة عمل جديدة'}
-            </h2>
-          </div>
-        </div>
+  const modalTitle = (
+    <div className="flex items-center gap-2">
+      <span className="text-xl">💼</span>
+      <span className="font-['Tajawal'] font-black">
+        {initialTask ? 'تعديل مهمة عمل' : 'إضافة مهمة عمل جديدة'}
+      </span>
+    </div>
+  );
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} maxWidth="max-w-lg">
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1.5 font-['Tajawal']">
@@ -277,7 +268,6 @@ export const WorkTaskModal: React.FC<WorkTaskModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };

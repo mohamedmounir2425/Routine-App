@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Dhikr, AzkarCategoryKey, AzkarLog } from '../types';
 import { 
   ALL_DHIKR, 
@@ -46,12 +47,30 @@ export const AzkarHubView: React.FC = () => {
   const [isMorningDone, setIsMorningDone] = useState(false);
   const [isEveningDone, setIsEveningDone] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Active full-screen player session state
   const [activePlayerSession, setActivePlayerSession] = useState<{
     dhikrs: Dhikr[];
     title: string;
     categoryKey: AzkarCategoryKey;
   } | null>(null);
+
+  // Auto-open session if URL contains ?session=...
+  useEffect(() => {
+    const sessionParam = searchParams.get('session') as AzkarCategoryKey | null;
+    if (sessionParam && !activePlayerSession) {
+      const dhikrs = getAzkarByCategory(sessionParam);
+      if (dhikrs.length > 0) {
+        const meta = getCategoryTitle(sessionParam);
+        setActivePlayerSession({
+          dhikrs,
+          title: meta.title,
+          categoryKey: sessionParam,
+        });
+      }
+    }
+  }, [searchParams]);
 
   // Load today's logs & streaks
   const refreshStats = async () => {
@@ -104,11 +123,17 @@ export const AzkarHubView: React.FC = () => {
 
     if (dhikrs.length === 0) return;
 
+    setSearchParams({ session: categoryKey }, { replace: true });
     setActivePlayerSession({
       dhikrs,
       title,
       categoryKey,
     });
+  };
+
+  const handleCloseSession = () => {
+    setActivePlayerSession(null);
+    setSearchParams({}, { replace: true });
   };
 
   // Handler when player finishes
@@ -129,6 +154,7 @@ export const AzkarHubView: React.FC = () => {
 
     await saveAzkarLog(newLog);
     await refreshStats();
+    handleCloseSession();
   };
 
   return (
@@ -394,7 +420,7 @@ export const AzkarHubView: React.FC = () => {
           dhikrList={activePlayerSession.dhikrs}
           title={activePlayerSession.title}
           categoryKey={activePlayerSession.categoryKey}
-          onClose={() => setActivePlayerSession(null)}
+          onClose={handleCloseSession}
           onComplete={handlePlayerComplete}
         />
       )}

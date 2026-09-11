@@ -25,8 +25,8 @@ export const CircularTimer: React.FC<CircularTimerProps> = ({
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const safeTotal = totalTime > 0 ? totalTime : 60;
-  const progress = Math.max(0, Math.min(1, timeLeft / safeTotal));
+  const effectiveTotal = Math.max(totalTime > 0 ? totalTime : 60, timeLeft);
+  const progress = Math.max(0, Math.min(1, timeLeft / effectiveTotal));
   const dashoffset = circumference * (1 - progress);
 
   // Format time display

@@ -140,14 +140,13 @@ export const PlayerExerciseInfo: React.FC<PlayerExerciseInfoProps> = ({
               </button>
             </div>
           ) : setTracker.exerciseMode === "timed_sets" ? (
-            /* Timed Sets: Circular Timer with Set Time & 3-2-1 Countdown */
+            /* Timed Sets: Circular Timer with Set Time & 3-2-1 Countdown (display-only; started via explicit button) */
             <CircularTimer
               timeLeft={setTracker.setTimeLeft}
               totalTime={setTracker.targetHoldSeconds}
               readyCountdown={setTracker.readyCountdown}
               isPaused={!setTracker.setTimerRunning && setTracker.readyCountdown === null}
               label={setTracker.hasSides ? (setTracker.currentSide === "right" ? "أيمن" : "أيسر") : "ثبات"}
-              onClick={!setTracker.setTimerRunning ? setTracker.handleStartSetHold : undefined}
             />
           ) : (
             /* Continuous Exercise: Circular Countdown Timer + +10s button */

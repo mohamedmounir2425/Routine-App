@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpLeft, Sparkles } from 'lucide-react';
 import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 import { useTranslation } from '../../i18n';
+import { getSpaceTheme } from '../../theme/spaceTheme';
 
 interface SpacesPageProps {
   enabledSpaces?: string[];
@@ -10,65 +11,6 @@ interface SpacesPageProps {
   todayRoutineName?: string;
   onStartRoutine?: () => void;
 }
-
-const SPACE_ACCENT_STYLES: Record<
-  string,
-  {
-    border: string;
-    hoverBorder: string;
-    glow: string;
-    iconBg: string;
-    iconBorder: string;
-    pillBg: string;
-    pillText: string;
-  }
-> = {
-  emerald: {
-    border: 'border-emerald-500/20',
-    hoverBorder: 'hover:border-emerald-500/50',
-    glow: 'bg-emerald-500/10',
-    iconBg: 'bg-emerald-500/15',
-    iconBorder: 'border-emerald-500/30',
-    pillBg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
-    pillText: 'text-emerald-300',
-  },
-  teal: {
-    border: 'border-teal-500/20',
-    hoverBorder: 'hover:border-teal-500/50',
-    glow: 'bg-teal-500/10',
-    iconBg: 'bg-teal-500/15',
-    iconBorder: 'border-teal-500/30',
-    pillBg: 'bg-teal-500/10 hover:bg-teal-500/20',
-    pillText: 'text-teal-300',
-  },
-  sky: {
-    border: 'border-sky-500/20',
-    hoverBorder: 'hover:border-sky-500/50',
-    glow: 'bg-sky-500/10',
-    iconBg: 'bg-sky-500/15',
-    iconBorder: 'border-sky-500/30',
-    pillBg: 'bg-sky-500/10 hover:bg-sky-500/20',
-    pillText: 'text-sky-300',
-  },
-  amber: {
-    border: 'border-amber-500/20',
-    hoverBorder: 'hover:border-amber-500/50',
-    glow: 'bg-amber-500/10',
-    iconBg: 'bg-amber-500/15',
-    iconBorder: 'border-amber-500/30',
-    pillBg: 'bg-amber-500/10 hover:bg-amber-500/20',
-    pillText: 'text-amber-300',
-  },
-  indigo: {
-    border: 'border-indigo-500/20',
-    hoverBorder: 'hover:border-indigo-500/50',
-    glow: 'bg-indigo-500/10',
-    iconBg: 'bg-indigo-500/15',
-    iconBorder: 'border-indigo-500/30',
-    pillBg: 'bg-indigo-500/10 hover:bg-indigo-500/20',
-    pillText: 'text-indigo-300',
-  },
-};
 
 export const SpacesPage: React.FC<SpacesPageProps> = ({ enabledSpaces }) => {
   const navigate = useNavigate();
@@ -103,20 +45,20 @@ export const SpacesPage: React.FC<SpacesPageProps> = ({ enabledSpaces }) => {
       {/* Spaces Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {spaces.map((space) => {
-          const style = SPACE_ACCENT_STYLES[space.accentColor] || SPACE_ACCENT_STYLES.emerald;
+          const theme = getSpaceTheme(space.id);
           const isFullWidth = space.id === 'plans' && spaces.length % 2 !== 0;
 
           return (
             <div
               key={space.id}
               onClick={() => navigate(space.route)}
-              className={`liquid-glass-card rounded-3xl p-5 sm:p-6 border ${style.border} ${style.hoverBorder} transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between ${
+              className={`liquid-glass-card rounded-3xl p-5 sm:p-6 border ${theme.badgeBorderClass} ${theme.cardBorderHoverClass} transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between ${
                 isFullWidth ? 'md:col-span-2' : ''
               }`}
             >
               {/* Dynamic Subtle Glow */}
               <div
-                className={`absolute top-0 right-0 w-36 h-36 ${style.glow} rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500`}
+                className={`absolute top-0 right-0 w-36 h-36 ${theme.badgeBgClass} rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500`}
               />
 
               {/* Card Header */}
@@ -124,7 +66,7 @@ export const SpacesPage: React.FC<SpacesPageProps> = ({ enabledSpaces }) => {
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-12 h-12 rounded-2xl ${style.iconBg} border ${style.iconBorder} flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}
+                      className={`w-12 h-12 rounded-2xl ${theme.badgeBgClass} border ${theme.badgeBorderClass} flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}
                     >
                       {space.icon}
                     </div>
@@ -161,7 +103,7 @@ export const SpacesPage: React.FC<SpacesPageProps> = ({ enabledSpaces }) => {
                         e.stopPropagation();
                         navigate(item.path);
                       }}
-                      className={`px-2.5 py-1 rounded-lg ${style.pillBg} ${style.pillText} font-medium text-[11px] transition-colors cursor-pointer`}
+                      className={`px-2.5 py-1 rounded-lg ${theme.badgeBgClass} ${theme.textClass} hover:brightness-125 font-medium text-[11px] transition-all cursor-pointer`}
                     >
                       {t(item.labelKey as any)}
                     </button>

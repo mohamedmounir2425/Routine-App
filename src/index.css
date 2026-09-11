@@ -651,3 +651,32 @@ html.light .bg-gradient-to-r.from-slate-900.to-emerald-950\/40 {
 .tv-mode h3 {
   font-size: 1.375rem !important;
 }
+
+/* ============================================================
+   ACCESSIBILITY: FOCUS-VISIBLE INDICATORS (Keyboard Users)
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.75) !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.75) !important;
+  outline-offset: 2px !important;
+}
+
+html.light :focus-visible {
+  outline: 2px solid rgba(5, 150, 105, 0.85) !important;
+  outline-offset: 2px !important;
+}
+
+/* ============================================================
+   AZKAR SESSION FULLSCREEN (Hide global mobile dock & fixed nav)
+   ============================================================ */
+body.azkar-session-active .liquid-glass-dock {
+  display: none !important;
+}

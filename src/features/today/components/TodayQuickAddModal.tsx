@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Briefcase, Home, Target } from 'lucide-react';
+import { Plus, Briefcase, Home, Target } from 'lucide-react';
 import { db } from '../../../db/database';
 import { LifeTask, LifeSpaceId, TaskPriority, GoalPlan } from '../../../types';
 import { saveTask } from '../../../db/taskQueries';
 import { getLocalDateString } from '../../../utils/dateUtils';
+import { Modal } from '../../../components/common/Modal';
 
 interface TodayQuickAddModalProps {
   isOpen: boolean;
@@ -32,8 +33,6 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
       });
     }
   }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,33 +70,22 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
     }
   };
 
+  const modalTitle = (
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+        <Plus className="w-4 h-4" />
+      </div>
+      <span className="font-['Tajawal'] font-black">إضافة مهمة سريعة لليوم</span>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="liquid-glass-card rounded-3xl p-5 sm:p-6 border border-white/15 w-full max-w-md space-y-4 shadow-2xl relative">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Plus className="w-4 h-4" />
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white font-['Tajawal']">
-              إضافة مهمة سريعة لليوم
-            </h3>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Space Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 block">المساحة:</label>
-            <div className="grid grid-cols-3 gap-2">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} maxWidth="max-w-md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Space Selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-300 block">المساحة:</label>
+          <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setSpaceId('work')}
@@ -232,7 +220,6 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
