@@ -15,6 +15,7 @@ import {
   Copy,
   Settings
 } from 'lucide-react';
+import { useSwipeGesture } from '../../../../hooks/useSwipeGesture';
 
 interface Props {
   dhikrList: Dhikr[];
@@ -53,9 +54,29 @@ export const AzkarPlayer: React.FC<Props> = ({
   });
   const continuousItemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const continuousFeedRef = useRef<HTMLElement | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const [isFinished, setIsFinished] = useState(false);
   const [copied, setCopied] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
+
+  // Local Swipe Navigation for Azkar session view modes:
+  // Swipe LEFT -> Cards
+  // Swipe RIGHT -> Continuous
+  // At edges -> do nothing
+  useSwipeGesture({
+    targetRef: playerContainerRef,
+    onSwipeLeft: () => {
+      if (viewMode === 'continuous') {
+        setViewMode('cards');
+      }
+    },
+    onSwipeRight: () => {
+      if (viewMode === 'cards') {
+        setViewMode('continuous');
+      }
+    },
+    enabled: !isFinished && !showSettingsModal,
+  });
 
   const handleToggleContinuousAutoScroll = (val: boolean) => {
     setContinuousAutoScroll(val);
@@ -265,7 +286,11 @@ export const AzkarPlayer: React.FC<Props> = ({
   if (!currentDhikr) return null;
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-full h-[100dvh] max-h-[100dvh] z-[100] flex flex-col bg-[#070b14]/95 backdrop-blur-2xl text-slate-100 font-['Tajawal'] select-none overflow-hidden animate-in fade-in duration-200">
+    <div 
+      ref={playerContainerRef}
+      dir="rtl"
+      className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-full h-[100dvh] max-h-[100dvh] z-[100] flex flex-col bg-[#070b14]/95 backdrop-blur-2xl text-slate-100 font-['Tajawal'] select-none overflow-hidden animate-in fade-in duration-200"
+    >
       {/* Top Ambient Orbs */}
       <div className="absolute -top-20 -right-20 w-80 h-80 bg-emerald-500/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-teal-500/15 rounded-full blur-[100px] pointer-events-none" />

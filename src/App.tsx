@@ -19,6 +19,7 @@ import { GlobalProgressSpace } from './features/progress/GlobalProgressSpace';
 import { AuthModal } from './components/auth/AuthModal';
 import { LifeSpaceId } from './types/spaces';
 import { useReminderScheduler } from './app/useReminderScheduler';
+import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigation';
 
 export function App() {
   const {
@@ -65,6 +66,12 @@ export function App() {
 
   // Background reminder scheduler (workout & desk breaks)
   useReminderScheduler(settings, streakStats.hasWorkedOutToday);
+
+  // Contextual Left/Right Swipe Navigation (Root tabs & Nested Space tabs)
+  const isWorkoutActive = !!(activeRoutine && activeRoutineExercises.length > 0);
+  useContextualSwipeNavigation({
+    isWorkoutActive,
+  });
 
   const handleCompleteOnboarding = (enabledSpaces: LifeSpaceId[]) => {
     handleUpdateSettings({

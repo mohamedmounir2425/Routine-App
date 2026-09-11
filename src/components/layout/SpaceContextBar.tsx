@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LIFE_SPACES_CONFIG } from "../../config/spacesConfig";
 import { useTranslation } from "../../i18n";
@@ -81,6 +81,28 @@ export const SpaceContextBar: React.FC = () => {
   // Canonical theme tokens driven by active space identity
   const spaceTheme = getSpaceTheme(activeSpace.id);
 
+  // Auto-scroll the active tab into view on mobile
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const btn = activeTabRef.current;
+    if (!btn) return;
+
+    const raf = requestAnimationFrame(() => {
+      try {
+        btn.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        });
+      } catch {
+        btn.scrollIntoView();
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [currentPath, activeSpace?.id]);
+
   return (
     <div className="w-full border-b border-white/5 bg-slate-950/40 backdrop-blur-md sticky top-14 sm:top-16 z-30 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
@@ -118,6 +140,7 @@ export const SpaceContextBar: React.FC = () => {
             return (
               <button
                 key={item.id}
+                ref={isActive ? activeTabRef : undefined}
                 onClick={() => navigate(item.path)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer select-none ${
                   isActive
