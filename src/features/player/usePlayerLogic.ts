@@ -185,6 +185,13 @@ export function usePlayerLogic({
     setRestTimeLeft(prev => prev + sec);
   };
 
+  /** Add seconds to the current exercise timer (continuous mode only).
+   *  Safe to call at any time — ignored during rest, timed_sets, or pure_reps. */
+  const handleAddExerciseSeconds = (sec: number) => {
+    if (phase !== 'exercise' || setTracker.exerciseMode !== 'continuous') return;
+    setTimeLeft(prev => prev + sec);
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -218,6 +225,7 @@ export function usePlayerLogic({
     handleSkip,
     handleSkipRest,
     handleAddRestSeconds,
+    handleAddExerciseSeconds,
     handleSwapExercise,
     formatTime,
     setTracker,

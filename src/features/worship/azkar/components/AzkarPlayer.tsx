@@ -192,10 +192,9 @@ export const AzkarPlayer: React.FC<Props> = ({
         />
       </div>
 
-      {/* Main Reading & Clickable Area */}
+      {/* Main Reading Area — scrollable ONLY, no counter tap here */}
       <main
-        onClick={handleCountTap}
-        className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 flex flex-col items-center justify-center cursor-pointer relative z-10 no-scrollbar active:scale-[0.995] transition-transform"
+        className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 flex flex-col items-center justify-start cursor-default relative z-10 no-scrollbar"
       >
         <div className="max-w-2xl w-full mx-auto text-center space-y-5">
           {/* Subtitle / Category badge */}
@@ -235,8 +234,10 @@ export const AzkarPlayer: React.FC<Props> = ({
         </div>
       </main>
 
-      {/* Bottom Counter Dock */}
-      <footer className="relative z-20 px-4 sm:px-6 py-4 border-t border-white/10 bg-slate-950/80 backdrop-blur-xl">
+      {/* Bottom Counter Dock — safe-area aware */}
+      <footer className="relative z-20 px-4 sm:px-6 pt-4 border-t border-white/10 bg-slate-950/80 backdrop-blur-xl"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      >
         <div className="max-w-md mx-auto flex items-center justify-between gap-4">
           {/* Previous Dhikr Button */}
           <button

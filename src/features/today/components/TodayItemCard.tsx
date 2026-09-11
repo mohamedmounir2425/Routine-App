@@ -19,10 +19,10 @@ interface TodayItemCardProps {
 
 const SPACE_META: Record<string, { label: string; emoji: string; color: string; border: string }> = {
   worship: { label: 'عبادة', emoji: '🕌', color: 'text-emerald-400 bg-emerald-500/10', border: 'border-emerald-500/20' },
-  health: { label: 'صحة', emoji: '🏋️', color: 'text-cyan-400 bg-cyan-500/10', border: 'border-cyan-500/20' },
-  work: { label: 'عمل', emoji: '💼', color: 'text-indigo-400 bg-indigo-500/10', border: 'border-indigo-500/20' },
-  home: { label: 'منزل', emoji: '🏠', color: 'text-amber-400 bg-amber-500/10', border: 'border-amber-500/20' },
-  plans: { label: 'خطة', emoji: '🎯', color: 'text-violet-400 bg-violet-500/10', border: 'border-violet-500/20' },
+  health:  { label: 'صحة',   emoji: '🏋️', color: 'text-teal-400 bg-teal-500/10',     border: 'border-teal-500/20'    },
+  work:    { label: 'عمل',   emoji: '💼', color: 'text-sky-400 bg-sky-500/10',       border: 'border-sky-500/20'     },
+  home:    { label: 'منزل',  emoji: '🏠', color: 'text-amber-400 bg-amber-500/10',   border: 'border-amber-500/20'   },
+  plans:   { label: 'خطة',   emoji: '🎯', color: 'text-indigo-400 bg-indigo-500/10', border: 'border-indigo-500/20'  },
 };
 
 export const TodayItemCard: React.FC<TodayItemCardProps> = ({

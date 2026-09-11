@@ -66,6 +66,7 @@ export const WorkoutPlayer: React.FC<WorkoutPlayerProps> = ({
     handleSkip,
     handleSkipRest,
     handleAddRestSeconds,
+    handleAddExerciseSeconds,
     handleSwapExercise,
     formatTime,
     setTracker,
@@ -143,6 +144,7 @@ export const WorkoutPlayer: React.FC<WorkoutPlayerProps> = ({
               hasAvailableExercises={allAvailableExercises.length > 0}
               setTracker={setTracker}
               isPaused={isPaused}
+              onAddExerciseSeconds={handleAddExerciseSeconds}
             />
           </div>
         ) : (
