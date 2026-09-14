@@ -13,9 +13,16 @@ import {
   Volume2, 
   VolumeX, 
   Copy,
-  Settings
+  Settings,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+  Heart
 } from 'lucide-react';
 import { useSwipeGesture } from '../../../../hooks/useSwipeGesture';
+import { DHIKR_THEMES, DhikrThemeId, getDefaultThemeForCategory } from '../../../../theme/dhikrThemes';
 
 interface Props {
   dhikrList: Dhikr[];
@@ -28,12 +35,13 @@ interface Props {
 export const AzkarPlayer: React.FC<Props> = ({
   dhikrList,
   title,
+  categoryKey,
   onClose,
   onComplete,
 }) => {
   const [viewMode, setViewMode] = useState<'cards' | 'continuous'>('cards');
   const [dhikrCounts, setDhikrCounts] = useState<Record<number, number>>({});
-  const [advancedIndices, setAdvancedIndices] = useState<Record<number, boolean>>({});
+  const [, setAdvancedIndices] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState<number>(1); // 0.85, 1, 1.2
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -45,6 +53,7 @@ export const AzkarPlayer: React.FC<Props> = ({
     }
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'dhikr' | 'display'>('dhikr');
   const [continuousAutoScroll, setContinuousAutoScroll] = useState<boolean>(() => {
     try {
       return localStorage.getItem('azkar_continuous_autoscroll') !== 'false';
@@ -59,6 +68,24 @@ export const AzkarPlayer: React.FC<Props> = ({
       return false;
     }
   });
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('azkar_focus_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [showTadabbur, setShowTadabbur] = useState(false);
+  const [selectedCompanionDhikr, setSelectedCompanionDhikr] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem('azkar_companion_dhikr');
+      return saved ? Number(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showCompanionPicker, setShowCompanionPicker] = useState(false);
+  const [expandedContinuousTadabbur, setExpandedContinuousTadabbur] = useState<Record<number, boolean>>({});
   const continuousItemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const continuousFeedRef = useRef<HTMLElement | null>(null);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +112,98 @@ export const AzkarPlayer: React.FC<Props> = ({
     enabled: !isFinished && !showSettingsModal,
   });
 
+  const [tahlilCount, setTahlilCount] = useState<10 | 100>(() => {
+    try {
+      const saved = localStorage.getItem('azkar_tahlil_count');
+      return saved === '100' ? 100 : 10;
+    } catch {
+      return 10;
+    }
+  });
+
+  const [includeIstighfar, setIncludeIstighfar] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('azkar_include_istighfar') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [sessionTheme, setSessionTheme] = useState<DhikrThemeId>(() => {
+    try {
+      const saved = localStorage.getItem('azkar_session_theme');
+      if (saved && (saved === 'serenity' || saved === 'dawn' || saved === 'evening' || saved === 'solitude')) {
+        return saved as DhikrThemeId;
+      }
+      return getDefaultThemeForCategory(categoryKey);
+    } catch {
+      return 'serenity';
+    }
+  });
+
+  const handleSelectTheme = (themeId: DhikrThemeId) => {
+    setSessionTheme(themeId);
+    try {
+      localStorage.setItem('azkar_session_theme', themeId);
+    } catch {}
+  };
+
+  const theme = DHIKR_THEMES[sessionTheme] || DHIKR_THEMES.serenity;
+
+  const isTahlilDhikr = (d?: Dhikr) => {
+    if (!d) return false;
+    return d.text.includes('لَا إلَه إلّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ') ||
+           d.text.includes('لا إله إلا الله وحده لا شريك له') ||
+           d.text.includes('لا اله الا الله وحده لا شريك له');
+  };
+
+  const isIstighfarDhikr = (d?: Dhikr) => {
+    if (!d) return false;
+    return d.text.includes('أسْتَغْفِرُ اللهَ وَأتُوبُ إلَيْهِ') ||
+           d.text.includes('أستغفر الله وأتوب إليه') ||
+           d.text.includes('استغفر الله واتوب اليه');
+  };
+
+  const handleToggleTahlilCount = (val: 10 | 100) => {
+    setTahlilCount(val);
+    try {
+      localStorage.setItem('azkar_tahlil_count', String(val));
+    } catch {}
+  };
+
+  const handleToggleIncludeIstighfar = (val: boolean) => {
+    setIncludeIstighfar(val);
+    try {
+      localStorage.setItem('azkar_include_istighfar', String(val));
+    } catch {}
+  };
+
+  // Filter and map dhikrList based on user settings (Tahlil count 10/100, Istighfar inclusion)
+  const effectiveDhikrList = useMemo(() => {
+    return dhikrList
+      .filter((d) => {
+        if (!includeIstighfar && isIstighfarDhikr(d)) {
+          return false;
+        }
+        return true;
+      })
+      .map((d) => {
+        if (isTahlilDhikr(d)) {
+          return {
+            ...d,
+            count: tahlilCount,
+          };
+        }
+        return d;
+      });
+  }, [dhikrList, includeIstighfar, tahlilCount]);
+
+  useEffect(() => {
+    if (currentIndex >= effectiveDhikrList.length && effectiveDhikrList.length > 0) {
+      setCurrentIndex(effectiveDhikrList.length - 1);
+    }
+  }, [effectiveDhikrList.length, currentIndex]);
+
   const handleToggleContinuousAutoScroll = (val: boolean) => {
     setContinuousAutoScroll(val);
     try {
@@ -99,6 +218,34 @@ export const AzkarPlayer: React.FC<Props> = ({
     } catch {}
   };
 
+  const handleToggleFocusMode = (val: boolean) => {
+    setFocusMode(val);
+    try {
+      localStorage.setItem('azkar_focus_mode', String(val));
+    } catch {}
+  };
+
+  const handleSelectCompanionDhikr = (idx: number | null) => {
+    setSelectedCompanionDhikr(idx);
+    try {
+      if (idx !== null) {
+        localStorage.setItem('azkar_companion_dhikr', String(idx));
+      } else {
+        localStorage.removeItem('azkar_companion_dhikr');
+      }
+    } catch {}
+  };
+
+  const toggleContinuousTadabbur = (idx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedContinuousTadabbur((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+
+
+  useEffect(() => {
+    setShowTadabbur(false);
+  }, [currentIndex]);
 
   useEffect(() => {
     document.body.classList.add('azkar-session-active');
@@ -112,10 +259,10 @@ export const AzkarPlayer: React.FC<Props> = ({
 
   // Identify the Mu'awwidhat & Ikhlas group (consecutive Ikhlas, Falaq, Nas)
   const muawwidhatGroup = useMemo(() => {
-    for (let i = 0; i < dhikrList.length - 2; i++) {
-      const d1 = dhikrList[i];
-      const d2 = dhikrList[i + 1];
-      const d3 = dhikrList[i + 2];
+    for (let i = 0; i < effectiveDhikrList.length - 2; i++) {
+      const d1 = effectiveDhikrList[i];
+      const d2 = effectiveDhikrList[i + 1];
+      const d3 = effectiveDhikrList[i + 2];
 
       const isIkhlas = Boolean(d1.reference?.includes('الإخلاص') || d1.text.includes('قُلْ هُوَ اللَّهُ أَحَدٌ') || d1.text.includes('قُلْ هُوَ ٱللَّهُ أَحَدٌ'));
       const isFalaq = Boolean(d2.reference?.includes('الفلق') || d2.text.includes('قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ') || d2.text.includes('قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ'));
@@ -131,7 +278,7 @@ export const AzkarPlayer: React.FC<Props> = ({
       }
     }
     return null;
-  }, [dhikrList]);
+  }, [effectiveDhikrList]);
 
   // Determine next target index in the alternating Mu'awwidhat cycle
   const getNextMuawwidhatTarget = (fromIndex: number, counts: Record<number, number>) => {
@@ -201,16 +348,23 @@ export const AzkarPlayer: React.FC<Props> = ({
     }
   }
 
-  const currentDhikr = dhikrList[currentIndex] || dhikrList[0];
-  const totalDhikrs = dhikrList.length;
+  const currentDhikr = effectiveDhikrList[currentIndex] || effectiveDhikrList[0];
+  const totalDhikrs = effectiveDhikrList.length;
   const targetCount = currentDhikr?.count || 1;
   const currentCount = dhikrCounts[currentIndex] || 0;
   const remainingInCurrent = Math.max(0, targetCount - currentCount);
   const overallProgressPercent = Math.round(((currentIndex + (Math.min(targetCount, currentCount) / targetCount)) / totalDhikrs) * 100);
 
   // Completed count for both modes
-  const continuousCompletedCount = dhikrList.filter((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1)).length;
+  const continuousCompletedCount = effectiveDhikrList.filter((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1)).length;
   const continuousProgressPercent = Math.round((continuousCompletedCount / totalDhikrs) * 100);
+
+  // Milestone / Stages (محطات الجلسة) calculation for focus mode
+  const segmentCount = totalDhikrs >= 20 ? 4 : totalDhikrs >= 10 ? 3 : 2;
+  const segmentSize = Math.ceil(totalDhikrs / segmentCount);
+  const currentSegment = Math.min(segmentCount, Math.floor(currentIndex / segmentSize) + 1);
+  const segmentNames = ['المقطع الأول', 'المقطع الثاني', 'المقطع الثالث', 'المقطع الرابع'];
+  const currentSegmentName = segmentNames[currentSegment - 1] || `المقطع ${currentSegment}`;
 
   // Helper to scroll continuous feed smoothly to a specific dhikr index
   const scrollToContinuousItem = (idx: number, smooth = true) => {
@@ -293,7 +447,7 @@ export const AzkarPlayer: React.FC<Props> = ({
       }
     });
 
-    if (closestIdx !== currentIndex && closestIdx >= 0 && closestIdx < dhikrList.length) {
+    if (closestIdx !== currentIndex && closestIdx >= 0 && closestIdx < effectiveDhikrList.length) {
       setCurrentIndex(closestIdx);
     }
   };
@@ -459,7 +613,7 @@ export const AzkarPlayer: React.FC<Props> = ({
   // Dedicated tap handler for continuous mode
   const handleContinuousCount = (index: number) => {
     if (isFinished) return;
-    const item = dhikrList[index];
+    const item = effectiveDhikrList[index];
     if (!item) return;
 
     setCurrentIndex(index);
@@ -565,7 +719,7 @@ export const AzkarPlayer: React.FC<Props> = ({
     // Standard continuous tap behavior
     // If already done, this tap acts as the extra tap to advance/skip or complete
     if (isDone) {
-      const allDone = dhikrList.every((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1));
+      const allDone = effectiveDhikrList.every((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1));
 
       if (allDone) {
         const durationSec = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
@@ -600,7 +754,7 @@ export const AzkarPlayer: React.FC<Props> = ({
       if ('vibrate' in navigator) navigator.vibrate([40, 40, 70]);
 
       // Check if all items completed
-      const allDone = dhikrList.every((d, i) => {
+      const allDone = effectiveDhikrList.every((d, i) => {
         const c = i === index ? next : (dhikrCounts[i] || 0);
         return c >= (d.count || 1);
       });
@@ -635,6 +789,19 @@ export const AzkarPlayer: React.FC<Props> = ({
     }
   };
 
+  const handleFinishSession = () => {
+    const durationSec = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+    setIsFinished(true);
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    } catch {}
+    onComplete(durationSec);
+  };
+
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex > 0) {
@@ -646,13 +813,19 @@ export const AzkarPlayer: React.FC<Props> = ({
     e.stopPropagation();
     if (currentIndex < totalDhikrs - 1) {
       setCurrentIndex((prev) => prev + 1);
+    } else {
+      handleFinishSession();
     }
   };
 
+  const handleResetDhikr = (index: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setDhikrCounts((prev) => ({ ...prev, [index]: 0 }));
+    setAdvancedIndices((prev) => ({ ...prev, [index]: false }));
+  };
+
   const handleResetCurrent = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDhikrCounts((prev) => ({ ...prev, [currentIndex]: 0 }));
-    setAdvancedIndices((prev) => ({ ...prev, [currentIndex]: false }));
+    handleResetDhikr(currentIndex, e);
   };
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -675,18 +848,22 @@ export const AzkarPlayer: React.FC<Props> = ({
     <div 
       ref={playerContainerRef}
       dir="rtl"
-      className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-full h-[100dvh] max-h-[100dvh] z-[100] flex flex-col bg-[#070b14]/95 backdrop-blur-2xl text-slate-100 font-['Tajawal'] select-none overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-full h-[100dvh] max-h-[100dvh] z-[100] flex flex-col backdrop-blur-2xl text-slate-100 font-['Tajawal'] select-none overflow-hidden animate-in fade-in duration-300"
+      style={{ backgroundColor: theme.sessionBgHex }}
     >
       {/* Top Ambient Orbs */}
-      <div className="absolute -top-20 -right-20 w-80 h-80 bg-emerald-500/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-teal-500/15 rounded-full blur-[100px] pointer-events-none" />
+      <div className={`absolute -top-20 -right-20 w-80 h-80 ${theme.ambientOrb1Class} rounded-full blur-[100px] pointer-events-none transition-all duration-700 ${focusMode ? 'opacity-20' : 'opacity-100'}`} />
+      <div className={`absolute -bottom-20 -left-20 w-80 h-80 ${theme.ambientOrb2Class} rounded-full blur-[100px] pointer-events-none transition-all duration-700 ${focusMode ? 'opacity-20' : 'opacity-100'}`} />
 
       {/* Top Header Bar — rigidly locked to top */}
-      <header className="sticky top-0 z-30 shrink-0 w-full flex items-center justify-between px-3 sm:px-6 py-3 border-b border-white/10 bg-[#070b14]/98 backdrop-blur-xl gap-2">
+      <header 
+        className={`sticky top-0 z-30 shrink-0 w-full flex items-center justify-between px-3 sm:px-6 py-3 border-b backdrop-blur-xl gap-2 transition-colors duration-300 ${theme.headerBgStyle}`}
+        style={{ backgroundColor: `${theme.sessionBgHex}ea` }}
+      >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onClose}
-            className="p-2 rounded-xl liquid-glass-pill text-slate-400 hover:text-white transition-colors shrink-0"
+            className="p-2 rounded-xl liquid-glass-pill text-slate-400 hover:text-white transition-colors shrink-0 cursor-pointer"
             title="إغلاق والعودة"
           >
             <X className="w-5 h-5" />
@@ -709,9 +886,9 @@ export const AzkarPlayer: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setViewMode('cards')}
-            className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
               viewMode === 'cards'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                ? `${theme.badgeClass} shadow-sm`
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -720,9 +897,9 @@ export const AzkarPlayer: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setViewMode('continuous')}
-            className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
               viewMode === 'continuous'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                ? `${theme.badgeClass} shadow-sm`
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -730,11 +907,11 @@ export const AzkarPlayer: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Right Tools (Sound, Font size, Copy) */}
+        {/* Right Tools (Sound, Font size, Copy, Focus, Settings) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={toggleFontSize}
-            className="px-2.5 py-1.5 rounded-xl liquid-glass-pill text-xs text-slate-300 hover:text-white transition-all font-bold"
+            className="px-2.5 py-1.5 rounded-xl liquid-glass-pill text-xs text-slate-300 hover:text-white transition-all font-bold cursor-pointer"
             title="تغيير حجم الخط"
           >
             A{fontSizeMultiplier > 1 ? '+' : fontSizeMultiplier < 1 ? '-' : ''}
@@ -743,28 +920,41 @@ export const AzkarPlayer: React.FC<Props> = ({
           {viewMode === 'cards' && (
             <button
               onClick={handleCopy}
-              className="p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all"
+              className="p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all cursor-pointer"
               title="نسخ الذكر"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className={`w-4 h-4 ${theme.accentPrimary}`} /> : <Copy className="w-4 h-4" />}
             </button>
           )}
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all"
+            className="p-2 rounded-xl liquid-glass-pill text-slate-300 hover:text-white transition-all cursor-pointer"
             title={soundEnabled ? 'كتم الصوت' : 'تشغيل الصوت'}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+            {soundEnabled ? <Volume2 className={`w-4 h-4 ${theme.accentPrimary}`} /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+          </button>
+
+          {/* Focus Mode Quick Toggle */}
+          <button
+            onClick={() => handleToggleFocusMode(!focusMode)}
+            className={`p-2 rounded-xl liquid-glass-pill transition-all cursor-pointer ${
+              focusMode
+                ? `${theme.badgeFocusClass} shadow-sm`
+                : 'text-slate-300 hover:text-white'
+            }`}
+            title={focusMode ? 'وضع التركيز والتدبر: مفعّل (انقر للتعطيل)' : 'تفعيل وضع التركيز والتدبر (خلو من المشتتات)'}
+          >
+            {focusMode ? <Eye className={`w-4 h-4 ${theme.accentPrimary}`} /> : <EyeOff className="w-4 h-4" />}
           </button>
 
           {/* Session Settings Button */}
           <button
             onClick={() => setShowSettingsModal(true)}
             className={`p-2 rounded-xl liquid-glass-pill transition-all cursor-pointer ${
-              autoAdvance ? 'text-emerald-400 border border-emerald-500/30' : 'text-slate-300 hover:text-white'
+              showSettingsModal ? `${theme.badgeClass}` : 'text-slate-300 hover:text-white'
             }`}
-            title="إعدادات جلسة الأذكار (الانتقال التلقائي/اليدوي)"
+            title="إعدادات جلسة الأذكار (المظهر / الانتقال / وضع التركيز)"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -772,9 +962,9 @@ export const AzkarPlayer: React.FC<Props> = ({
       </header>
 
       {/* Overall Progress Line */}
-      <div className="w-full bg-slate-900/60 h-1.5 relative overflow-hidden">
+      <div className={`w-full ${theme.progressBarTrack} h-1.5 relative overflow-hidden transition-colors`}>
         <div
-          className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-300"
+          className={`h-full ${theme.progressBarFill} transition-all duration-300`}
           style={{ width: `${viewMode === 'continuous' ? continuousProgressPercent : overallProgressPercent}%` }}
         />
       </div>
@@ -795,44 +985,153 @@ export const AzkarPlayer: React.FC<Props> = ({
             className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 flex flex-col items-center justify-start relative z-10 no-scrollbar cursor-pointer select-none active:scale-[0.998] transition-transform"
             title="اضغط في أي مكان في مساحة الذكر للعد (+1)"
           >
-            <div className="max-w-2xl w-full mx-auto text-center space-y-5 pointer-events-none">
-              {/* Subtitle / Category & Mu'awwidhat badge */}
-              <div className="flex items-center justify-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-pill text-xs text-emerald-300 border border-emerald-500/25">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{currentDhikr.categoryArabic}</span>
+            <div className={`max-w-2xl w-full mx-auto text-center space-y-5 pointer-events-none p-5 sm:p-7 rounded-3xl border transition-all ${
+              focusMode
+                ? `${theme.cardBorderFocus} ${theme.cardBgFocus}`
+                : `${theme.cardBorderNormal} ${theme.cardBgNormal}`
+            } liquid-glass-card shadow-2xl`}>
+              {/* Header inside card: Focus Journey Milestones or Normal Category */}
+              {focusMode ? (
+                <div className="space-y-2 select-none">
+                  <div className="flex items-center justify-center gap-2 text-xs font-medium">
+                    <Compass className={`w-3.5 h-3.5 ${theme.accentPrimary}`} />
+                    <span className={`font-bold ${theme.accentPrimary}`}>{currentSegmentName}</span>
+                    <span className="text-white/20">•</span>
+                    <span className="text-slate-300">الذكر {currentIndex + 1} من {totalDhikrs}</span>
+                  </div>
+
+                  {/* Stage Milestones Journey Bar: ●────●────○────○ */}
+                  <div className="flex items-center justify-center gap-1.5 py-0.5">
+                    {Array.from({ length: segmentCount }).map((_, sIdx) => {
+                      const isPastOrCurrent = sIdx + 1 <= currentSegment;
+                      const isExactCurrent = sIdx + 1 === currentSegment;
+                      return (
+                        <React.Fragment key={sIdx}>
+                          <span
+                            className={`w-2.5 h-2.5 rounded-full transition-all ${
+                              isExactCurrent
+                                ? `${theme.accentPrimary} ring-4 ring-white/20 scale-110`
+                                : isPastOrCurrent
+                                  ? `${theme.accentPrimary} opacity-70`
+                                  : 'bg-white/20'
+                            }`}
+                            title={`المقطع ${sIdx + 1}`}
+                          />
+                          {sIdx < segmentCount - 1 && (
+                            <span
+                              className={`w-7 sm:w-10 h-[1.5px] rounded-full transition-colors ${
+                                sIdx + 1 < currentSegment ? 'bg-white/40' : 'bg-white/15'
+                              }`}
+                            />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+
+                  {/* Alternating Mu'awwidhat indicator in Focus Mode if applicable */}
+                  {isCurrentInMuawwidhat && (
+                    <div className="pt-1 pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleCycleMuawwidhat(!cycleMuawwidhat);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer select-none ${
+                          cycleMuawwidhat
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30'
+                            : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'
+                        }`}
+                      >
+                        <span>🔄</span>
+                        <span>
+                          {cycleMuawwidhat 
+                            ? `دورة متناوبة (${currentMuawwidhatRound} من ${muawwidhatGroup?.maxRounds})`
+                            : 'قراءة متناوبة: معطّل'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {isCurrentInMuawwidhat && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleCycleMuawwidhat(!cycleMuawwidhat);
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer pointer-events-auto select-none ${
-                      cycleMuawwidhat
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 shadow-sm'
-                        : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'
-                    }`}
-                    title="التبديل بين القراءة المتناوبة دورة دورة أو التكرار المعتاد 3 مرات"
-                  >
-                    <span>🔄</span>
-                    <span>
-                      {cycleMuawwidhat 
-                        ? `دورة متناوبة (${currentMuawwidhatRound} من ${muawwidhatGroup?.maxRounds})`
-                        : 'قراءة متناوبة: معطّل'}
-                    </span>
-                  </button>
-                )}
-              </div>
+              ) : (
+                /* Subtitle / Category & Mu'awwidhat badge */
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${theme.badgeClass}`}>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{currentDhikr.categoryArabic}</span>
+                  </div>
+                  {isCurrentInMuawwidhat && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleCycleMuawwidhat(!cycleMuawwidhat);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer pointer-events-auto select-none ${
+                        cycleMuawwidhat
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 shadow-sm'
+                          : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'
+                      }`}
+                      title="التبديل بين القراءة المتناوبة دورة دورة أو التكرار المعتاد 3 مرات"
+                    >
+                      <span>🔄</span>
+                      <span>
+                        {cycleMuawwidhat 
+                          ? `دورة متناوبة (${currentMuawwidhatRound} من ${muawwidhatGroup?.maxRounds})`
+                          : 'قراءة متناوبة: معطّل'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Tahlil count 10 vs 100 inline switcher */}
+              {isTahlilDhikr(currentDhikr) && (
+                <div className="flex items-center justify-center pt-1 pointer-events-auto">
+                  <div className="inline-flex items-center p-1 rounded-full bg-white/5 border border-white/10 text-xs select-none gap-1 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTahlilCount(10);
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        tahlilCount === 10
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="السنة الميسرة في الصباح والمساء (10 مرات)"
+                    >
+                      10 مرات (ميسر)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTahlilCount(100);
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        tahlilCount === 100
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="الأصل اليومي (100 مرة)"
+                    >
+                      100 مرة
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Dhikr Paragraphs */}
               <div className="py-2 px-2">
                 {currentDhikr.paragraphs.map((para, i) => (
                   <p
                     key={i}
-                    className="dhikr-text text-white text-center leading-[2.3] mb-4 last:mb-0 transition-all duration-200 font-['Tajawal']"
+                    className="dhikr-text text-center leading-[2.3] mb-4 last:mb-0 transition-all duration-200 font-['Tajawal']"
                     style={{
+                      color: theme.arabicTextColor,
                       fontSize: fontSizeMultiplier === 1.2 ? '1.55rem' : fontSizeMultiplier === 0.9 ? '1.15rem' : '1.35rem',
                     }}
                   >
@@ -841,25 +1140,66 @@ export const AzkarPlayer: React.FC<Props> = ({
                 ))}
               </div>
 
-              {/* Description & Reference */}
-              {currentDhikr.description && (
-                <div className="p-3 sm:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs sm:text-sm text-emerald-300 max-w-lg mx-auto leading-relaxed">
-                  <span className="font-bold">الفضل: </span>
-                  <span>{currentDhikr.description}</span>
-                </div>
-              )}
+              {/* In Focus Mode: Collapsible Tadabbur & Meaning */}
+              {focusMode ? (
+                (currentDhikr.description || currentDhikr.reference) && (
+                  <div className="pt-2 pointer-events-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTadabbur((prev) => !prev);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium ${theme.tadabburButtonFocus} transition-all cursor-pointer shadow-sm`}
+                    >
+                      <span>تدبّر والمعنى</span>
+                      {showTadabbur ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
 
-              {currentDhikr.reference && (
-                <p className="text-xs text-slate-500">
-                  {currentDhikr.reference}
-                </p>
+                    {showTadabbur && (
+                      <div className={`mt-3 p-4 rounded-2xl ${theme.tadabburDrawerFocus} text-xs sm:text-sm max-w-lg mx-auto leading-relaxed text-right animate-in fade-in zoom-in-95 duration-200 space-y-2`}>
+                        {currentDhikr.description && (
+                          <div>
+                            <span className="font-bold text-white">المعنى والفضل: </span>
+                            <span className="text-slate-200">{currentDhikr.description}</span>
+                          </div>
+                        )}
+                        {currentDhikr.reference && (
+                          <p className="text-[11px] opacity-70 pt-1.5 border-t border-white/10">
+                            {currentDhikr.reference}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                /* Standard Description & Reference */
+                <>
+                  {currentDhikr.description && (
+                    <div className={`p-3 sm:p-4 rounded-2xl ${theme.tadabburDrawerNormal} text-xs sm:text-sm max-w-lg mx-auto leading-relaxed`}>
+                      <span className="font-bold">الفضل: </span>
+                      <span>{currentDhikr.description}</span>
+                    </div>
+                  )}
+
+                  {currentDhikr.reference && (
+                    <p className="text-xs text-slate-500">
+                      {currentDhikr.reference}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </main>
 
           {/* Bottom Counter Dock — safe-area aware */}
-          <footer className="relative z-20 px-4 sm:px-6 pt-4 border-t border-white/10 bg-slate-950/80 backdrop-blur-xl"
-            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          <footer 
+            className={`relative z-20 px-4 sm:px-6 pt-4 border-t backdrop-blur-xl transition-colors duration-300 ${theme.dockBgStyle}`}
+            style={{ 
+              backgroundColor: `${theme.sessionBgHex}ea`,
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' 
+            }}
           >
             <div className="max-w-md mx-auto flex items-center justify-between gap-4">
               {/* Previous Dhikr Button */}
@@ -872,61 +1212,110 @@ export const AzkarPlayer: React.FC<Props> = ({
                 <ChevronRight className="w-5 h-5 rtl:scale-x-100" />
               </button>
 
-              {/* Giant Center Counter Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCountTap();
-                }}
-                className="flex-1 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer liquid-button"
-              >
-                <div className="text-right">
-                  <div className="text-lg font-black tracking-tight">
-                    {currentCount} / {targetCount}
-                  </div>
-                  <div className="text-[10px] text-slate-900 font-bold">
-                    {muawwidhatStatusText || (
-                      remainingInCurrent > 0 
-                        ? `متبقي ${remainingInCurrent} - اضغط للعد` 
-                        : currentIndex < totalDhikrs - 1 
-                          ? 'اكتمل الذكر ✓ اضغط للتالي ⬅' 
-                          : 'اكتمل الذكر ✓ اضغط للإنهاء 🎉'
+              {/* Center Counter Button: Quiet Serene Counter in Focus Mode vs Gradient Button in Regular */}
+              {focusMode ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCountTap();
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-2xl border active:scale-98 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${theme.cardBgFocus} ${theme.cardBorderFocus} hover:border-white/30`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold font-mono tracking-tight text-white">
+                      {currentCount} <span className="text-slate-500 font-normal text-sm">/ {targetCount}</span>
+                    </span>
+                    {/* Quiet repetition dots */}
+                    {targetCount > 1 && targetCount <= 10 && (
+                      <div className="flex items-center gap-1 mr-2">
+                        {Array.from({ length: targetCount }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`w-1.5 h-1.5 rounded-full transition-all ${
+                              i < currentCount ? `${theme.accentPrimary} scale-110` : 'bg-white/20'
+                            }`}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {/* Visual Dots for repetition if target <= 10 */}
-                {targetCount > 1 && targetCount <= 10 && (
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: targetCount }).map((_, i) => (
-                      <span
-                        key={i}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          i < currentCount ? 'bg-slate-950 scale-110' : 'bg-slate-950/30'
-                        }`}
-                      />
-                    ))}
+                  <div className={`text-[11px] ${theme.secondaryTextColor} font-medium`}>
+                    {muawwidhatStatusText || (
+                      remainingInCurrent > 0 
+                        ? `متبقي ${remainingInCurrent} • انقر للعد` 
+                        : currentIndex < totalDhikrs - 1 
+                          ? 'اكتمل الذكر ✓ انقر للمتابعة' 
+                          : 'اكتمل الذكر ✓ انقر للختام'
+                    )}
                   </div>
-                )}
-              </button>
+                </button>
+              ) : (
+                /* Giant Center Counter Button */
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCountTap();
+                  }}
+                  className={`flex-1 py-3.5 px-5 rounded-2xl ${theme.accentGradient} active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer liquid-button`}
+                >
+                  <div className="text-right">
+                    <div className={`text-lg font-black tracking-tight ${theme.accentText}`}>
+                      {currentCount} / {targetCount}
+                    </div>
+                    <div className={`text-[10px] ${theme.accentText} opacity-90 font-bold`}>
+                      {muawwidhatStatusText || (
+                        remainingInCurrent > 0 
+                          ? `متبقي ${remainingInCurrent} - اضغط للعد` 
+                          : currentIndex < totalDhikrs - 1 
+                            ? 'اكتمل الذكر ✓ اضغط للتالي ⬅' 
+                            : 'اكتمل الذكر ✓ اضغط للإنهاء 🎉'
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Visual Dots for repetition if target <= 10 */}
+                  {targetCount > 1 && targetCount <= 10 && (
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: targetCount }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            i < currentCount ? 'bg-slate-950 scale-110' : 'bg-slate-950/30'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              )}
 
               {/* Reset Current Count Button */}
               <button
                 onClick={handleResetCurrent}
-                className="p-3 rounded-2xl liquid-glass-pill text-slate-300 hover:text-white transition-all cursor-pointer"
+                disabled={currentCount === 0}
+                className={`p-3 rounded-2xl liquid-glass-pill transition-all ${
+                  currentCount === 0 ? 'text-slate-600 opacity-30 cursor-not-allowed' : 'text-slate-300 hover:text-white cursor-pointer active:scale-95'
+                }`}
                 title="إعادة ضبط عداد الذكر الحالي"
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
 
-              {/* Next Dhikr Button */}
+              {/* Next Dhikr / Finish Button */}
               <button
                 onClick={handleNext}
-                disabled={currentIndex === totalDhikrs - 1}
-                className="p-3 rounded-2xl liquid-glass-pill text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
-                title="الذكر التالي"
+                className={`p-3 rounded-2xl liquid-glass-pill transition-all cursor-pointer ${
+                  currentIndex === totalDhikrs - 1
+                    ? `${theme.completedText} border border-emerald-500/30 bg-emerald-500/10`
+                    : 'text-slate-300 hover:text-white'
+                }`}
+                title={currentIndex < totalDhikrs - 1 ? 'الذكر التالي' : 'إنهاء الجلسة 🤍'}
               >
-                <ChevronLeft className="w-5 h-5 rtl:scale-x-100" />
+                {currentIndex < totalDhikrs - 1 ? (
+                  <ChevronLeft className="w-5 h-5 rtl:scale-x-100" />
+                ) : (
+                  <Check className={`w-5 h-5 ${theme.completedText}`} />
+                )}
               </button>
             </div>
           </footer>
@@ -936,36 +1325,31 @@ export const AzkarPlayer: React.FC<Props> = ({
         <main
           ref={continuousFeedRef}
           onScroll={handleContinuousScroll}
-          className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-5 max-w-3xl w-full mx-auto no-scrollbar relative z-10 overscroll-contain"
-          style={{ paddingBottom: 'max(4rem, env(safe-area-inset-bottom))' }}
+          className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6 overflow-y-auto pb-28 no-scrollbar"
         >
-          {dhikrList.map((item, idx) => {
+          {effectiveDhikrList.map((item, idx) => {
             const count = dhikrCounts[idx] || 0;
             const target = item.count || 1;
             const isDone = count >= target;
-            const isWaitingForExtraTap = !autoAdvance && isDone && !advancedIndices[idx];
             const remaining = Math.max(0, target - count);
-            const allDone = dhikrList.every((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1));
+            const isWaitingForExtraTap = isDone && !autoAdvance;
+            const allDone = effectiveDhikrList.every((d, i) => (dhikrCounts[i] || 0) >= (d.count || 1));
 
             return (
               <div
                 key={idx}
-                ref={(el) => { continuousItemRefs.current[idx] = el; }}
-                onClick={() => handleContinuousCount(idx)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === ' ' || e.key === 'Enter') {
-                    e.preventDefault();
-                    handleContinuousCount(idx);
-                  }
+                ref={(el) => {
+                  continuousItemRefs.current[idx] = el;
                 }}
+                onClick={() => handleContinuousCount(idx)}
                 className={`liquid-glass-card rounded-3xl p-5 sm:p-7 border transition-all text-right space-y-4 select-none scroll-mt-4 sm:scroll-mt-6 ${
                   isWaitingForExtraTap
-                    ? 'border-emerald-500/60 bg-emerald-950/30 shadow-lg shadow-emerald-500/15 cursor-pointer active:scale-[0.99] ring-1 ring-emerald-500/30'
+                    ? theme.cardBorderWaiting
                     : isDone
-                      ? 'border-emerald-500/30 bg-emerald-950/20 opacity-90 cursor-pointer'
-                      : 'border-white/10 hover:border-emerald-500/30 cursor-pointer active:scale-[0.99]'
+                      ? theme.cardBorderDone
+                      : focusMode
+                        ? `${theme.cardBorderFocus} ${theme.cardBgFocus}`
+                        : `${theme.cardBorderNormal} ${theme.cardBgNormal}`
                 }`}
                 title={
                   isWaitingForExtraTap
@@ -976,33 +1360,121 @@ export const AzkarPlayer: React.FC<Props> = ({
                 }
               >
                 {/* Item Header */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                      الذكر {idx + 1} من {totalDhikrs}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">
-                      {item.categoryArabic}
-                    </span>
-                    {cycleMuawwidhat && muawwidhatGroup && (idx === muawwidhatGroup.ikhlasIndex || idx === muawwidhatGroup.falaqIndex || idx === muawwidhatGroup.nasIndex) && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-                        🔄 دورة متناوبة
+                {focusMode ? (
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs font-bold ${theme.accentPrimary}`}>
+                        {segmentNames[Math.min(segmentCount - 1, Math.floor(idx / segmentSize))]}
                       </span>
-                    )}
-                  </div>
+                      <span className="text-white/20">•</span>
+                      <span className="text-xs text-slate-400 font-medium">
+                        الذكر {idx + 1} من {totalDhikrs}
+                      </span>
+                      {cycleMuawwidhat && muawwidhatGroup && (idx === muawwidhatGroup.ikhlasIndex || idx === muawwidhatGroup.falaqIndex || idx === muawwidhatGroup.nasIndex) && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                          🔄 دورة متناوبة
+                        </span>
+                      )}
+                      {isTahlilDhikr(item) && (
+                        <div className="inline-flex items-center p-0.5 rounded-full bg-white/5 border border-white/10 text-xs select-none">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTahlilCount(10);
+                            }}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+                              tahlilCount === 10
+                                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            10 مرات
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTahlilCount(100);
+                            }}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+                              tahlilCount === 100
+                                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            100 مرة
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                  <span className="text-xs font-mono font-bold text-slate-400">
-                    الهدف: {target}
-                  </span>
-                </div>
+                    <span className="text-xs font-mono font-bold text-slate-400">
+                      {count} / {target}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${theme.badgeClass}`}>
+                        الذكر {idx + 1} من {totalDhikrs}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">
+                        {item.categoryArabic}
+                      </span>
+                      {cycleMuawwidhat && muawwidhatGroup && (idx === muawwidhatGroup.ikhlasIndex || idx === muawwidhatGroup.falaqIndex || idx === muawwidhatGroup.nasIndex) && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                          🔄 دورة متناوبة
+                        </span>
+                      )}
+                      {isTahlilDhikr(item) && (
+                        <div className="inline-flex items-center p-0.5 rounded-full bg-white/5 border border-white/10 text-xs select-none">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTahlilCount(10);
+                            }}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+                              tahlilCount === 10
+                                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            10 مرات (ميسر)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTahlilCount(100);
+                            }}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+                              tahlilCount === 100
+                                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            100 مرة
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <span className="text-xs font-mono font-bold text-slate-400">
+                      الهدف: {target}
+                    </span>
+                  </div>
+                )}
 
                 {/* Paragraphs */}
                 <div className="space-y-3 py-1">
                   {item.paragraphs.map((para, pIdx) => (
                     <p
                       key={pIdx}
-                      className="dhikr-text text-white text-right leading-[2.2] transition-all duration-200 font-['Tajawal']"
+                      className="dhikr-text text-right leading-[2.2] transition-all duration-200 font-['Tajawal']"
                       style={{
+                        color: theme.arabicTextColor,
                         fontSize: fontSizeMultiplier === 1.2 ? '1.45rem' : fontSizeMultiplier === 0.9 ? '1.1rem' : '1.25rem',
                       }}
                     >
@@ -1012,228 +1484,554 @@ export const AzkarPlayer: React.FC<Props> = ({
                 </div>
 
                 {/* Virtue / Reference */}
-                {item.description && (
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 leading-relaxed">
-                    <span className="font-bold">الفضل: </span>
-                    <span>{item.description}</span>
-                  </div>
-                )}
+                {focusMode ? (
+                  (item.description || item.reference) && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleContinuousTadabbur(idx, e)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium ${theme.tadabburButtonFocus} transition-all cursor-pointer`}
+                      >
+                        <span>تدبّر والمعنى</span>
+                        {expandedContinuousTadabbur[idx] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
 
-                {item.reference && (
-                  <p className="text-[11px] text-slate-500">
-                    {item.reference}
-                  </p>
+                      {expandedContinuousTadabbur[idx] && (
+                        <div className={`mt-2.5 p-3.5 rounded-2xl ${theme.tadabburDrawerFocus} text-xs leading-relaxed text-right space-y-1.5 animate-in fade-in zoom-in-95 duration-150`}>
+                          {item.description && (
+                            <div>
+                              <span className="font-bold text-white">المعنى والفضل: </span>
+                              <span className="text-slate-200">{item.description}</span>
+                            </div>
+                          )}
+                          {item.reference && (
+                            <p className="text-[10px] opacity-70 pt-1 border-t border-white/10">
+                              {item.reference}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {item.description && (
+                      <div className={`p-3 rounded-2xl ${theme.tadabburDrawerNormal} text-xs leading-relaxed`}>
+                        <span className="font-bold">الفضل: </span>
+                        <span>{item.description}</span>
+                      </div>
+                    )}
+
+                    {item.reference && (
+                      <p className="text-[11px] text-slate-500">
+                        {item.reference}
+                      </p>
+                    )}
+                  </>
                 )}
 
                 {/* Counter control row — explicit button only, scrolling never increments */}
                 <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
                   <div className="text-xs font-bold">
                     {isDone ? (
-                      <span className="text-emerald-400 flex items-center gap-1">
+                      <span className={`${theme.completedText} flex items-center gap-1`}>
                         <Check className="w-4 h-4" /> مكتمل ({target}/{target})
                       </span>
                     ) : (
                       <span className="text-slate-300">
-                        متبقي: <strong className="text-emerald-400 font-mono text-sm">{remaining}</strong> من {target}
+                        متبقي: <strong className={`${theme.accentPrimary} font-mono text-sm`}>{remaining}</strong> من {target}
                       </span>
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleContinuousCount(idx);
-                    }}
-                    disabled={isDone && !isWaitingForExtraTap && idx >= totalDhikrs - 1}
-                    className={`px-5 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer select-none ${
-                      isWaitingForExtraTap
-                        ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-lg shadow-emerald-500/25 active:scale-95 ring-2 ring-emerald-400/40 liquid-button animate-pulse'
-                        : isDone
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 cursor-pointer'
-                          : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md shadow-emerald-500/20 active:scale-95 hover:brightness-110 liquid-button'
-                    }`}
-                  >
-                    {isWaitingForExtraTap ? (
-                      allDone ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Reset Button for this dhikr */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleResetDhikr(idx, e)}
+                      disabled={count === 0}
+                      className={`p-2.5 rounded-2xl liquid-glass-pill transition-all select-none shrink-0 ${
+                        count > 0
+                          ? 'text-slate-400 hover:text-white hover:bg-white/10 border border-white/10 cursor-pointer active:scale-95'
+                          : 'text-slate-600 opacity-25 cursor-not-allowed border border-transparent'
+                      }`}
+                      title={count > 0 ? 'إعادة ضبط عداد هذا الذكر' : 'العداد عند الصفر'}
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContinuousCount(idx);
+                      }}
+                      disabled={isDone && !isWaitingForExtraTap && idx >= totalDhikrs - 1}
+                      className={`px-5 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer select-none ${
+                        isWaitingForExtraTap
+                          ? `${theme.accentGradient} ${theme.accentRingWaiting} active:scale-95 animate-pulse`
+                          : isDone
+                            ? theme.completedBadge
+                            : `${focusMode ? theme.accentGradientFocus : theme.accentGradient} active:scale-95 hover:brightness-110`
+                      }`}
+                    >
+                      {isWaitingForExtraTap ? (
+                        allDone ? (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>اكتمل الذكر ✓ اضغط للإنهاء 🎉</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>اكتمل الذكر ✓ اضغط للتالي ⬅</span>
+                          </>
+                        )
+                      ) : isDone ? (
                         <>
-                          <Sparkles className="w-4 h-4" />
-                          <span>اكتمل الذكر ✓ اضغط للإنهاء 🎉</span>
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>اكتمل الذكر ✓</span>
                         </>
                       ) : (
                         <>
-                          <span>اكتمل الذكر ✓ اضغط للتالي ⬅</span>
+                          <span>
+                            {cycleMuawwidhat && muawwidhatGroup && (idx === muawwidhatGroup.ikhlasIndex || idx === muawwidhatGroup.falaqIndex || idx === muawwidhatGroup.nasIndex)
+                              ? `اضغط للعد والتنقل (${count} / ${target})`
+                              : `اضغط للعد (${count} / ${target})`}
+                          </span>
                         </>
-                      )
-                    ) : isDone ? (
-                      <>
-                        <Check className="w-4 h-4 stroke-[3]" />
-                        <span>اكتمل الذكر ✓</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>
-                          {cycleMuawwidhat && muawwidhatGroup && (idx === muawwidhatGroup.ikhlasIndex || idx === muawwidhatGroup.falaqIndex || idx === muawwidhatGroup.nasIndex)
-                            ? `اضغط للعد والتنقل (${count} / ${target})`
-                            : `اضغط للعد (${count} / ${target})`}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
+
+          {/* Bottom Session Completion Button for Continuous View */}
+          <div className="pt-6 pb-12 text-center">
+            <button
+              type="button"
+              onClick={handleFinishSession}
+              className={`w-full max-w-sm mx-auto py-3.5 px-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 ${theme.accentPrimary} font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2`}
+            >
+              <Check className={`w-4 h-4 ${theme.completedText}`} />
+              <span>إنهاء وختام الجلسة 🤍</span>
+            </button>
+          </div>
         </main>
       )}
 
       {/* Session Settings Modal */}
       {showSettingsModal && (
         <div 
-          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none"
           onClick={() => setShowSettingsModal(false)}
         >
           <div 
-            className="w-full max-w-md p-5 sm:p-6 rounded-3xl bg-slate-900/95 border border-white/10 shadow-2xl space-y-5 text-right font-['Tajawal'] select-auto"
+            className="w-full max-w-lg max-h-[88vh] rounded-3xl bg-[#0d1322]/98 border border-white/15 shadow-2xl flex flex-col overflow-hidden text-right font-['Tajawal'] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">إعدادات جلسة الأذكار</h3>
-              </div>
-              <button
-                onClick={() => setShowSettingsModal(false)}
-                className="p-1.5 rounded-xl liquid-glass-pill text-slate-400 hover:text-white transition-colors"
-                title="إغلاق"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Auto-advance Setting Option */}
-            <div className="space-y-3">
-              <div className="text-xs font-bold text-slate-300">
-                طريقة الانتقال بين الأذكار بعد اكتمال العدد:
-              </div>
-
-              {/* Option 1: Manual (Extra tap to advance) */}
-              <label 
-                className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
-                  !autoAdvance 
-                    ? 'border-emerald-500/50 bg-emerald-500/10 text-white shadow-sm shadow-emerald-500/10' 
-                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                }`}
-                onClick={() => handleToggleAutoAdvance(false)}
-              >
-                <input
-                  type="radio"
-                  name="azkar-advance-mode"
-                  checked={!autoAdvance}
-                  onChange={() => handleToggleAutoAdvance(false)}
-                  className="mt-1 accent-emerald-500 cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold flex items-center gap-1.5">
-                    <span>ضغطة إضافية للمتابعة (يدوي)</span>
-                    <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">الموصى به</span>
+            {/* Modal Header */}
+            <div className="px-5 pt-4 pb-3 border-b border-white/10 shrink-0 bg-white/[0.02]">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+                    <Settings className="w-5 h-5" />
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    يبقى الذكر الحالي ظاهرًا أمامك عند اكتمال العدد حتى تنتهي من قراءته، ثم تضغط في أي مكان للانتقال للذكر التالي دون خوف من فقدان مكانك (يطبق في عرض البطاقات والقراءة المتواصلة).
-                  </p>
-                </div>
-              </label>
-
-              {/* Option 2: Automatic (Immediate transition) */}
-              <label 
-                className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
-                  autoAdvance 
-                    ? 'border-emerald-500/50 bg-emerald-500/10 text-white shadow-sm shadow-emerald-500/10' 
-                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                }`}
-                onClick={() => handleToggleAutoAdvance(true)}
-              >
-                <input
-                  type="radio"
-                  name="azkar-advance-mode"
-                  checked={autoAdvance}
-                  onChange={() => handleToggleAutoAdvance(true)}
-                  className="mt-1 accent-emerald-500 cursor-pointer"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold">
-                    انتقال تلقائي فوري (بدون ضغطة إضافية)
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    بمجرد اكتمال عدّات الذكر، ينتقل العداد تلقائيًا ومباشرةً إلى الذكر التالي دون توقف (يطبق في عرض البطاقات والقراءة المتواصلة).
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            {/* Mu'awwidhat Alternating Cycle Option */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-base shrink-0">🔄</span>
-                  <div className="text-xs font-bold text-slate-200">
-                    قراءة المعوذتين والإخلاص بالتناوب (دورة دورة)
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-white leading-tight">إعدادات جلسة الأذكار</h3>
+                    <p className="text-[11px] text-slate-400">تخصيص أسلوب القراءة والتكرار والواجهة</p>
                   </div>
                 </div>
                 <button
-                  type="button"
-                  onClick={() => handleToggleCycleMuawwidhat(!cycleMuawwidhat)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                    cycleMuawwidhat ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'bg-slate-800 text-slate-400'
-                  }`}
+                  onClick={() => setShowSettingsModal(false)}
+                  className="p-2 rounded-2xl liquid-glass-pill text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title="إغلاق"
                 >
-                  {cycleMuawwidhat ? 'مفعّل' : 'معطّل'}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                قراءة سورة الإخلاص مرة ثم الفلق مرة ثم الناس مرة، وتكرار هذه الدورة 3 مرات بالتتابع (السنة في قراءة المعوذات)، بدلاً من تكرار كل سورة 3 مرات متتالية.
-              </p>
-            </div>
 
-            {/* Continuous Auto-Scroll Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-              <div className="space-y-0.5">
-                <div className="text-xs font-bold text-slate-200">التمرير التلقائي (قراءة متواصلة)</div>
-                <div className="text-[11px] text-slate-400">تمرير الشاشة تلقائيًا للذكر التالي فور اكتمال العدد</div>
+              {/* Segmented Category Tabs */}
+              <div className="grid grid-cols-2 p-1 rounded-2xl bg-white/5 border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab('dhikr')}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    settingsTab === 'dhikr'
+                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📿</span>
+                  <span>الورد والعدد</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab('display')}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    settingsTab === 'display'
+                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🎨</span>
+                  <span>العرض والتجربة</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleToggleContinuousAutoScroll(!continuousAutoScroll)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  continuousAutoScroll ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                {continuousAutoScroll ? 'مفعّل' : 'معطّل'}
-              </button>
             </div>
 
-            {/* Sound toggle */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-              <span className="text-xs font-bold text-slate-300">أصوات التفاعل والانتهاء</span>
-              <button
-                type="button"
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  soundEnabled ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                {soundEnabled ? 'مفعّل' : 'معطّل'}
-              </button>
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 no-scrollbar">
+              {settingsTab === 'dhikr' ? (
+                <>
+                  {/* Advance Mode Section */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-200">الانتقال بعد اكتمال العداد:</span>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/25">
+                        {!autoAdvance ? 'يدوي بتأكيد' : 'تلقائي فوري'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAutoAdvance(false)}
+                        className={`p-3 rounded-2xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-1.5 select-none ${
+                          !autoAdvance
+                            ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
+                            : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs font-bold text-white">ضغطة إضافية</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold">موصى به</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 leading-relaxed">يبقى الذكر أمامك حتى تضغط للمتابعة براحتك</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAutoAdvance(true)}
+                        className={`p-3 rounded-2xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-1.5 select-none ${
+                          autoAdvance
+                            ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
+                            : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs font-bold text-white">انتقال فوري</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300 font-bold">سريع</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 leading-relaxed">ينتقل للذكر التالي فور اكتمال العدد</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tahlil count */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>
+                        <div className="text-xs font-bold text-slate-200">
+                          تكرار التهليل (لا إله إلا الله...)
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          الذكر الختامي المائة
+                        </p>
+                      </div>
+                      <div className="inline-flex items-center p-0.5 rounded-xl bg-white/5 border border-white/10 text-xs select-none">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTahlilCount(10)}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer ${
+                            tahlilCount === 10 ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          10 مرات (سنة ميسرة)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTahlilCount(100)}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer ${
+                            tahlilCount === 100 ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          100 مرة (الأصل)
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2">
+                      10 مرات سنة ميسرة ثابتة في الصباح والمساء في سنن أبي داود والنسائي، و100 مرة لمن اتسع وقته.
+                    </p>
+                  </div>
+
+                  {/* Istighfar inclusion */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="text-xs font-bold text-slate-200">
+                        إدراج الاستغفار اليومي (100 مرة)
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        يمكنك استبعاده من الجلسة لتخفيف وقت الورد وقراءته في أي وقت آخر من اليوم.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={includeIstighfar}
+                      onClick={() => handleToggleIncludeIstighfar(!includeIstighfar)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${
+                        includeIstighfar ? 'bg-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-white/10 border border-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 shadow-md ${
+                          includeIstighfar ? 'right-[2px] bg-slate-950' : 'right-[26px] bg-slate-400'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Muawwidhat Alternating Cycle */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-200">
+                          قراءة المعوذتين والإخلاص بالتناوب
+                        </span>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">دورة دورة</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        الإخلاص ثم الفلق ثم الناس وتكرارها 3 مرات (السنة النبوية)، بدلاً من تكرار كل سورة 3 مرات متتالية.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={cycleMuawwidhat}
+                      onClick={() => handleToggleCycleMuawwidhat(!cycleMuawwidhat)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${
+                        cycleMuawwidhat ? 'bg-cyan-500 shadow-md shadow-cyan-500/20' : 'bg-white/10 border border-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 shadow-md ${
+                          cycleMuawwidhat ? 'right-[2px] bg-slate-950' : 'right-[26px] bg-slate-400'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Theme Picker Setting Option */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🎨</span>
+                        <div>
+                          <div className="text-xs font-bold text-slate-200">مظهر جلسة الأذكار</div>
+                          <p className="text-[10px] text-slate-400">اختر الأجواء التي تساعدك على القراءة بهدوء.</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${theme.badgeClass}`}>
+                        {theme.icon} {theme.nameArabic}
+                      </span>
+                    </div>
+
+                    {/* Theme Grid Cards */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                      {(Object.keys(DHIKR_THEMES) as DhikrThemeId[]).map((thId) => {
+                        const th = DHIKR_THEMES[thId];
+                        const isSelected = sessionTheme === thId;
+
+                        return (
+                          <button
+                            key={thId}
+                            type="button"
+                            onClick={() => handleSelectTheme(thId)}
+                            className={`group relative p-2.5 sm:p-3 rounded-2xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-2 overflow-hidden select-none ${
+                              isSelected
+                                ? 'border-white/60 ring-2 ring-white/30 shadow-lg scale-[1.02]'
+                                : 'border-white/10 hover:border-white/25 hover:scale-[1.01]'
+                            }`}
+                            style={{ backgroundColor: th.preview.bgHex }}
+                          >
+                            {/* Mini Dhikr Card simulation inside preview */}
+                            <div
+                              className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between h-18 transition-all"
+                              style={{
+                                backgroundColor: th.preview.cardBgHex,
+                                borderColor: `${th.preview.borderHex}40`,
+                              }}
+                            >
+                              {/* Mini badge & dot */}
+                              <div className="flex items-center justify-between">
+                                <div
+                                  className="w-2 h-2 rounded-full shadow-sm"
+                                  style={{ backgroundColor: th.preview.accentHex }}
+                                />
+                                <span
+                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded"
+                                  style={{
+                                    backgroundColor: `${th.preview.accentHex}20`,
+                                    color: th.preview.accentHex,
+                                  }}
+                                >
+                                  {th.icon}
+                                </span>
+                              </div>
+
+                              {/* Sample Arabic Dhikr line */}
+                              <div
+                                className="text-[11px] font-['Tajawal'] font-bold text-center leading-snug truncate"
+                                style={{ color: th.preview.textHex }}
+                              >
+                                {th.preview.sampleSnippet}
+                              </div>
+
+                              {/* Mini Counter bar */}
+                              <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: '65%',
+                                    backgroundColor: th.preview.accentHex,
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Theme Name & Subtitle */}
+                            <div className="flex items-center justify-between pt-0.5">
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-white block leading-tight">
+                                  {th.nameArabic}
+                                </span>
+                                <span className="text-[9px] text-slate-400 block truncate">
+                                  {th.subtitleArabic}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <div
+                                  className="w-4 h-4 rounded-full flex items-center justify-center text-slate-950 font-bold shrink-0 shadow-sm"
+                                  style={{ backgroundColor: th.preview.accentHex }}
+                                >
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Focus Mode Card */}
+                  <div className={`p-4 rounded-2xl ${theme.cardBgFocus} ${theme.cardBorderFocus} border space-y-2.5`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl">🧘</span>
+                        <div>
+                          <div className={`text-xs font-bold ${theme.accentPrimary}`}>
+                            وضع التركيز
+                          </div>
+                          <span className={`text-[10px] ${theme.secondaryTextColor} font-medium`}>تجربة أكثر هدوءًا وأقل تشتيتًا.</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={focusMode}
+                        onClick={() => handleToggleFocusMode(!focusMode)}
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${
+                          focusMode ? `${theme.accentGradient} shadow-md` : 'bg-white/10 border border-white/15'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 shadow-md ${
+                            focusMode ? 'right-[2px] bg-slate-950' : 'right-[26px] bg-slate-400'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed border-t border-white/10 pt-2">
+                      يخفي الزخارف والمشتتات، ويقسم الأذكار لمحطات تدبرية قصيرة، ويجعل نص الذكر هو البطل الأساسي مع إظهار المعاني والفضائل عند الطلب فقط.
+                    </p>
+                  </div>
+
+                  {/* Continuous Auto-Scroll */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="text-xs font-bold text-slate-200">
+                        التمرير التلقائي (القراءة المتواصلة)
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        تمرير الشاشة بنعومة وتلقائية إلى الذكر التالي فور اكتمال عدد الذكر الحالي.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={continuousAutoScroll}
+                      onClick={() => handleToggleContinuousAutoScroll(!continuousAutoScroll)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${
+                        continuousAutoScroll ? `${theme.accentGradient} shadow-md` : 'bg-white/10 border border-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 shadow-md ${
+                          continuousAutoScroll ? 'right-[2px] bg-slate-950' : 'right-[26px] bg-slate-400'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Sound Toggle */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-200">
+                          أصوات التفاعل والنقر
+                        </span>
+                        {soundEnabled ? <Volume2 className={`w-3.5 h-3.5 ${theme.accentPrimary}`} /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        نبض صوتي خفيف عند كل نقرة للعد، ونغمة إنجاز هادئة عند ختام الجلسة.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={soundEnabled}
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${
+                        soundEnabled ? `${theme.accentGradient} shadow-md` : 'bg-white/10 border border-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 shadow-md ${
+                          soundEnabled ? 'right-[2px] bg-slate-950' : 'right-[26px] bg-slate-400'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Close / Done Button */}
-            <button
-              onClick={() => setShowSettingsModal(false)}
-              className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
-            >
-              حفظ وإغلاق
-            </button>
+            {/* Modal Footer */}
+            <div className="px-5 py-3.5 border-t border-white/10 shrink-0 bg-white/[0.02]">
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className={`w-full py-3 px-4 rounded-2xl ${theme.accentGradient} text-slate-950 font-black text-xs shadow-lg active:scale-98 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-2`}
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>تم وحفظ الإعدادات</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1241,37 +2039,102 @@ export const AzkarPlayer: React.FC<Props> = ({
       {/* Completion Modal */}
       {isFinished && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl animate-in fade-in duration-300">
-          <div className="relative w-full max-w-md liquid-glass-card rounded-3xl p-6 sm:p-8 shadow-2xl border-emerald-500/40 text-center font-['Tajawal']">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 mx-auto mb-4 shadow-xl shadow-emerald-500/30">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
-                🌿
-              </div>
+          <div className="relative w-full max-w-md liquid-glass-card rounded-3xl p-6 sm:p-7 shadow-2xl border-white/15 text-center font-['Tajawal'] space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-2xl shadow-inner">
+              🤍
             </div>
 
-            <h3 className="text-2xl font-black text-white">تقبل الله طاعتكم</h3>
-            <p className="text-sm text-emerald-400 font-bold mt-1">أتممت {title} بنجاح</p>
-            <p className="text-xs text-slate-400 mt-2">
-              تم تسجيل إنجازك في سجل العبادات اليومي والحفاظ على استمراريتك
-            </p>
+            <div>
+              <h3 className="text-2xl font-black text-white">الحمد لله 🤍</h3>
+              <p className={`text-sm ${theme.accentPrimary} font-bold mt-1`}>أتممت {title}</p>
+            </div>
 
-            <div className="grid grid-cols-2 gap-3 my-5">
+            {/* Stats: Count & Duration */}
+            <div className="grid grid-cols-2 gap-3 my-2">
               <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                <div className="text-xl font-black text-emerald-400">{totalDhikrs}</div>
+                <div className={`text-lg font-black ${theme.accentPrimary}`}>{totalDhikrs}</div>
                 <div className="text-[11px] text-slate-400">إجمالي الأذكار</div>
               </div>
               <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                <div className="text-xl font-black text-teal-400">
-                  {Math.round((Date.now() - startTimeRef.current) / 1000)} ث
+                <div className={`text-lg font-black ${theme.accentPrimary}`}>
+                  {Math.round((Date.now() - startTimeRef.current) / 1000) < 60
+                    ? `${Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))} ثانية`
+                    : `${Math.round((Date.now() - startTimeRef.current) / 60000)} دقيقة`}
                 </div>
                 <div className="text-[11px] text-slate-400">المدة المستغرقة</div>
               </div>
             </div>
 
+            {/* Reflection / Companion Dhikr (ذكر رافقني اليوم) */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-right space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400/20" />
+                  <span>ذكر رافق قلبك اليوم</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCompanionPicker((prev) => !prev)}
+                  className={`text-[11px] ${theme.accentPrimary} hover:opacity-80 underline cursor-pointer`}
+                >
+                  {selectedCompanionDhikr !== null ? 'تغيير الذكر' : 'اختر ذكرًا'}
+                </button>
+              </div>
+
+              {selectedCompanionDhikr !== null && effectiveDhikrList[selectedCompanionDhikr] ? (
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-slate-200 leading-relaxed">
+                  <p className="font-semibold line-clamp-3">
+                    « {effectiveDhikrList[selectedCompanionDhikr].text} »
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  هل استوقفك ذكر في هذه الجلسة وتود استصحابه في يومك؟
+                </p>
+              )}
+
+              {/* Companion Picker Dropdown / List */}
+              {showCompanionPicker && (
+                <div className="max-h-44 overflow-y-auto space-y-1.5 pt-2 border-t border-white/10 no-scrollbar">
+                  {effectiveDhikrList.map((d, dIdx) => (
+                    <button
+                      key={dIdx}
+                      type="button"
+                      onClick={() => {
+                        handleSelectCompanionDhikr(dIdx);
+                        setShowCompanionPicker(false);
+                      }}
+                      className={`w-full text-right p-2 rounded-xl text-xs transition-all flex items-start gap-2 cursor-pointer ${
+                        selectedCompanionDhikr === dIdx
+                          ? `${theme.badgeClass} font-bold border`
+                          : 'hover:bg-white/5 text-slate-300'
+                      }`}
+                    >
+                      <span className="text-[10px] text-slate-500 shrink-0 font-mono">#{dIdx + 1}</span>
+                      <span className="truncate">{d.text}</span>
+                    </button>
+                  ))}
+                  {selectedCompanionDhikr !== null && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSelectCompanionDhikr(null);
+                        setShowCompanionPicker(false);
+                      }}
+                      className="w-full text-center py-1 text-[11px] text-slate-500 hover:text-slate-300"
+                    >
+                      إلغاء التحديد
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={onClose}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/25 hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer liquid-button"
+              className={`w-full py-3 px-6 rounded-2xl ${theme.accentGradient} text-slate-950 font-black text-sm shadow-lg hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer`}
             >
-              تم
+              إنهاء
             </button>
           </div>
         </div>
