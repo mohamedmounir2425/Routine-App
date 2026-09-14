@@ -16,6 +16,8 @@ export default defineConfig({
         type: 'module',
       },
       workbox: {
+        navigateFallback: '/index.html',
+        navigateFallbackAllowlist: [/^(?!\/__).*/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff2}'],
         runtimeCaching: [
           {
