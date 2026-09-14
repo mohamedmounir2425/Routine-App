@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, LayoutGrid, BarChart3, Settings } from 'lucide-react';
 import { useTranslation } from '../../i18n';
@@ -17,25 +17,42 @@ export const MobileDock: React.FC = () => {
 
   const currentPath = location.pathname;
 
-  const isAzkarSessionActive = () => {
+  const isAzkarSessionActive = useCallback(() => {
+    if (!location.pathname.startsWith('/worship/azkar')) {
+      return false;
+    }
     return (
       (typeof document !== 'undefined' && document.body.classList.contains('azkar-session-active')) ||
-      (location.pathname.startsWith('/worship/azkar') && location.search.includes('session'))
+      location.search.includes('session')
     );
-  };
+  }, [location.pathname, location.search]);
 
   const [sessionActive, setSessionActive] = useState(isAzkarSessionActive);
 
   useEffect(() => {
-    const handleSessionChange = () => {
-      setSessionActive(isAzkarSessionActive());
+    if (!location.pathname.startsWith('/worship/azkar') && typeof document !== 'undefined') {
+      document.body.classList.remove('azkar-session-active');
+    }
+
+    setSessionActive(isAzkarSessionActive());
+
+    const handleSessionChange = (e: any) => {
+      if (!location.pathname.startsWith('/worship/azkar')) {
+        setSessionActive(false);
+        return;
+      }
+      if (e?.detail?.active !== undefined) {
+        setSessionActive(e.detail.active);
+      } else {
+        setSessionActive(isAzkarSessionActive());
+      }
     };
 
     window.addEventListener('azkar-session-change', handleSessionChange);
     return () => {
       window.removeEventListener('azkar-session-change', handleSessionChange);
     };
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, isAzkarSessionActive]);
 
   const mobileNavRef = useRef<HTMLElement>(null);
   const mobileTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -45,10 +62,6 @@ export const MobileDock: React.FC = () => {
     width: 0,
     opacity: 0,
   });
-
-  if (sessionActive || isAzkarSessionActive()) {
-    return null;
-  }
 
   const getActiveTabPath = () => {
     if (currentPath === '/' || currentPath.startsWith('/today')) {
@@ -97,6 +110,10 @@ export const MobileDock: React.FC = () => {
       window.removeEventListener('resize', updateIndicator);
     };
   }, [currentPath, activeTabPath]);
+
+  if (sessionActive || isAzkarSessionActive()) {
+    return null;
+  }
 
   return (
     <div className="md:hidden fixed bottom-3 inset-x-3 z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom)]">

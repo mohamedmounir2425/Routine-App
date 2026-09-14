@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LIFE_SPACES_CONFIG } from "../../config/spacesConfig";
 import { useTranslation } from "../../i18n";
@@ -48,38 +48,48 @@ export const SpaceContextBar: React.FC = () => {
   const { t } = useTranslation();
   const currentPath = location.pathname;
 
-  const isAzkarSessionActive = () => {
+  const isAzkarSessionActive = useCallback(() => {
+    if (!currentPath.startsWith('/worship/azkar')) {
+      return false;
+    }
     return (
       (typeof document !== 'undefined' && document.body.classList.contains('azkar-session-active')) ||
-      (currentPath.startsWith('/worship/azkar') && location.search.includes('session'))
+      location.search.includes('session')
     );
-  };
+  }, [currentPath, location.search]);
 
   const [sessionActive, setSessionActive] = useState(isAzkarSessionActive);
 
   useEffect(() => {
-    const handleSessionChange = () => {
-      setSessionActive(isAzkarSessionActive());
+    if (!currentPath.startsWith('/worship/azkar') && typeof document !== 'undefined') {
+      document.body.classList.remove('azkar-session-active');
+    }
+
+    setSessionActive(isAzkarSessionActive());
+
+    const handleSessionChange = (e: any) => {
+      if (!currentPath.startsWith('/worship/azkar')) {
+        setSessionActive(false);
+        return;
+      }
+      if (e?.detail?.active !== undefined) {
+        setSessionActive(e.detail.active);
+      } else {
+        setSessionActive(isAzkarSessionActive());
+      }
     };
 
     window.addEventListener('azkar-session-change', handleSessionChange);
     return () => {
       window.removeEventListener('azkar-session-change', handleSessionChange);
     };
-  }, [currentPath, location.search]);
+  }, [currentPath, location.search, isAzkarSessionActive]);
 
   const activeSpace = LIFE_SPACES_CONFIG.find(
     (space) =>
       currentPath === space.route ||
       currentPath.startsWith(`${space.route}/`)
   );
-
-  if (!activeSpace || sessionActive || isAzkarSessionActive()) {
-    return null;
-  }
-
-  // Canonical theme tokens driven by active space identity
-  const spaceTheme = getSpaceTheme(activeSpace.id);
 
   // Auto-scroll the active tab into view on mobile
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
@@ -102,6 +112,13 @@ export const SpaceContextBar: React.FC = () => {
 
     return () => cancelAnimationFrame(raf);
   }, [currentPath, activeSpace?.id]);
+
+  if (!activeSpace || sessionActive || isAzkarSessionActive()) {
+    return null;
+  }
+
+  // Canonical theme tokens driven by active space identity
+  const spaceTheme = getSpaceTheme(activeSpace.id);
 
   return (
     <div className="w-full border-b border-white/5 bg-slate-950/40 backdrop-blur-md sticky top-14 sm:top-16 z-30 transition-all">
