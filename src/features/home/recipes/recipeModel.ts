@@ -1,9 +1,9 @@
 export const MEAL_TYPES = [
-  { id: 'breakfast', label: 'فطار', icon: '🍳' },
-  { id: 'lunch', label: 'غدا', icon: '🍲' },
-  { id: 'dinner', label: 'عشاء', icon: '🥗' },
-  { id: 'snack', label: 'سناكس', icon: '🍿' },
-  { id: 'sandwich', label: 'سندوتشات', icon: '🥪' },
+  { id: 'breakfast', label: 'الإفطار', icon: '🍳' },
+  { id: 'lunch', label: 'الغداء', icon: '🍲' },
+  { id: 'dinner', label: 'العشاء', icon: '🥗' },
+  { id: 'snack', label: 'الوجبات الخفيفة', icon: '🍿' },
+  { id: 'sandwich', label: 'السندويشات', icon: '🥪' },
 ] as const;
 export type MealType = typeof MEAL_TYPES[number]['id'];
 export interface RecipeIngredient { name: string; quantity: string }

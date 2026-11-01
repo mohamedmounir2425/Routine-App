@@ -60,11 +60,10 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/home',
     defaultEnabled: true,
     navigation: [
-      { id: 'home-overview', path: '/home', labelKey: 'spaceNavOverview', iconName: 'Compass' },
-      { id: 'home-tasks', path: '/home/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
-      { id: 'home-projects', path: '/home/projects', labelKey: 'spaceNavProjects', iconName: 'FolderKanban' },
-      { id: 'home-routines', path: '/home/routines', labelKey: 'spaceNavRoutines', iconName: 'ListChecks' },
-      { id: 'home-maintenance', path: '/home/maintenance', labelKey: 'spaceNavMaintenance', iconName: 'Wrench' },
+      { id: 'home-overview', path: '/home', labelKey: 'spaceNavHome', iconName: 'Compass' },
+      { id: 'home-kitchen', path: '/home/recipes', labelKey: 'spaceNavKitchen', iconName: 'BookOpen' },
+      { id: 'home-shopping', path: '/home/shopping', labelKey: 'spaceNavShopping', iconName: 'CheckSquare' },
+      { id: 'home-management', path: '/home/tasks', labelKey: 'spaceNavHomeManagement', iconName: 'ListChecks' },
     ],
   },
   {

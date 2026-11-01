@@ -82,3 +82,11 @@ Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent
 Implemented /home/recipes with lazy-loaded warm responsive UI, Radix dialog, structured ingredient entry, multi-meal tags, search/all-ingredient filtering, favorites, quick/light filters, details and HTTPS image/YouTube links. Name-only saves are supported. Keyboard shortcuts and unsaved-change/delete confirmation included. Local v9 schema, JSON v3 backup compatibility and complete versioned cloud sync include recipes. Stale editors fail safely.
 
 Migration 20261101143722_add_recipe_library applied to LifeOS. 173 local scenarios passed and real two-identity transactional recipe integration passed, with fixture rollback confirmed. Security Advisor adds no new findings. Computer Use stopped because it could not verify the browser URL; visual browser/mobile acceptance was not completed. Sharing between accounts, pantry matching and weekly planning remain separate features.
+
+## Home space layout and naming (2026-11-01)
+
+Implemented the approved public-facing Home & Family structure: Home, Kitchen, Shopping and Household Management. Dedicated warm dark tokens cover the home shell, recipe library and all home workflow dialogs. Removed duplicate context tabs only for home; swipe navigation follows the new primary sections and treats project/routine/maintenance routes as management. Existing paths and data remain compatible.
+
+Home prioritizes real saved recipes and meal filters, then shopping and due work. Shopping has its own live list and quick input; general tasks exclude legacy shopping/routine/maintenance records surfaced in their dedicated views. Recipe details expand progressively; deep links from Home open a specific recipe or preselect a meal. All home dialogs use Radix with mobile bottom panels. Task edits preserve existing metadata. No backend migration or account-sharing implementation is part of this change.
+
+Validation: 173 existing scenarios passed, production/PWA build passed, and focused lint passed. Chrome headless preview did not produce an image in this environment, so visual/device acceptance remains outstanding. Pantry/audits, meal planning and selective household sharing remain planned.

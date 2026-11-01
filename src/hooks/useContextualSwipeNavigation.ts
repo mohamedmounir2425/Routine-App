@@ -47,7 +47,7 @@ export function useContextualSwipeNavigation({
       }
 
       if (typeof document !== 'undefined' && 'startViewTransition' in document) {
-        (document as any).startViewTransition(() => {
+        (document as Document & { startViewTransition: (callback: () => void) => unknown }).startViewTransition(() => {
           navigate(targetPath);
         });
       } else {
@@ -66,6 +66,7 @@ export function useContextualSwipeNavigation({
   const resolveSpaceNavIndex = useCallback(() => {
     if (!activeSpace || !activeSpace.navigation.length) return -1;
     const nav = activeSpace.navigation;
+    if (activeSpace.id === 'home' && /\/home\/(tasks|routines|maintenance|projects)/.test(currentPath)) return nav.length - 1;
 
     // Exact match
     const exactIndex = nav.findIndex((item) => item.path === currentPath);

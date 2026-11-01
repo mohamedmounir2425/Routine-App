@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
 import { SpaceContextBar } from './components/layout/SpaceContextBar';
@@ -23,6 +23,7 @@ import { useReminderScheduler } from './app/useReminderScheduler';
 import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigation';
 
 export function App() {
+  const isHomeSpace = useLocation().pathname.startsWith('/home');
   const {
     isLoading,
     loadError,
@@ -106,7 +107,7 @@ export function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isTvMode ? 'tv-mode text-lg' : ''}`}>
+    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isHomeSpace ? 'home-app' : ''} ${isTvMode ? 'tv-mode text-lg' : ''}`}>
       {/* Apple Liquid Glass Dynamic Ambient Fluid Mesh Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div 

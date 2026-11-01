@@ -1,3 +1,4 @@
+import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Clock, Sun, Moon } from 'lucide-react';
 import { LifeTask } from '../../../types';
@@ -71,11 +72,12 @@ export const HomeRoutineModal: React.FC<HomeRoutineModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal']">
+    <HomeWorkflowDialog open={isOpen} onClose={onClose} title="روتين منزلي">
+      <div className="home-legacy-dialog relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal']">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
           <button
+            aria-label="إغلاق النافذة"
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -239,6 +241,6 @@ export const HomeRoutineModal: React.FC<HomeRoutineModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </HomeWorkflowDialog>
   );
 };

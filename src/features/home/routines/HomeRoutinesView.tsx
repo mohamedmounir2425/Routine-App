@@ -11,7 +11,7 @@ import {
   Moon,
   Download
 } from 'lucide-react';
-import { SpaceShell } from '../../../components/layout/SpaceShell';
+import { HomeSection as SpaceShell } from '../HomeSection';
 import { LifeTask } from '../../../types';
 import { getTasksBySpace, saveTask, toggleTaskCompletion, deleteTask } from '../../../db/taskQueries';
 import { HomeRoutineModal } from './HomeRoutineModal';
