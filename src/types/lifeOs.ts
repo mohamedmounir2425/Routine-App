@@ -118,7 +118,7 @@ export const DEFAULT_TODAY_PREFERENCES: TodayPreferences = {
   },
   homeOptions: {
     routines: true,
-    nextActionsOnly: true,
+    nextActionsOnly: false,
   },
   plansOptions: {
     showActiveProgress: true,

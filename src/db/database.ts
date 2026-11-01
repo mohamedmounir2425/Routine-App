@@ -12,6 +12,7 @@ import {
   WorkoutScheduleEntry 
 } from '../types';
 import { AzkarLog } from '../features/worship/types';
+import { DayPlan } from '../types/tasks';
 import { 
   INITIAL_EXERCISES, 
   INITIAL_ROUTINES, 
@@ -58,6 +59,7 @@ export class RoutineDatabase extends Dexie {
   plans!: Table<GoalPlan, string>;
   planMilestones!: Table<PlanMilestone, string>;
   workoutSchedules!: Table<WorkoutScheduleEntry, string>;
+  dayPlans!: Table<DayPlan, string>;
 
   constructor() {
     super('RoutineAppDB');
@@ -108,6 +110,7 @@ export class RoutineDatabase extends Dexie {
     this.version(5).stores({
       tasks: 'id, spaceId, isCompleted, status, dueDate, priority, sourceType, projectId, planId'
     });
+    this.version(6).stores({ dayPlans: 'date, updatedAt' });
   }
 }
 
@@ -116,29 +119,28 @@ export const db = new RoutineDatabase();
 // Initialize DB with seed data on first run or when updated
 export async function initializeDatabase(forceRefresh: boolean = false): Promise<void> {
   try {
-    const exerciseCount = await db.exercises.count();
-    const routineCount = await db.routines.count();
-    const sampleEx = await db.exercises.get('ab-mcgill-curlup');
-    const needsUpdate = exerciseCount < 30 || routineCount < 15 || !sampleEx?.youtubeUrl || (sampleEx as any)?.localVideoUrl !== undefined || forceRefresh;
-
-    if (needsUpdate) {
-      await db.exercises.clear();
-      await db.exercises.bulkPut(INITIAL_EXERCISES);
-
-      await db.routines.clear();
-      // Seed both core routines and all 16 sessions of the 4-week program
-      await db.routines.bulkPut([...INITIAL_ROUTINES, ...ALL_PLAN_ROUTINES]);
-
-      await db.weeklySchedule.clear();
-      await db.weeklySchedule.bulkPut(INITIAL_WEEKLY_SCHEDULE);
-    }
-
-    const settingsCount = await db.settings.count();
-    if (settingsCount === 0) {
-      await db.settings.put(DEFAULT_USER_SETTINGS);
-    }
+    await db.transaction('rw', [db.exercises, db.routines, db.weeklySchedule, db.settings], async () => {
+      // Repair missing defaults without deleting user-created records or schedules.
+      const existingExercises = new Map((await db.exercises.toArray()).map(exercise => [exercise.id, exercise]));
+      for (const exercise of INITIAL_EXERCISES) {
+        const existing = existingExercises.get(exercise.id);
+        if (!existing || forceRefresh) {
+          await db.exercises.put({ ...exercise, isFavorite: existing?.isFavorite ?? exercise.isFavorite });
+        }
+      }
+      const existingRoutines = new Set(await db.routines.toCollection().primaryKeys());
+      for (const routine of [...INITIAL_ROUTINES, ...ALL_PLAN_ROUTINES]) {
+        if (!existingRoutines.has(routine.id)) await db.routines.put(routine);
+      }
+      const existingDays = new Set(await db.weeklySchedule.toCollection().primaryKeys());
+      for (const day of INITIAL_WEEKLY_SCHEDULE) {
+        if (!existingDays.has(day.dayOfWeek)) await db.weeklySchedule.put(day);
+      }
+      if (!await db.settings.get('current_settings')) await db.settings.put(DEFAULT_USER_SETTINGS);
+    });
   } catch (error) {
     console.error('Failed to initialize database:', error);
+    throw error;
   }
 }
 

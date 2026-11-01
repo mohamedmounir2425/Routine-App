@@ -24,6 +24,7 @@ import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigati
 export function App() {
   const {
     isLoading,
+    loadError,
     isTvMode,
     setIsTvMode,
     exercises,
@@ -80,6 +81,14 @@ export function App() {
       hasCompletedOnboarding: true,
     });
   };
+
+  if (loadError) {
+    return <div role="alert" className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center gap-4 p-8 text-center">
+      <h1 className="text-xl font-bold">تعذر فتح بياناتك / Unable to load your data</h1>
+      <p className="text-slate-400">{loadError}</p>
+      <button className="rounded-xl px-5 py-3 bg-emerald-400 text-slate-950 font-bold" onClick={() => void loadAppData()}>إعادة المحاولة / Retry</button>
+    </div>;
+  }
 
   if (isLoading) {
     return (

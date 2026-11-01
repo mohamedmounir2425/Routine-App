@@ -28,6 +28,7 @@ export async function saveTask(task: LifeTask): Promise<void> {
     }
   } catch (error) {
     console.error('Failed to save task:', error);
+    throw error;
   }
 }
 

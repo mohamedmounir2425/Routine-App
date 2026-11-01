@@ -20,7 +20,8 @@ export function getFocusHistory(): FocusSessionRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((session): session is FocusSessionRecord => !!session && typeof session === 'object' && typeof session.id === 'string' && typeof session.date === 'string' && Number.isFinite(new Date(session.date).getTime()) && typeof session.minutes === 'number' && Number.isFinite(session.minutes) && session.minutes >= 0) : [];
   } catch {
     return [];
   }

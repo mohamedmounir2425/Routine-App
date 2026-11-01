@@ -1,4 +1,5 @@
 import { db } from '../../db/database';
+import { getTaskTimeTag } from './todayScheduling';
 import { 
   TodayItem, 
   TodayAggregationResult, 
@@ -634,7 +635,7 @@ export async function aggregateTodayFeed(
           ? Array.isArray(t.recurringCompletionDates) && t.recurringCompletionDates.includes(targetDateStr)
           : t.isCompleted;
 
-        const timeTag: TodayItemTimeTag = isDoneToday ? 'completed' : (t.scheduledTime ? 'scheduled' : 'flexible');
+        const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
         const status = deriveItemStatus(isDoneToday, timeTag);
         const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, t.isRecurring ? 'home_routine' : 'home_task', t.scheduledTime);
 
@@ -712,9 +713,10 @@ export async function aggregateTodayFeed(
             continue;
           }
 
-          const timeTag: TodayItemTimeTag = t.isCompleted ? 'completed' : 'flexible';
-          const status = deriveItemStatus(t.isCompleted, timeTag);
-          const sortKey = computeTodaySortKey(timeTag, t.isCompleted, t.priority || 'medium', 'plan_action', t.scheduledTime);
+          const isDoneToday = t.isRecurring ? !!t.recurringCompletionDates?.includes(targetDateStr) : t.isCompleted;
+          const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
+          const status = deriveItemStatus(isDoneToday, timeTag);
+          const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority || 'medium', 'plan_action', t.scheduledTime);
 
           rawItems.push({
             id: `task_plan_${t.id}_${targetDateStr}`,
@@ -724,11 +726,12 @@ export async function aggregateTodayFeed(
             title: t.title,
             subtitle: `خطة: ${plan.title}`,
             categoryLabel: plan.title,
+            scheduledTime: t.scheduledTime,
             estimatedMinutes: t.estimatedMinutes || 30,
             priority: t.priority || 'medium',
             timeTag,
             status,
-            isCompleted: t.isCompleted,
+            isCompleted: isDoneToday,
             actionType: 'toggle_task',
             actionPayload: { taskId: t.id, targetDateStr, planId: plan.id, planTitle: plan.title },
             sortKey,
@@ -777,7 +780,7 @@ export async function aggregateTodayFeed(
       id: 'next_actions',
       title: '➡️ الخطوات التالية للمشاريع',
       items: sortedItems.filter(
-        (i) => !i.isCompleted && i.type === 'project_action' && i.timeTag === 'flexible'
+        (i) => !i.isCompleted && i.type === 'project_action' && i.priority !== 'high' && i.timeTag === 'flexible'
       ),
     },
     {
@@ -786,7 +789,7 @@ export async function aggregateTodayFeed(
       items: sortedItems.filter(
         (i) =>
           !i.isCompleted &&
-          (i.type === 'work_task' || i.type === 'home_task' || i.type === 'home_routine' || i.type === 'quran') &&
+          i.type !== 'project_action' && i.type !== 'plan_action' &&
           i.priority !== 'high' &&
           i.timeTag === 'flexible'
       ),

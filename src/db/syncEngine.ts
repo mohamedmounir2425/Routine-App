@@ -162,7 +162,10 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
       .eq('user_id', userId);
 
     if (cloudTasks && cloudTasks.length > 0) {
+      // Planning metadata remains local until a matching remote schema is deployed.
+      const localTasks = new Map((await db.tasks.toArray()).map(task => [task.id, task]));
       const mappedTasks: LifeTask[] = cloudTasks.map((t) => ({
+        ...localTasks.get(t.id),
         id: t.id,
         spaceId: t.space_id,
         title: t.title,

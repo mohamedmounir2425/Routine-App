@@ -19,6 +19,7 @@ export function useAppController() {
   const navigate = useNavigate();
   const [, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isTvMode, setIsTvMode] = useState<boolean>(false);
 
   // Data states
@@ -81,6 +82,7 @@ export function useAppController() {
 
   // Load and refresh all data
   const loadAppData = async () => {
+    setLoadError(null);
     try {
       await initializeDatabase();
 
@@ -120,6 +122,7 @@ export function useAppController() {
       }
     } catch (err) {
       console.error('Error loading app data:', err);
+      setLoadError('تعذر تحميل بيانات التطبيق. تأكد من السماح بالتخزين المحلي ثم أعد المحاولة.');
     } finally {
       setIsLoading(false);
     }
@@ -254,6 +257,7 @@ export function useAppController() {
 
   return {
     isLoading,
+    loadError,
     isTvMode,
     setIsTvMode,
     exercises,

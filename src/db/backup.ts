@@ -1,63 +1,106 @@
 import { db } from './database';
 
+// Authentication tokens and the device/account-specific sync queue are never portable data.
+const BACKUP_TABLES = {
+  exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
+  settings: 'settings', azkarLogs: 'azkarLogs', tasks: 'tasks', projects: 'projects',
+  plans: 'plans', planMilestones: 'planMilestones', workoutSchedules: 'workoutSchedules',
+  dayPlans: 'dayPlans',
+} as const;
+
+const isPortableKey = (key: string) => /^(routine_(prayers_\d{4}-\d{2}-\d{2}(_nawafil)?|quran_.*|tasbeeh_.*|prayer_(city|coords)|today_preferences|app_lang)|life_focus_sessions|movecare_theme|azkar_(auto_advance|continuous_autoscroll|cycle_muawwidhat|focus_mode|companion_dhikr|tahlil_count|include_istighfar|session_theme))$/.test(key);
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
 export async function exportCompleteBackup(): Promise<string> {
-  const [exercises, routines, logs, schedule, settings] = await Promise.all([
-    db.exercises.toArray(),
-    db.routines.toArray(),
-    db.workoutLogs.toArray(),
-    db.weeklySchedule.toArray(),
-    db.settings.toArray(),
-  ]);
-
-  const backupObj = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    appName: 'MoveCare Routine App',
-    data: {
-      exercises,
-      routines,
-      logs,
-      schedule,
-      settings,
+  const data: Record<string, unknown> = {};
+  await db.transaction('r', Object.values(BACKUP_TABLES).map(name => db.table(name)), async () => {
+    for (const [key, name] of Object.entries(BACKUP_TABLES)) data[key] = await db.table(name).toArray();
+  });
+  const localData: Record<string, string> = {};
+  if (typeof localStorage !== 'undefined') {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key && isPortableKey(key)) {
+        const value = localStorage.getItem(key);
+        if (value !== null) localData[key] = value;
+      }
     }
-  };
+  }
+  return JSON.stringify({ version: 3, exportedAt: new Date().toISOString(), appName: 'MoveCare Routine App', data, localData }, null, 2);
+}
 
-  return JSON.stringify(backupObj, null, 2);
+function validateRecord(key: string, record: unknown): asserts record is Record<string, unknown> {
+  if (!isObject(record)) throw new Error(`Invalid ${key} record`);
+  if (key === 'dayPlans') {
+    if (typeof record.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.date) || !Number.isFinite(record.availableMinutes) || Number(record.availableMinutes) < 0 || Number(record.availableMinutes) > 1440 || !Array.isArray(record.essentialTaskIds) || record.essentialTaskIds.some(id => typeof id !== 'string') || typeof record.endTime !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(record.endTime)) throw new Error('Invalid day plan');
+  } else if (key === 'schedule') {
+    if (!Number.isInteger(record.dayOfWeek) || Number(record.dayOfWeek) < 0 || Number(record.dayOfWeek) > 6) throw new Error('Invalid schedule day');
+  } else if (typeof record.id !== 'string' || !record.id.trim()) throw new Error(`Missing ${key} ID`);
+  const requireString = (field: string) => { if (typeof record[field] !== 'string') throw new Error(`Invalid ${key}.${field}`); };
+  if (key === 'exercises') {
+    requireString('name'); requireString('arabicName');
+    if (!Array.isArray(record.instructions) || !Array.isArray(record.targetMuscles) || !Number.isFinite(record.durationSeconds)) throw new Error('Invalid exercise');
+  }
+  if (key === 'routines' && (!Array.isArray(record.exerciseIds) || typeof record.name !== 'string')) throw new Error('Invalid routine');
+  if (key === 'tasks') {
+    requireString('title');
+    if (!['worship', 'health', 'work', 'home', 'plans'].includes(String(record.spaceId)) || typeof record.isCompleted !== 'boolean') throw new Error('Invalid task');
+    if (record.deadlineAt !== undefined && (typeof record.deadlineAt !== 'string' || !Number.isFinite(new Date(record.deadlineAt).getTime()))) throw new Error('Invalid task deadline');
+    if (record.commitment !== undefined && !['must', 'should', 'could'].includes(String(record.commitment))) throw new Error('Invalid commitment');
+    if (record.dependsOnTaskIds !== undefined && (!Array.isArray(record.dependsOnTaskIds) || record.dependsOnTaskIds.some(id => typeof id !== 'string'))) throw new Error('Invalid task dependencies');
+  }
+  if (key === 'projects' || key === 'plans' || key === 'planMilestones') requireString('title');
+  if (key === 'projects' && !Array.isArray(record.steps)) throw new Error('Invalid project steps');
+  if (key === 'logs') { requireString('completedAt'); requireString('routineId'); }
+  if (key === 'settings' && record.id !== 'current_settings') throw new Error('Invalid settings ID');
 }
 
 export async function importCompleteBackup(jsonData: string): Promise<{ success: boolean; message: string }> {
+  const previousLocalData = new Map<string, string | null>();
+  let localDataWritten = false;
   try {
-    const parsed = JSON.parse(jsonData);
-    if (!parsed || !parsed.data) {
-      return { success: false, message: 'ملف النسخة الاحتياطية غير صالح أو تالف' };
+    const parsed: unknown = JSON.parse(jsonData);
+    if (!isObject(parsed) || !isObject(parsed.data) || ![1, 2, 3].includes(Number(parsed.version))) throw new Error('Unsupported backup format');
+    const data = parsed.data;
+    const entries: Array<[string, Record<string, unknown>[]]> = [];
+    for (const [key, name] of Object.entries(BACKUP_TABLES)) {
+      if (!(key in data)) continue; // Legacy v1 backups contain only the original tables.
+      const records = data[key];
+      if (!Array.isArray(records)) throw new Error(`Invalid ${key} dataset`);
+      const seen = new Set<unknown>();
+      for (const record of records) {
+        validateRecord(key, record);
+        const id = key === 'schedule' ? record.dayOfWeek : key === 'dayPlans' ? record.date : record.id;
+        if (seen.has(id)) throw new Error(`Duplicate ${key} ID`);
+        seen.add(id);
+      }
+      entries.push([name, records]);
     }
-
-    const { routines, logs, schedule, settings } = parsed.data;
-
-    if (routines && Array.isArray(routines)) {
-      for (const r of routines) {
-        await db.routines.put(r);
+    if (!entries.length) throw new Error('Backup contains no supported datasets');
+    const localEntries: Array<[string, string]> = [];
+    if (parsed.localData !== undefined) {
+      if (!isObject(parsed.localData)) throw new Error('Invalid local data');
+      for (const [key, value] of Object.entries(parsed.localData)) {
+        if (!isPortableKey(key) || typeof value !== 'string') throw new Error('Invalid local data entry');
+        localEntries.push([key, value]);
+        previousLocalData.set(key, localStorage.getItem(key));
       }
     }
-
-    if (logs && Array.isArray(logs)) {
-      for (const l of logs) {
-        await db.workoutLogs.put(l);
-      }
-    }
-
-    if (schedule && Array.isArray(schedule)) {
-      for (const s of schedule) {
-        await db.weeklySchedule.put(s);
-      }
-    }
-
-    if (settings && Array.isArray(settings) && settings.length > 0) {
-      await db.settings.put(settings[0]);
-    }
-
+    // Merge valid records atomically. An invalid/write-failing file cannot partially restore Dexie tables.
+    await db.transaction('rw', entries.map(([name]) => db.table(name)), async () => {
+      for (const [name, records] of entries) if (records.length) await db.table(name).bulkPut(records);
+      localDataWritten = true;
+      for (const [key, value] of localEntries) localStorage.setItem(key, value);
+    });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
     return { success: true, message: 'تم استرجاع النسخة الاحتياطية بنجاح!' };
-  } catch (err: any) {
-    return { success: false, message: `فشل الاسترجاع: ${err.message || 'خطأ في تنسيق الملف'}` };
+  } catch (error: unknown) {
+    if (localDataWritten) {
+      for (const [key, value] of previousLocalData) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }
+        catch (restoreError) { console.error('Could not roll back local storage:', restoreError); }
+      }
+    }
+    return { success: false, message: `فشل الاسترجاع: ${error instanceof Error ? error.message : 'خطأ في تنسيق الملف'}` };
   }
 }

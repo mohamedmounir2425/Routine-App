@@ -67,5 +67,18 @@ export interface LifeTask {
   recurringCompletionDates?: string[];
   createdAt: string;
   updatedAt?: string;
+  // dueDate is the planned day; deadlineAt is a fixed delivery deadline.
+  deadlineAt?: string;
+  commitment?: 'must' | 'should' | 'could';
+  goalImpact?: 'high' | 'medium' | 'low';
+  dependsOnTaskIds?: string[];
+}
+
+export interface DayPlan {
+  date: string;
+  availableMinutes: number;
+  endTime: string;
+  essentialTaskIds: string[];
+  updatedAt: string;
 }
 
