@@ -114,3 +114,11 @@ Mobile form follow-up: prevented flex compression of the inventory controls/fiel
 - XLSX, CSV, TSV, pasted cells and free text now populate the editable grid before preview/save. Imported rows append to existing rows, enforce the combined 500-row limit, and offer immediate undo (cleared after grid edits).
 - No database/schema changes. Weekly meal/task planner remains outstanding: one Sunday–Saturday week, mobile day agenda and desktop seven-day view. Existing-item reviewed stocktake remains outstanding.
 - Validation: 195 existing deterministic scenarios passed; TypeScript passed. Browser/mobile visual acceptance has not been performed for this pass.
+
+
+## Inventory table workflow — 2026-11-01
+- Added Ant Design inventory table with shared search/filter results, pagination, and explicit quantity editing. Desktop defaults to table; mobile defaults to list, with all three views selectable.
+- Quantity editing captures the original row at edit start and uses existing audited/CAS-protected repository writes; errors retain input. Success describes local saving, not cloud confirmation.
+- Inline structured add supports name, unknown quantity, unit and place, retaining unit/place for subsequent entries. Submission locks prevent duplicate rapid saves.
+- Existing details dialog now occupies a side panel on desktop and full viewport on phones, retaining focus/discard handling.
+- No schema changes. Weekly planner and reviewed-existing-item stocktake are still outstanding. Visual browser acceptance remains outstanding.

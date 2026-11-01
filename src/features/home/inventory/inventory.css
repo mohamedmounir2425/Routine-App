@@ -31,3 +31,17 @@
 @media(max-width:800px){.inventory-view-list>li{grid-template-columns:1fr;gap:8px}.inventory-view-list .inventory-row-actions{grid-column:1;grid-row:auto;border-top:1px solid var(--home-border);padding-top:8px}.inventory-view-list .inventory-row-actions button{min-height:44px}.inventory-list.inventory-view-cards{grid-template-columns:1fr}}
 
 .inventory-mobile-field{display:flex;flex-direction:column;gap:6px}.inventory-mobile-field>span{font-size:12px;color:var(--home-muted)}
+
+/* Flat data workspace inspired by the supplied table reference. */
+.inventory-table-workspace{border:1px solid var(--home-border);border-radius:10px;overflow:hidden;background:var(--home-panel)}
+.inventory-table-workspace .ant-table-cell{border-inline-end:1px solid var(--home-border);vertical-align:middle}
+.inventory-table-workspace .inventory-name-button{white-space:normal;height:auto;text-align:start;padding:4px 0;color:var(--home-text);font-weight:500}
+.inventory-cell-button{min-width:70px;text-align:start}
+.inventory-cell-editor{display:flex;flex-direction:column;gap:6px;max-width:200px}
+.inventory-cell-editor small{color:var(--home-muted);font-size:11px}
+.inventory-inline-add{display:grid;grid-template-columns:minmax(150px,2fr) minmax(85px,1fr) minmax(100px,1fr) minmax(120px,1fr) auto;gap:10px;align-items:end;padding:14px;border-top:1px solid var(--home-border)}
+.inventory-inline-add label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;color:var(--home-muted)}
+.inventory-table-hint{font-size:12px;color:var(--home-muted);padding:0 14px 12px;line-height:1.8}
+@media(min-width:801px){.home-theme .inventory-dialog{inset-block:0;inset-inline-start:auto;inset-inline-end:0;transform:none;width:min(580px,90vw);max-height:100dvh;border-radius:0}}
+@media(max-width:800px){.inventory-inline-add{grid-template-columns:1fr 1fr}.inventory-inline-add label:first-child,.inventory-inline-add>button{grid-column:1/-1}.inventory-inline-add>button{min-height:44px}.inventory-inline-add input{font-size:16px}}
+@media(max-width:600px){.home-theme .inventory-dialog{top:0;bottom:0;width:100%;max-height:100dvh;border-radius:0}}
