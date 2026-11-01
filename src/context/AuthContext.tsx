@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { syncAllWithCloud, flushPendingSyncQueue, getPendingSyncCount } from '../db/syncEngine';
+import { syncAllWithCloud, flushPendingSyncQueue, getPendingSyncCount, retryFailedMutations } from '../db/syncEngine';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 export type AuthModalMode = 'signin' | 'signup' | 'forgot';
@@ -13,6 +13,7 @@ interface AuthContextType {
   isConfigured: boolean;
   syncStatus: SyncStatus;
   lastSyncedAt: Date | null;
+  syncError: string | null;
   pendingCount: number;
   // Modal controls
   isAuthModalOpen: boolean;
@@ -21,10 +22,10 @@ interface AuthContextType {
   closeAuthModal: () => void;
   setAuthModalMode: (mode: AuthModalMode) => void;
   // Auth operations
-  signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
-  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: any; data: any }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: { message: string } | null; data: Awaited<ReturnType<typeof supabase.auth.signUp>>['data'] | null }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: { message: string } | null }>;
   triggerSync: () => Promise<void>;
 }
 
@@ -35,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
 
@@ -54,37 +56,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const runSync = useCallback(async (userId: string) => {
     if (isSyncingRef.current || !isConfigured) return;
     isSyncingRef.current = true;
+    setSyncError(null);
     setSyncStatus('syncing');
 
     try {
       // First flush any pending offline mutations
       await flushPendingSyncQueue(userId);
       const remainingCount = await getPendingSyncCount(userId);
+      if (userRef.current?.id !== userId) return;
       setPendingCount(remainingCount);
+      if (remainingCount > 0) throw new Error(`توجد ${remainingCount} تعديلات لم تصل للسحابة. أعد محاولة المزامنة؛ لن يتم سحب بيانات فوقها.`);
 
       const result = await syncAllWithCloud(userId);
+      if (userRef.current?.id !== userId) return;
       if (result.success) {
         setSyncStatus('synced');
         setLastSyncedAt(new Date());
-        setTimeout(() => {
-          setSyncStatus((current) => (current === 'synced' ? 'idle' : current));
-        }, 3000);
       } else {
         setSyncStatus('error');
+        setSyncError(result.error || 'تعذرت المزامنة');
       }
     } catch (err) {
       console.error('Sync failed:', err);
-      setSyncStatus('error');
+      if (userRef.current?.id === userId) {
+        setSyncStatus('error');
+        setSyncError(err instanceof Error ? err.message : 'تعذرت المزامنة');
+      }
     } finally {
       isSyncingRef.current = false;
-      if (userId) {
-        getPendingSyncCount(userId).then(setPendingCount);
+      if (userRef.current?.id === userId) {
+        getPendingSyncCount(userId).then(count => { if (userRef.current?.id === userId) setPendingCount(count); }).catch(() => {});
       }
     }
   }, [isConfigured]);
 
   const triggerSync = useCallback(async () => {
     if (userRef.current?.id) {
+      await retryFailedMutations(userRef.current.id);
       await runSync(userRef.current.id);
     }
   }, [runSync]);
@@ -106,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check active session once on initial mount
     supabase.auth.getSession().then(({ data: { session: initSession } }) => {
+      userRef.current = initSession?.user ?? null;
       setSession(initSession);
       setUser(initSession?.user ?? null);
       setIsLoading(false);
@@ -120,7 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Listen for auth state changes (strictly once)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      userRef.current = newSession?.user ?? null;
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setIsLoading(false);
@@ -129,28 +139,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getPendingSyncCount(newSession.user.id).then(setPendingCount);
         if (!hasInitialSyncedRef.current) {
           hasInitialSyncedRef.current = true;
-          await runSync(newSession.user.id);
+          setTimeout(() => { void runSync(newSession.user.id); }, 0);
         }
       } else if (event === 'SIGNED_OUT') {
         hasInitialSyncedRef.current = false;
         setSyncStatus('idle');
+        setSyncError(null);
+        setLastSyncedAt(null);
         setPendingCount(0);
       }
     });
 
     // Listen for network reconnect to automatically flush offline mutation queue
-    const handleOnline = async () => {
-      if (userRef.current?.id) {
-        await flushPendingSyncQueue(userRef.current.id);
-        const count = await getPendingSyncCount(userRef.current.id);
-        setPendingCount(count);
-      }
+    const handleOnline = () => { if (userRef.current?.id) void runSync(userRef.current.id); };
+    const handlePending = () => {
+      setSyncStatus('idle');
+      if (userRef.current?.id) void getPendingSyncCount(userRef.current.id).then(setPendingCount).catch(() => {});
     };
+    const handleOffline = () => setSyncStatus('idle');
     window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('lifeos:sync-pending', handlePending);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('lifeos:sync-pending', handlePending);
     };
   }, [isConfigured, runSync]);
 
@@ -222,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isConfigured,
         syncStatus,
         lastSyncedAt,
+        syncError,
         pendingCount,
         isAuthModalOpen,
         authModalMode,

@@ -33,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user, syncStatus, openAuthModal, signOut, triggerSync } = useAuth();
+  const { user, syncStatus, syncError, pendingCount, lastSyncedAt, openAuthModal, signOut, triggerSync } = useAuth();
   const currentPath = location.pathname;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -229,14 +229,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                           ? 'bg-amber-400 animate-ping' 
                           : syncStatus === 'error'
                           ? 'bg-rose-400'
-                          : 'bg-emerald-400'
+                          : syncStatus === 'synced' ? 'bg-emerald-400' : 'bg-slate-400'
                       }`}
                       title={
                         syncStatus === 'syncing'
                           ? 'جاري المزامنة...'
                           : syncStatus === 'error'
-                          ? 'خطأ في المزامنة'
-                          : 'متزامن مع السحابة'
+                          ? (syncError || 'خطأ في المزامنة')
+                          : syncStatus === 'synced' ? 'اكتملت آخر محاولة مزامنة' : 'محفوظ على الجهاز؛ المزامنة غير مؤكدة'
                       }
                     />
                   </button>
@@ -254,7 +254,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <p className="text-[11px] text-slate-400 truncate" dir="ltr">{user.email}</p>
                         </div>
 
+                        <div role="status" className="px-2 py-2 text-[11px] leading-relaxed text-slate-300 break-words">
+                          {syncError || (pendingCount > 0 ? `تعديلات لم تتزامن: ${pendingCount}` : syncStatus === 'synced' ? 'اكتملت آخر محاولة مزامنة' : 'المزامنة غير مؤكدة؛ بياناتك على الجهاز')}
+                          {lastSyncedAt && <p className="text-slate-400 mt-1">آخر نجاح: {lastSyncedAt.toLocaleString('ar-EG')}</p>}
+                        </div>
                         <button
+                          disabled={syncStatus === 'syncing'}
                           onClick={() => {
                             triggerSync();
                             setIsUserMenuOpen(false);

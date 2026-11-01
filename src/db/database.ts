@@ -36,7 +36,7 @@ export interface PendingSyncItem {
     | 'workout_schedules';
   entityId: string;
   action: 'upsert' | 'delete';
-  data: any;
+  data: Record<string, unknown> | null;
   userId: string;
   timestamp: string;
   retryCount: number;
@@ -111,6 +111,9 @@ export class RoutineDatabase extends Dexie {
       tasks: 'id, spaceId, isCompleted, status, dueDate, priority, sourceType, projectId, planId'
     });
     this.version(6).stores({ dayPlans: 'date, updatedAt' });
+    this.version(7).stores({
+      pendingSync: '++id, entityId, userId, status, nextRetryAt, [table+entityId], [userId+table+entityId]',
+    });
   }
 }
 

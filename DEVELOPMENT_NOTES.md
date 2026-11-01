@@ -42,3 +42,13 @@ Before every import, the current portable snapshot is saved under the non-export
 To transfer manually: export JSON on the source device, transfer it privately, open Settings on the destination device, select the file, review conflicts and confirm. For an older phone copy, choose file values only after reviewing the summary. This workflow works locally without Supabase, does not initiate a cloud upload, and does not resolve cloud/account sync issues. Auth credentials and pending cloud operations are not transferred.
 
 Verification adds preview-without-write, both conflict choices, safety snapshot exclusion/capture, and quota-failure protection scenarios. Visual mobile/device acceptance remains to be performed.
+
+## Sync safety foundation (2026-11-01)
+
+Dexie v7 adds the missing userId and account/entity queue indexes without changing portable backup v3. Required cloud tables are preflighted with ordered 500-row pages; a rejected table or invalid local write aborts the entire pull before/within one local transaction. Local edits during the read and remaining queued operations block pull. Bulk write errors propagate instead of being swallowed.
+
+Queue squashing is transactional and account-scoped. Acknowledgement and retry updates compare the exact sent revision before deleting/updating it; failed operations remain counted and manual sync resets retry state. Delete intentions are retained even after offline creates. Flushes within the module are serialized, and queue payload ownership is checked before upload. This does not implement cross-tab network leases or server optimistic concurrency.
+
+The account menu shows errors, pending totals and last-success time; idle/offline no longer means synced. Supabase APIs are not awaited inside auth state callbacks. Tests cover these data/queue protections using fake-indexeddb and a fake cloud transport; they do not connect to production.
+
+No Supabase schema changes were applied in this foundation. Missing projects/plans/plan_milestones/workout_schedules now cause an explicit failure rather than a partial successful pull. Schema alignment, complete field mappers, local account isolation, conflict review, deletion propagation and real two-device acceptance remain required before relying on full mobile sync.

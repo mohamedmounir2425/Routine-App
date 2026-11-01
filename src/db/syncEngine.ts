@@ -1,5 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { db } from './database';
+import { fetchCloudSnapshot, syncErrorMessage } from './cloudSyncChecks';
+import { queueMutation, pendingMutationCount, processSyncQueue, retryFailedMutations } from './syncQueue';
+export { retryFailedMutations };
+
 import { 
   WorkoutLog, 
   UserSettings, 
@@ -27,171 +32,162 @@ export interface SyncResult {
 /**
  * Pull all data belonging to the user from Supabase and update local Dexie DB.
  */
-export async function pullUserDataFromCloud(userId: string): Promise<SyncResult> {
-  if (!isSupabaseConfigured()) {
+export async function pullUserDataFromCloud(userId: string, client: SupabaseClient = supabase): Promise<SyncResult> {
+  if (client === supabase && !isSupabaseConfigured()) {
     return { success: false, error: 'Supabase is not configured' };
   }
 
   try {
-    // 1. Pull Profile / Settings
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    if (await pendingMutationCount(userId)) throw new Error('توجد تعديلات لم تصل للسحابة؛ لن يتم استبدال بيانات الجهاز.');
+    const tables = [db.settings, db.workoutLogs, db.routines, db.weeklySchedule,
+      db.azkarLogs, db.tasks, db.projects, db.plans, db.planMilestones, db.workoutSchedules];
+    const before = await db.transaction('r', tables, () => Promise.all(tables.map(async table => JSON.stringify(await table.toArray()))));
+    const snapshot = await fetchCloudSnapshot(client, userId);
+    return await db.transaction('rw', [...tables, db.pendingSync], async () => {
+      for (let index = 0; index < tables.length; index++) {
+        if (JSON.stringify(await tables[index].toArray()) !== before[index]) throw new Error('تم تعديل بيانات الجهاز أثناء السحب؛ أعد المزامنة لحماية التعديل الجديد.');
+      }
+      if (await pendingMutationCount(userId)) throw new Error('وصل تعديل جديد أثناء المزامنة؛ أعد المحاولة.');
+      // 1. Pull Profile / Settings
+      const profile = snapshot.profiles[0];
 
-    if (profile) {
-      const localSettings = await db.settings.get('current_settings');
-      const updatedSettings: UserSettings = {
-        id: 'current_settings',
-        userName: profile.user_name || localSettings?.userName || 'بطل الروتين',
-        theme: profile.theme || localSettings?.theme || 'dark',
-        activePlanType: profile.active_plan_type || localSettings?.activePlanType || '4-weeks',
-        currentWeekNumber: profile.current_week_number || localSettings?.currentWeekNumber || 1,
-        currentLevelNumber: profile.current_level_number || localSettings?.currentLevelNumber || 1,
-        soundBeepsEnabled: profile.sound_beeps_enabled ?? localSettings?.soundBeepsEnabled ?? true,
-        voiceCoachEnabled: profile.voice_coach_enabled ?? localSettings?.voiceCoachEnabled ?? true,
-        voiceLanguage: profile.voice_language || localSettings?.voiceLanguage || 'ar',
-        defaultRestSeconds: profile.default_rest_seconds || localSettings?.defaultRestSeconds || 20,
-        reminderEnabled: profile.reminder_enabled ?? localSettings?.reminderEnabled ?? false,
-        reminderTime: profile.reminder_time || localSettings?.reminderTime || '18:30',
-        reminderDays: profile.reminder_days || localSettings?.reminderDays || [6, 1, 3, 4],
-        workBreakReminderEnabled: profile.work_break_reminder_enabled ?? localSettings?.workBreakReminderEnabled ?? false,
-        workBreakIntervalMinutes: profile.work_break_interval_minutes || localSettings?.workBreakIntervalMinutes || 45,
-        screenWakeLock: profile.screen_wake_lock ?? localSettings?.screenWakeLock ?? true,
-        workoutVideoAutoplay: profile.workout_video_autoplay ?? localSettings?.workoutVideoAutoplay ?? true,
-        workoutVideoMuted: profile.workout_video_muted ?? localSettings?.workoutVideoMuted ?? true,
-        workoutVideoLoop: profile.workout_video_loop ?? localSettings?.workoutVideoLoop ?? true,
-        workoutDefaultViewMode: profile.workout_default_view_mode || localSettings?.workoutDefaultViewMode || 'video',
-        enabledSpaces: profile.enabled_spaces || localSettings?.enabledSpaces || ['worship', 'health', 'work', 'plans'],
-        hasCompletedOnboarding: profile.has_completed_onboarding ?? localSettings?.hasCompletedOnboarding ?? true,
-      };
-      await db.settings.put(updatedSettings);
-    }
+      if (profile) {
+        const localSettings = await db.settings.get('current_settings');
+        const updatedSettings: UserSettings = {
+          ...localSettings,
+          id: 'current_settings',
+          userName: profile.user_name || localSettings?.userName || 'بطل الروتين',
+          theme: profile.theme || localSettings?.theme || 'dark',
+          activePlanType: profile.active_plan_type || localSettings?.activePlanType || '4-weeks',
+          currentWeekNumber: profile.current_week_number || localSettings?.currentWeekNumber || 1,
+          currentLevelNumber: profile.current_level_number || localSettings?.currentLevelNumber || 1,
+          soundBeepsEnabled: profile.sound_beeps_enabled ?? localSettings?.soundBeepsEnabled ?? true,
+          voiceCoachEnabled: profile.voice_coach_enabled ?? localSettings?.voiceCoachEnabled ?? true,
+          voiceLanguage: profile.voice_language || localSettings?.voiceLanguage || 'ar',
+          defaultRestSeconds: profile.default_rest_seconds || localSettings?.defaultRestSeconds || 20,
+          reminderEnabled: profile.reminder_enabled ?? localSettings?.reminderEnabled ?? false,
+          reminderTime: profile.reminder_time || localSettings?.reminderTime || '18:30',
+          reminderDays: profile.reminder_days || localSettings?.reminderDays || [6, 1, 3, 4],
+          workBreakReminderEnabled: profile.work_break_reminder_enabled ?? localSettings?.workBreakReminderEnabled ?? false,
+          workBreakIntervalMinutes: profile.work_break_interval_minutes || localSettings?.workBreakIntervalMinutes || 45,
+          screenWakeLock: profile.screen_wake_lock ?? localSettings?.screenWakeLock ?? true,
+          workoutVideoAutoplay: profile.workout_video_autoplay ?? localSettings?.workoutVideoAutoplay ?? true,
+          workoutVideoMuted: profile.workout_video_muted ?? localSettings?.workoutVideoMuted ?? true,
+          workoutVideoLoop: profile.workout_video_loop ?? localSettings?.workoutVideoLoop ?? true,
+          workoutDefaultViewMode: profile.workout_default_view_mode || localSettings?.workoutDefaultViewMode || 'video',
+          enabledSpaces: profile.enabled_spaces || localSettings?.enabledSpaces || ['worship', 'health', 'work', 'plans'],
+          hasCompletedOnboarding: profile.has_completed_onboarding ?? localSettings?.hasCompletedOnboarding ?? true,
+        };
+        await db.settings.put(updatedSettings);
+      }
 
-    // 2. Pull Workout Logs
-    const { data: cloudLogs } = await supabase
-      .from('workout_logs')
-      .select('*')
-      .eq('user_id', userId);
+      // 2. Pull Workout Logs
+      const cloudLogs = snapshot.workout_logs;
 
-    if (cloudLogs && cloudLogs.length > 0) {
-      const mappedLogs: WorkoutLog[] = cloudLogs.map((l) => ({
-        id: l.id,
-        routineId: l.routine_id,
-        routineName: l.routine_name,
-        completedAt: l.completed_at,
-        durationMinutes: l.duration_minutes,
-        exercisesCompleted: l.exercises_completed,
-        totalExercises: l.total_exercises,
-        weekNumber: l.week_number,
-        sessionCode: l.session_code,
-        prePainScore: l.pre_pain_score,
-        postPainScore: l.post_pain_score,
-        difficultyRating: l.difficulty_rating,
-        notes: l.notes,
-      }));
-      await db.workoutLogs.bulkPut(mappedLogs);
-    }
+      if (cloudLogs && cloudLogs.length > 0) {
+        const mappedLogs: WorkoutLog[] = cloudLogs.map((l) => ({
+          id: l.id,
+          routineId: l.routine_id,
+          routineName: l.routine_name,
+          completedAt: l.completed_at,
+          durationMinutes: l.duration_minutes,
+          exercisesCompleted: l.exercises_completed,
+          totalExercises: l.total_exercises,
+          weekNumber: l.week_number,
+          sessionCode: l.session_code,
+          prePainScore: l.pre_pain_score,
+          postPainScore: l.post_pain_score,
+          difficultyRating: l.difficulty_rating,
+          notes: l.notes,
+        }));
+        await db.workoutLogs.bulkPut(mappedLogs);
+      }
 
-    // 3. Pull Custom Routines
-    const { data: cloudRoutines } = await supabase
-      .from('custom_routines')
-      .select('*')
-      .eq('user_id', userId);
+      // 3. Pull Custom Routines
+      const cloudRoutines = snapshot.custom_routines;
 
-    if (cloudRoutines && cloudRoutines.length > 0) {
-      const mappedRoutines: Routine[] = cloudRoutines.map((r) => ({
-        id: r.id,
-        name: r.name,
-        description: r.description || '',
-        exerciseIds: r.exercise_ids || [],
-        totalEstimatedMinutes: r.total_estimated_minutes || 10,
-        level: r.level || 'gentle',
-        tag: r.tag || 'تمرين مخصص',
-        isCustom: true,
-        customExerciseConfigs: r.custom_exercise_configs || {},
-      }));
-      await db.routines.bulkPut(mappedRoutines);
-    }
+      if (cloudRoutines && cloudRoutines.length > 0) {
+        const mappedRoutines: Routine[] = cloudRoutines.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description || '',
+          exerciseIds: r.exercise_ids || [],
+          totalEstimatedMinutes: r.total_estimated_minutes || 10,
+          level: r.level || 'gentle',
+          tag: r.tag || 'تمرين مخصص',
+          isCustom: true,
+          customExerciseConfigs: r.custom_exercise_configs || {},
+        }));
+        await db.routines.bulkPut(mappedRoutines);
+      }
 
-    // 4. Pull Weekly Schedule
-    const { data: cloudSchedule } = await supabase
-      .from('weekly_schedule')
-      .select('*')
-      .eq('user_id', userId);
+      // 4. Pull Weekly Schedule
+      const cloudSchedule = snapshot.weekly_schedule;
 
-    if (cloudSchedule && cloudSchedule.length > 0) {
-      const mappedSchedule: WeeklyScheduleItem[] = cloudSchedule.map((s) => ({
-        dayOfWeek: s.day_of_week,
-        dayNameAr: s.day_name_ar,
-        routineId: s.routine_id,
-        isRestDay: s.is_rest_day,
-        restReason: s.rest_reason,
-        sessionCode: s.session_code,
-        weekNumber: s.week_number,
-      }));
-      await db.weeklySchedule.bulkPut(mappedSchedule);
-    }
+      if (cloudSchedule && cloudSchedule.length > 0) {
+        const mappedSchedule: WeeklyScheduleItem[] = cloudSchedule.map((s) => ({
+          dayOfWeek: s.day_of_week,
+          dayNameAr: s.day_name_ar,
+          routineId: s.routine_id,
+          isRestDay: s.is_rest_day,
+          restReason: s.rest_reason,
+          sessionCode: s.session_code,
+          weekNumber: s.week_number,
+        }));
+        await db.weeklySchedule.bulkPut(mappedSchedule);
+      }
 
-    // 5. Pull Azkar Logs
-    const { data: cloudAzkar } = await supabase
-      .from('azkar_logs')
-      .select('*')
-      .eq('user_id', userId);
+      // 5. Pull Azkar Logs
+      const cloudAzkar = snapshot.azkar_logs;
 
-    if (cloudAzkar && cloudAzkar.length > 0) {
-      const mappedAzkar: AzkarLog[] = cloudAzkar.map((a) => ({
-        id: a.id,
-        date: a.date,
-        categoryKey: a.category_key,
-        categoryArabic: a.category_arabic,
-        totalDhikr: a.total_dhikr,
-        completedDhikr: a.completed_dhikr,
-        isFullyCompleted: a.is_fully_completed,
-        durationSeconds: a.duration_seconds,
-        completedAt: a.completed_at,
-      }));
-      await db.azkarLogs.bulkPut(mappedAzkar);
-    }
+      if (cloudAzkar && cloudAzkar.length > 0) {
+        const mappedAzkar: AzkarLog[] = cloudAzkar.map((a) => ({
+          id: a.id,
+          date: a.date,
+          categoryKey: a.category_key,
+          categoryArabic: a.category_arabic,
+          totalDhikr: a.total_dhikr,
+          completedDhikr: a.completed_dhikr,
+          isFullyCompleted: a.is_fully_completed,
+          durationSeconds: a.duration_seconds,
+          completedAt: a.completed_at,
+        }));
+        await db.azkarLogs.bulkPut(mappedAzkar);
+      }
 
-    // 6. Pull Life Tasks
-    const { data: cloudTasks } = await supabase
-      .from('life_tasks')
-      .select('*')
-      .eq('user_id', userId);
+      // 6. Pull Life Tasks
+      const cloudTasks = snapshot.life_tasks;
 
-    if (cloudTasks && cloudTasks.length > 0) {
-      // Planning metadata remains local until a matching remote schema is deployed.
-      const localTasks = new Map((await db.tasks.toArray()).map(task => [task.id, task]));
-      const mappedTasks: LifeTask[] = cloudTasks.map((t) => ({
-        ...localTasks.get(t.id),
-        id: t.id,
-        spaceId: t.space_id,
-        title: t.title,
-        description: t.description,
-        dueDate: t.due_date,
-        scheduledTime: t.scheduled_time,
-        estimatedMinutes: t.estimated_minutes,
-        priority: t.priority,
-        isCompleted: t.is_completed,
-        completedAt: t.completed_at,
-        isRecurring: t.is_recurring,
-        recurrenceRule: t.recurrence_rule,
-        sourceType: t.source_type,
-        sourceId: t.source_id,
-        projectId: t.project_id,
-        planId: t.plan_id,
-        milestoneId: t.milestone_id,
-        recurringCompletionDates: t.recurring_completion_dates,
-        createdAt: t.created_at,
-      }));
-      await db.tasks.bulkPut(mappedTasks);
-    }
+      if (cloudTasks && cloudTasks.length > 0) {
+        // Preserve local planning metadata until its matching remote schema is deployed.
+        const localTasks = new Map((await db.tasks.toArray()).map(task => [task.id, task]));
+        const mappedTasks: LifeTask[] = cloudTasks.map((t) => ({
+          ...localTasks.get(t.id),
+          id: t.id,
+          spaceId: t.space_id,
+          title: t.title,
+          description: t.description,
+          dueDate: t.due_date,
+          scheduledTime: t.scheduled_time,
+          estimatedMinutes: t.estimated_minutes,
+          priority: t.priority,
+          isCompleted: t.is_completed,
+          completedAt: t.completed_at,
+          isRecurring: t.is_recurring,
+          recurrenceRule: t.recurrence_rule,
+          sourceType: t.source_type,
+          sourceId: t.source_id,
+          projectId: t.project_id,
+          planId: t.plan_id,
+          milestoneId: t.milestone_id,
+          recurringCompletionDates: t.recurring_completion_dates,
+          createdAt: t.created_at,
+        }));
+        await db.tasks.bulkPut(mappedTasks);
+      }
 
-    // 7. Safely pull Projects (tolerant if table not yet created on Supabase)
-    try {
-      const { data: cloudProjects } = await supabase.from('projects').select('*').eq('user_id', userId);
+      // 7. Pull Projects (all required tables have been checked before local writes)
+      const cloudProjects = snapshot.projects;
       if (cloudProjects && cloudProjects.length > 0) {
         const mappedProjects: HomeProject[] = cloudProjects.map((p) => ({
           id: p.id,
@@ -214,13 +210,9 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
         }));
         await db.projects.bulkPut(mappedProjects);
       }
-    } catch {
-      // Table may not exist yet in remote Supabase schema
-    }
 
-    // 8. Safely pull Plans
-    try {
-      const { data: cloudPlans } = await supabase.from('plans').select('*').eq('user_id', userId);
+      // 8. Safely pull Plans
+      const cloudPlans = snapshot.plans;
       if (cloudPlans && cloudPlans.length > 0) {
         const mappedPlans: GoalPlan[] = cloudPlans.map((p) => ({
           id: p.id,
@@ -236,11 +228,9 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
         }));
         await db.plans.bulkPut(mappedPlans);
       }
-    } catch {}
 
-    // 9. Safely pull Plan Milestones
-    try {
-      const { data: cloudMilestones } = await supabase.from('plan_milestones').select('*').eq('user_id', userId);
+      // 9. Safely pull Plan Milestones
+      const cloudMilestones = snapshot.plan_milestones;
       if (cloudMilestones && cloudMilestones.length > 0) {
         const mappedMilestones: PlanMilestone[] = cloudMilestones.map((m) => ({
           id: m.id,
@@ -253,11 +243,9 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
         }));
         await db.planMilestones.bulkPut(mappedMilestones);
       }
-    } catch {}
 
-    // 10. Safely pull Workout Schedules
-    try {
-      const { data: cloudSchedules } = await supabase.from('workout_schedules').select('*').eq('user_id', userId);
+      // 10. Safely pull Workout Schedules
+      const cloudSchedules = snapshot.workout_schedules;
       if (cloudSchedules && cloudSchedules.length > 0) {
         const mappedSchedules: WorkoutScheduleEntry[] = cloudSchedules.map((s) => ({
           id: s.id,
@@ -270,28 +258,28 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
         }));
         await db.workoutSchedules.bulkPut(mappedSchedules);
       }
-    } catch {}
 
-    return {
-      success: true,
-      pulledCounts: {
-        logs: cloudLogs?.length || 0,
-        tasks: cloudTasks?.length || 0,
-        azkar: cloudAzkar?.length || 0,
-        routines: cloudRoutines?.length || 0,
-      },
-    };
-  } catch (err: any) {
+      return {
+        success: true,
+        pulledCounts: {
+          logs: cloudLogs?.length || 0,
+          tasks: cloudTasks?.length || 0,
+          azkar: cloudAzkar?.length || 0,
+          routines: cloudRoutines?.length || 0,
+        },
+      };
+    });
+  } catch (err: unknown) {
     console.error('Error pulling user data from Supabase:', err);
-    return { success: false, error: err?.message || 'Unknown error' };
+    return { success: false, error: syncErrorMessage(err) };
   }
 }
 
 /**
  * Push all local data to Supabase (e.g. on first login or manual sync).
  */
-export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> {
-  if (!isSupabaseConfigured()) {
+export async function pushLocalDataToCloud(userId: string, client: SupabaseClient = supabase): Promise<SyncResult> {
+  if (client === supabase && !isSupabaseConfigured()) {
     return { success: false, error: 'Supabase is not configured' };
   }
 
@@ -299,7 +287,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
     // 1. Push Profile / Settings
     const localSettings = await db.settings.get('current_settings');
     if (localSettings) {
-      await supabase.from('profiles').upsert({
+      await client.from('profiles').upsert({
         id: userId,
         user_name: localSettings.userName,
         theme: localSettings.theme || 'dark',
@@ -323,7 +311,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         enabled_spaces: localSettings.enabledSpaces || ['worship', 'health', 'work', 'plans'],
         has_completed_onboarding: localSettings.hasCompletedOnboarding ?? true,
         updated_at: new Date().toISOString(),
-      });
+      }).throwOnError();
     }
 
     // 2. Push Workout Logs
@@ -345,7 +333,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         difficulty_rating: l.difficultyRating,
         notes: l.notes,
       }));
-      await supabase.from('workout_logs').upsert(records);
+      await client.from('workout_logs').upsert(records).throwOnError();
     }
 
     // 3. Push Custom Routines
@@ -363,7 +351,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         tag: r.tag,
         custom_exercise_configs: r.customExerciseConfigs || {},
       }));
-      await supabase.from('custom_routines').upsert(records);
+      await client.from('custom_routines').upsert(records).throwOnError();
     }
 
     // 4. Push Weekly Schedule
@@ -381,7 +369,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         week_number: s.weekNumber,
         updated_at: new Date().toISOString(),
       }));
-      await supabase.from('weekly_schedule').upsert(records);
+      await client.from('weekly_schedule').upsert(records).throwOnError();
     }
 
     // 5. Push Azkar Logs
@@ -399,7 +387,7 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         duration_seconds: a.durationSeconds,
         completed_at: a.completedAt,
       }));
-      await supabase.from('azkar_logs').upsert(records);
+      await client.from('azkar_logs').upsert(records).throwOnError();
     }
 
     // 6. Push Life Tasks
@@ -426,91 +414,83 @@ export async function pushLocalDataToCloud(userId: string): Promise<SyncResult> 
         milestone_id: t.milestoneId,
         recurring_completion_dates: t.recurringCompletionDates,
       }));
-      await supabase.from('life_tasks').upsert(records);
+      await client.from('life_tasks').upsert(records).throwOnError();
     }
 
     // 7. Safely push Projects
-    try {
-      const localProjects = await db.projects.toArray();
-      if (localProjects.length > 0) {
-        const records = localProjects.map((p) => ({
-          id: p.id,
-          user_id: userId,
-          title: p.title,
-          description: p.description,
-          status: p.status,
-          steps: p.steps,
-          next_action_id: p.nextActionId,
-          next_action_title: p.nextActionTitle,
-          target_date: p.targetDate,
-          created_at: p.createdAt,
-          completed_at: p.completedAt,
-        }));
-        await supabase.from('projects').upsert(records);
-      }
-    } catch {}
+    const localProjects = await db.projects.toArray();
+    if (localProjects.length > 0) {
+      const records = localProjects.map((p) => ({
+        id: p.id,
+        user_id: userId,
+        title: p.title,
+        description: p.description,
+        status: p.status,
+        steps: p.steps,
+        next_action_id: p.nextActionId,
+        next_action_title: p.nextActionTitle,
+        target_date: p.targetDate,
+        created_at: p.createdAt,
+        completed_at: p.completedAt,
+      }));
+      await client.from('projects').upsert(records).throwOnError();
+    }
 
     // 8. Safely push Plans
-    try {
-      const localPlans = await db.plans.toArray();
-      if (localPlans.length > 0) {
-        const records = localPlans.map((p) => ({
-          id: p.id,
-          user_id: userId,
-          title: p.title,
-          category: p.category,
-          description: p.description,
-          target_date: p.targetDate,
-          status: p.status,
-          color: p.color,
-          icon: p.icon,
-          created_at: p.createdAt,
-          updated_at: p.updatedAt,
-        }));
-        await supabase.from('plans').upsert(records);
-      }
-    } catch {}
+    const localPlans = await db.plans.toArray();
+    if (localPlans.length > 0) {
+      const records = localPlans.map((p) => ({
+        id: p.id,
+        user_id: userId,
+        title: p.title,
+        category: p.category,
+        description: p.description,
+        target_date: p.targetDate,
+        status: p.status,
+        color: p.color,
+        icon: p.icon,
+        created_at: p.createdAt,
+        updated_at: p.updatedAt,
+      }));
+      await client.from('plans').upsert(records).throwOnError();
+    }
 
     // 9. Safely push Plan Milestones
-    try {
-      const localMilestones = await db.planMilestones.toArray();
-      if (localMilestones.length > 0) {
-        const records = localMilestones.map((m) => ({
-          id: m.id,
-          user_id: userId,
-          plan_id: m.planId,
-          title: m.title,
-          order: m.order,
-          is_completed: m.isCompleted,
-          target_date: m.targetDate,
-          completed_at: m.completedAt,
-        }));
-        await supabase.from('plan_milestones').upsert(records);
-      }
-    } catch {}
+    const localMilestones = await db.planMilestones.toArray();
+    if (localMilestones.length > 0) {
+      const records = localMilestones.map((m) => ({
+        id: m.id,
+        user_id: userId,
+        plan_id: m.planId,
+        title: m.title,
+        order: m.order,
+        is_completed: m.isCompleted,
+        target_date: m.targetDate,
+        completed_at: m.completedAt,
+      }));
+      await client.from('plan_milestones').upsert(records).throwOnError();
+    }
 
     // 10. Safely push Workout Schedules
-    try {
-      const localSchedules = await db.workoutSchedules.toArray();
-      if (localSchedules.length > 0) {
-        const records = localSchedules.map((s) => ({
-          id: s.id,
-          user_id: userId,
-          day_of_week: s.dayOfWeek,
-          routine_id: s.routineId,
-          scheduled_time: s.scheduledTime,
-          session_label: s.sessionLabel,
-          duration_minutes: s.durationMinutes,
-          is_enabled: s.isEnabled,
-        }));
-        await supabase.from('workout_schedules').upsert(records);
-      }
-    } catch {}
+    const localSchedules = await db.workoutSchedules.toArray();
+    if (localSchedules.length > 0) {
+      const records = localSchedules.map((s) => ({
+        id: s.id,
+        user_id: userId,
+        day_of_week: s.dayOfWeek,
+        routine_id: s.routineId,
+        scheduled_time: s.scheduledTime,
+        session_label: s.sessionLabel,
+        duration_minutes: s.durationMinutes,
+        is_enabled: s.isEnabled,
+      }));
+      await client.from('workout_schedules').upsert(records).throwOnError();
+    }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error pushing local data to Supabase:', err);
-    return { success: false, error: err?.message || 'Unknown error' };
+    return { success: false, error: syncErrorMessage(err) };
   }
 }
 
@@ -524,12 +504,14 @@ export async function syncAllWithCloud(userId: string): Promise<SyncResult> {
     return { success: false, error: 'Supabase is not configured' };
   }
 
+  if (await pendingMutationCount(userId)) return { success: false, error: 'توجد تعديلات مؤجلة أو فاشلة لم تصل للسحابة.' };
   const pullResult = await pullUserDataFromCloud(userId);
   if (!pullResult.success) {
     return pullResult;
   }
 
   const pushResult = await pushLocalDataToCloud(userId);
+  if (pushResult.success && await pendingMutationCount(userId)) return { success: false, error: 'وصلت تعديلات جديدة لم تتزامن بعد؛ أعد المحاولة.' };
   return pushResult;
 }
 
@@ -538,170 +520,45 @@ export async function syncAllWithCloud(userId: string): Promise<SyncResult> {
  * Prevents false positives from captive portals or local WiFi.
  */
 export async function checkRealConnectivity(): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    return false;
-  }
-  if (!isSupabaseConfigured()) {
-    return false;
-  }
-
+  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) return false;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    // Light ping to Supabase auth endpoint
-    const { error } = await supabase.auth.getSession();
-    clearTimeout(timeoutId);
+    const { error } = await supabase.from('profiles').select('id').limit(0).abortSignal(controller.signal);
     return !error;
-  } catch {
-    return false;
-  }
+  } catch { return false; } finally { clearTimeout(timeout); }
 }
 
-/**
- * Enqueue a mutation to Dexie pendingSync store with Operation Squashing.
- * 
- * Squashing Logic:
- * - If item already in queue with action 'upsert' and new action is 'delete':
- *   - If it was created offline (never sent to cloud), cancel both completely!
- *   - If it existed on cloud, change pending action to 'delete'.
- * - If item already in queue with action 'upsert' and new action is 'upsert':
- *   - Overwrite data with latest values and update timestamp (LWW).
- */
+/** Persist account-scoped mutations; preserve deletion intentions until acknowledged. */
 export async function enqueuePendingMutation(
   item: Omit<import('./database').PendingSyncItem, 'id' | 'retryCount' | 'status'>,
-  isCreatedOffline: boolean = false
+  isCreatedOffline = false,
 ): Promise<void> {
-  try {
-    const existing = await db.pendingSync
-      .where('[table+entityId]')
-      .equals([item.table, item.entityId])
-      .first();
-
-    if (existing) {
-      if (existing.action === 'upsert' && item.action === 'delete') {
-        const wasCreatedOffline = existing.isCreatedOffline || isCreatedOffline;
-        if (wasCreatedOffline) {
-          // Cancel both: was created offline, now deleted offline. Never touch cloud!
-          if (existing.id) await db.pendingSync.delete(existing.id);
-          return;
-        } else {
-          // Record existed on cloud prior to this session -> must retain 'delete' action for cloud sync
-          await db.pendingSync.put({
-            ...existing,
-            action: 'delete',
-            data: null,
-            timestamp: item.timestamp,
-            status: 'pending',
-            retryCount: 0,
-            nextRetryAt: undefined,
-          });
-          return;
-        }
-      }
-
-      // If updating an existing queued upsert
-      if (item.action === 'upsert') {
-        await db.pendingSync.put({
-          ...existing,
-          action: 'upsert',
-          data: item.data,
-          timestamp: item.timestamp,
-          status: 'pending',
-          retryCount: 0,
-          nextRetryAt: undefined,
-          isCreatedOffline: existing.isCreatedOffline || isCreatedOffline,
-        });
-        return;
-      }
-    }
-
-    // Add new pending item
-    await db.pendingSync.add({
-      ...item,
-      status: 'pending',
-      retryCount: 0,
-      isCreatedOffline: item.isCreatedOffline ?? isCreatedOffline,
-    });
-  } catch (err) {
-    console.error('Failed to enqueue pending sync mutation:', err);
-  }
+  await queueMutation(item, isCreatedOffline);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('lifeos:sync-pending'));
 }
 
-/**
- * Process and flush the offline mutation queue with Exponential Backoff & Max Retries (3).
- * Non-blocking: individual failed items do not freeze the rest of the queue.
- */
+let flushTail: Promise<unknown> = Promise.resolve();
 export async function flushPendingSyncQueue(userId: string): Promise<{ processed: number; failed: number }> {
-  const isConnected = await checkRealConnectivity();
-  if (!isConnected) {
-    return { processed: 0, failed: 0 };
-  }
-
-  const now = Date.now();
-  const queue = await db.pendingSync
-    .where('userId')
-    .equals(userId)
-    .and((item) => item.status === 'pending' && (!item.nextRetryAt || item.nextRetryAt <= now))
-    .toArray();
-
-  if (queue.length === 0) {
-    return { processed: 0, failed: 0 };
-  }
-
-  let processed = 0;
-  let failed = 0;
-
-  for (const item of queue) {
-    try {
-      let error: any = null;
-
-      if (item.action === 'delete') {
-        const res = await supabase.from(item.table).delete().eq('id', item.entityId);
-        error = res.error;
-      } else {
-        const res = await supabase.from(item.table).upsert(item.data);
-        error = res.error;
+  const work = async () => {
+    if (!await checkRealConnectivity()) return { processed: 0, failed: 0 };
+    return processSyncQueue(userId, async item => {
+      if (item.action === 'upsert' && (item.table === 'profiles' ? item.data?.id : item.data?.user_id) !== userId) {
+        throw new Error('هوية التعديل لا تطابق الحساب؛ لم يتم إرساله.');
       }
-
-      if (!error) {
-        if (item.id) await db.pendingSync.delete(item.id);
-        processed++;
-      } else {
-        throw error;
-      }
-    } catch (err: any) {
-      failed++;
-      const retries = (item.retryCount || 0) + 1;
-      const isMaxExceeded = retries >= 3;
-
-      await db.pendingSync.put({
-        ...item,
-        retryCount: retries,
-        status: isMaxExceeded ? 'failed' : 'pending',
-        // Exponential backoff: 2s, 4s, 8s
-        nextRetryAt: isMaxExceeded ? undefined : Date.now() + Math.pow(2, retries) * 1000,
-        lastError: err?.message || 'Network error',
-      });
-    }
-  }
-
-  return { processed, failed };
+      const result = item.action === 'delete'
+        ? await supabase.from(item.table).delete().eq('id', item.entityId).eq(item.table === 'profiles' ? 'id' : 'user_id', userId)
+        : await supabase.from(item.table).upsert(item.data!);
+      if (result.error) throw result.error;
+    });
+  };
+  const pending = flushTail.then(work, work);
+  flushTail = pending.catch(() => undefined);
+  return pending;
 }
 
-/**
- * Get count of active pending mutations
- */
 export async function getPendingSyncCount(userId: string): Promise<number> {
-  try {
-    return await db.pendingSync
-      .where('userId')
-      .equals(userId)
-      .and((item) => item.status === 'pending')
-      .count();
-  } catch {
-    return 0;
-  }
+  return pendingMutationCount(userId);
 }
 
 /**
