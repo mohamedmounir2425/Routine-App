@@ -1,6 +1,7 @@
 import { DayPlan, LifeTask } from '../../types';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { TodayItem } from './todayTypes';
+import { isSpaceTaskDue } from './taskCalendar';
 
 export type DecisionReason = 'deadline_risk' | 'deadline_today' | 'prayer_window' | 'chosen' | 'must' | 'current' | 'goal' | 'priority' | 'flexible';
 export interface DayDecision {
@@ -26,12 +27,12 @@ export function decideToday(items: TodayItem[], tasks: LifeTask[], plan: DayPlan
   for (const task of tasks) {
     if (sourceItems.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
     const deadline = task.deadlineAt ? new Date(task.deadlineAt) : undefined;
-    const critical = (deadline && deadline <= end) || picked.has(task.id) || (task.commitment === 'must' && (!task.dueDate || task.dueDate <= today));
+    const critical = (deadline && deadline <= end) || picked.has(task.id) || (task.commitment === 'must' && isSpaceTaskDue(task, today));
     if (!critical) continue;
     const completed = task.isRecurring ? !!task.recurringCompletionDates?.includes(today) : task.isCompleted;
     if (completed && !picked.has(task.id) && task.completedAt && getLocalDateString(new Date(task.completedAt)) !== today) continue;
     sourceItems.push({ id: `essential_${task.id}_${today}`, sourceId: task.id, title: task.title, space: task.spaceId,
-      type: task.spaceId === 'work' ? 'work_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : 'home_task',
+      type: task.spaceId === 'work' ? 'work_task' : task.spaceId === 'health' ? 'health_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : 'home_task',
       scheduledTime: task.scheduledTime, estimatedMinutes: task.estimatedMinutes, priority: task.priority,
       timeTag: completed ? 'completed' : 'flexible', status: completed ? 'completed' : 'pending', isCompleted: completed,
       actionType: 'toggle_task', sortKey: 0 });

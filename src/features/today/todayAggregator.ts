@@ -1,6 +1,7 @@
 import { db } from '../../db/database';
 import { getTaskTimeTag } from './todayScheduling';
 import { isSpaceTaskDue } from './spaceTaskService';
+import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 import { 
   TodayItem, 
   TodayAggregationResult, 
@@ -110,7 +111,10 @@ export async function aggregateTodayFeed(
   }
 ): Promise<TodayAggregationResult> {
   const targetDateStr = options?.customDateStr || getLocalDateString();
-  const prefs = options?.preferences || DEFAULT_TODAY_PREFERENCES;
+  const requested = options?.preferences || DEFAULT_TODAY_PREFERENCES;
+  const settings = await db.settings.get('current_settings');
+  const enabled = new Set(getEnabledSpaceConfigs(settings?.enabledSpaces).map(space => space.id));
+  const prefs = { ...requested, showWorship: requested.showWorship && enabled.has('worship'), showHealth: requested.showHealth && enabled.has('health'), showWork: requested.showWork && enabled.has('work'), showHome: requested.showHome && enabled.has('home'), showPlans: requested.showPlans && enabled.has('plans') };
   const isTargetToday = targetDateStr === getLocalDateString();
 
   const rawItems: TodayItem[] = [];
@@ -752,7 +756,7 @@ export async function aggregateTodayFeed(
   const allTasks = await db.tasks.toArray();
   const tasksById = new Map(allTasks.map(task => [task.id, task]));
   const visible: Record<LifeSpaceId, boolean> = { worship: prefs.showWorship, health: prefs.showHealth, work: prefs.showWork, home: prefs.showHome, plans: prefs.showPlans };
-  const reconciled = rawItems.filter(item => item.actionType !== 'toggle_task' || !tasksById.has(item.sourceId) || isSpaceTaskDue(tasksById.get(item.sourceId)!, targetDateStr));
+  const reconciled = rawItems.filter(item => visible[item.space] && (item.actionType !== 'toggle_task' || !tasksById.has(item.sourceId) || isSpaceTaskDue(tasksById.get(item.sourceId)!, targetDateStr)));
   for (const task of allTasks) {
     if (!visible[task.spaceId] || !isSpaceTaskDue(task, targetDateStr) || reconciled.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
     if (task.spaceId === 'work' && prefs.workOptions?.top3Only) continue;

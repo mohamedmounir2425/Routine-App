@@ -4,7 +4,14 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { syncSingleTask, syncSingleTaskDelete } from './syncEngine';
 import { getLocalDateString } from '../utils/dateUtils';
 
-export async function saveTask(task: LifeTask): Promise<void> {
+export function syncTaskInBackground(task: LifeTask): void {
+  if (!isSupabaseConfigured()) return;
+  void supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session?.user) await syncSingleTask(session.user.id, task);
+  }).catch(error => console.warn('Background task sync could not start:', error));
+}
+
+export async function saveTask(task: LifeTask, options?: { localOnly?: boolean }): Promise<void> {
   try {
     const updated: LifeTask = { ...task };
     if (!updated.status) {
@@ -19,13 +26,7 @@ export async function saveTask(task: LifeTask): Promise<void> {
       );
     }
     await db.tasks.put(updated);
-    if (isSupabaseConfigured()) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          syncSingleTask(session.user.id, updated);
-        }
-      });
-    }
+    if (!options?.localOnly) syncTaskInBackground(updated);
   } catch (error) {
     console.error('Failed to save task:', error);
     throw error;

@@ -10,8 +10,10 @@ Run `npm run build` for the TypeScript and production/PWA build. Run `npm test` 
 
 - Space cards filter the agenda across Worship, Health, Work, Home and Plans. The All spaces button clears the space selection.
 - Search and status filters narrow the agenda. The completed filter expands completed items.
-- Add and edit tasks from Today, with date, time, duration, priority, recurrence and a plan link. Plan-space tasks require an active plan so they can appear in the feed.
-- Selecting Health exposes an inline workout scheduler. A scheduled workout repeats on the current weekday; it is not a one-off appointment.
+- Add and edit tasks in all five spaces from Today, with date, time, duration, priority, daily/weekday/weekly recurrence and an optional plan link. Plans can contain standalone tasks without requiring an existing goal.
+- Health supports ordinary health tasks as well as a separate inline workout scheduler. A scheduled workout repeats on the current weekday; it is not a one-off appointment.
+- Work/Home tasks can link a project from the same space. Health, Worship and Plans have dedicated task routes, while Work and Home retain their existing task screens. All read the same task records as Today.
+- Reveal-on-save enables the chosen space and its task feed in the same local transaction as the task write. Future tasks remain saved for their scheduled day, with confirmation in Today. The space manager hides spaces without deleting records and keeps at least one enabled.
 - Prayer completion, Quran page increments, project step completion and task completion are available in the feed. Workout and Azkar actions launch their existing players/views.
 - The space tools panel links to the full domain tools for project, plan, worship and routine administration.
 - Dexie mutations refresh the feed; the page also refreshes each minute and when returning to the tab. Visible save/load errors offer recovery instead of silent failure.
@@ -21,7 +23,7 @@ Run `npm run build` for the TypeScript and production/PWA build. Run `npm test` 
 
 Initialization now inserts missing built-in records transactionally instead of clearing custom data and schedules. Forced exercise refresh preserves favorites. Database loading failures show a retry view.
 
-Backup format v2 contains all 11 portable database tables and supported local prayer, Quran, Tasbeeh, focus history and preference data. Authentication credentials, active focus runtime state and the account/device sync queue are excluded. Restore merges by record ID rather than deleting records absent from the file. It accepts legacy v1 exports, restores exercises, validates datasets before writes and rolls back Dexie writes on failure. LocalStorage writes are compensated if the transaction fails; IndexedDB and localStorage cannot provide a single native cross-store transaction.
+Backup format v3 contains all 12 portable database tables, including day plans, and supported local prayer, Quran, Tasbeeh, focus history and preference data. Authentication credentials, active focus runtime state and the account/device sync queue are excluded. Restore merges by record ID rather than deleting records absent from the file. It accepts legacy v1/v2 exports, restores exercises, validates datasets before writes and rolls back Dexie writes on failure. LocalStorage writes are compensated if the transaction fails; IndexedDB and localStorage cannot provide a single native cross-store transaction.
 
 ## Verification and remaining work
 

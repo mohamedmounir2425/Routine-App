@@ -3,10 +3,11 @@ import { calculatePlanProgress } from '../../db/goalPlanQueries';
 import { addDaysToLocalDate, getLocalDateString } from '../../utils/dateUtils';
 import { getDailyPrayersState, getQuranDailyStatus } from '../../db/worshipQueries';
 import { getFocusHistory } from '../work/focus/focusService';
+import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 
 export async function loadTodayInsights(date = getLocalDateString()) {
-  const [tasks, plans, milestones, workouts, azkar, dayPlan] = await Promise.all([
-    db.tasks.toArray(), db.plans.toArray(), db.planMilestones.toArray(), db.workoutLogs.toArray(), db.azkarLogs.toArray(), db.dayPlans.get(date),
+  const [tasks, plans, milestones, workouts, azkar, dayPlan, settings] = await Promise.all([
+    db.tasks.toArray(), db.plans.toArray(), db.planMilestones.toArray(), db.workoutLogs.toArray(), db.azkarLogs.toArray(), db.dayPlans.get(date), db.settings.get('current_settings'),
   ]);
   const completedOn = (task: typeof tasks[number], day: string) => task.isRecurring ? !!task.recurringCompletionDates?.includes(day) : !!task.isCompleted && !!task.completedAt && getLocalDateString(new Date(task.completedAt)) === day;
   const goals = await Promise.all(plans.filter(plan => plan.status === 'active').map(async plan => {
@@ -28,7 +29,7 @@ export async function loadTodayInsights(date = getLocalDateString()) {
       + (getQuranDailyStatus(day).pagesRead > 0 ? 1 : 0);
     return { date: day, count: taskCount + activityCount, focusMinutes: focusHistory.filter(session => getLocalDateString(new Date(session.date)) === day).reduce((sum, session) => sum + session.minutes, 0) };
   });
-  return { tasks, dayPlan, goals, week, todayAchievements: tasks.filter(task => completedOn(task, date)) };
+  return { tasks, dayPlan, goals, week, enabledSpaces: getEnabledSpaceConfigs(settings?.enabledSpaces).map(space => space.id), todayAchievements: tasks.filter(task => completedOn(task, date)) };
 }
 
 export type TodayInsights = Awaited<ReturnType<typeof loadTodayInsights>>;

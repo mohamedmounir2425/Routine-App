@@ -10,6 +10,7 @@ import { ProgressStats } from './features/stats';
 import { SettingsView } from './features/settings';
 import { WorkoutPlayer } from './features/player';
 import { SpacesPage } from './features/spaces/SpacesPage';
+import { SpaceTasksView } from './features/spaces/SpaceTasksView';
 import { SpacesOnboardingModal } from './features/spaces/components/SpacesOnboardingModal';
 import { WorshipSpace } from './features/worship/WorshipSpace';
 import { WorkSpace } from './features/work/WorkSpace';
@@ -224,6 +225,7 @@ export function App() {
             }
           />
           <Route path="/health/*" element={<Navigate to="/health" replace />} />
+          <Route path="/health/tasks" element={<SpaceTasksView spaceId="health" />} />
 
           {/* 💼 Work Space */}
           <Route path="/work/*" element={<WorkSpace />} />

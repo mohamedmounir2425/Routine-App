@@ -33,6 +33,8 @@ export async function runTodayDecisionTests() {
   check('Completion counts essentials separately from the general task count', choose([{ ...selected, isCompleted: true }, optional], plan).essentialCompleted === 1);
   check('Recommendation order is deterministic for equal-priority items', choose([task('b'), task('a')]).recommendation?.item.id === choose([task('a'), task('b')]).recommendation?.item.id);
   check('Expired day capacity clamps to zero', choose([selected], { ...plan, endTime: '11:00' }).capacity === 0);
+  const weekdayMust = task('weekday-must', { isRecurring: true, recurrenceRule: 'weekdays', commitment: 'must', dueDate: '2026-10-30' });
+  check('The assistant does not resurrect recurring essentials outside their calendar', decideToday([], [weekdayMust], undefined, now).essentials.length === 0);
 
   await db.tasks.clear(); await db.dayPlans.clear();
   await db.tasks.bulkPut([optional, fixed, selected]);

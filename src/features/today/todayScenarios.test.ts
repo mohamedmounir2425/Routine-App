@@ -1216,7 +1216,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     });
     const workTaskHidden = !feedHiddenWork.items.some((item) => item.sourceId === 'task-work-s16');
 
-    // Feed with showWork: true -> task-work-s16 MUST appear
+    // A display preference cannot override a globally disabled space.
     const feedVisibleWork = await aggregateTodayFeed({
       preferences: {
         ...updatedSettings1.todayPreferences!,
@@ -1224,7 +1224,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
       },
       customDateStr: testDate,
     });
-    const workTaskAppears = feedVisibleWork.items.some((item) => item.sourceId === 'task-work-s16');
+    const disabledSpaceStaysHidden = !feedVisibleWork.items.some((item) => item.sourceId === 'task-work-s16');
 
     // 6. Verify Settings Affecting Progress: Weights scale dynamically when a space is disabled/hidden
     // Active spaces: Worship 30, Health 25, Home 20 (Total: 75)
@@ -1258,12 +1258,15 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     });
     const restoredSettings = await getUserSettings();
     const restoredValid = restoredSettings.enabledSpaces?.length === 5 && restoredSettings.todayPreferences?.showWork === true;
+    const feedReenabled = await aggregateTodayFeed({ preferences: restoredSettings.todayPreferences, customDateStr: testDate });
+    const workTaskAppears = feedReenabled.items.some(item => item.sourceId === 'task-work-s16');
 
     const passed = Boolean(
       hasInitialSpaces &&
       hasInitialPrefs &&
       spaceDisabledValid &&
       workTaskHidden &&
+      disabledSpaceStaysHidden &&
       workTaskAppears &&
       progressWeightsScaled &&
       dbReloadValid &&

@@ -1,4 +1,5 @@
 import { useState, useEffect, useTransition } from 'react';
+import { liveQuery } from 'dexie';
 import { useNavigate } from 'react-router-dom';
 import { 
   initializeDatabase, 
@@ -52,6 +53,14 @@ export function useAppController() {
 
   // Theme hook
   const { theme, setTheme, handleToggleTheme, handleSetTheme } = useAppTheme(settings, setSettings);
+
+  useEffect(() => {
+    const subscription = liveQuery(() => db.settings.get('current_settings')).subscribe({
+      next: current => { if (current) { setSettings(current); if (current.theme) setTheme(current.theme); } },
+      error: error => console.error('Settings subscription failed:', error),
+    });
+    return () => subscription.unsubscribe();
+  }, [setTheme]);
 
   // Custom routines hook
   const {

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Home, Target } from 'lucide-react';
 import { db } from '../../../db/database';
-import { LifeTask, LifeSpaceId, TaskPriority, GoalPlan } from '../../../types';
-import { saveTask } from '../../../db/taskQueries';
+import { LifeTask, LifeSpaceId, TaskPriority, GoalPlan, LifeProject } from '../../../types';
+import { saveSpaceTask } from '../spaceTaskService';
+import { LIFE_SPACES_CONFIG } from '../../../config/spacesConfig';
+import { useTranslation } from '../../../i18n';
 import { getLocalDateString } from '../../../utils/dateUtils';
 import { PlanningDialog } from '../../../components/common/PlanningDialog';
 import { getLocalTimeString } from '../../../utils/dateUtils';
@@ -10,7 +11,7 @@ import { getLocalTimeString } from '../../../utils/dateUtils';
 interface TodayQuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTaskCreated: () => void;
+  onTaskCreated: (task: LifeTask) => void | Promise<void>;
   initialTask?: LifeTask | null;
   initialSpace?: LifeSpaceId;
 }
@@ -22,6 +23,7 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
   initialTask,
   initialSpace = 'work',
 }) => {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [spaceId, setSpaceId] = useState<LifeSpaceId>('work');
   const [priority, setPriority] = useState<TaskPriority>('medium');
@@ -41,6 +43,10 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
   const [unblocked, setUnblocked] = useState(false);
   const [waitingOn, setWaitingOn] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [projects, setProjects] = useState<LifeProject[]>([]);
+  const [recurrenceRule, setRecurrenceRule] = useState<NonNullable<LifeTask['recurrenceRule']>>('daily');
+  const [revealInToday, setRevealInToday] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +67,10 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
       setUnblocked(false);
       setWaitingOn(initialTask?.waitingContext?.waitingOn || '');
       setFollowUpDate(initialTask?.waitingContext?.followUpDate || '');
+      setProjectId(initialTask?.projectId || '');
+      setRecurrenceRule(initialTask?.recurrenceRule || 'daily');
+      setRevealInToday(true);
+      db.projects.toArray().then(setProjects).catch(() => setError('تعذر تحميل المشروعات.'));
       db.tasks.toArray().then(tasks => setOtherTasks(tasks.filter(task => task.id !== initialTask?.id && !task.isCompleted))).catch(() => setError('تعذر تحميل المهام المرتبطة.'));
       db.plans.toArray().then((plans) => {
         setActivePlans(plans.filter((p) => p.status === 'active' || p.id === initialTask?.planId));
@@ -71,7 +81,6 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || isSubmitting) return;
-    if (spaceId === 'plans' && !planId) { setError('اختر خطة لظهور المهمة في جدول اليوم.'); return; }
 
     setIsSubmitting(true);
     setError('');
@@ -86,6 +95,8 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
         priority,
         scheduledTime: scheduledTime ? scheduledTime : undefined,
         planId: planId || undefined,
+        projectId: projectId || undefined,
+        milestoneId: current?.planId === planId ? current?.milestoneId : undefined,
         commitment,
         deadlineAt: deadline ? new Date(deadline).toISOString() : undefined,
         goalImpact,
@@ -93,7 +104,7 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
         status: current?.status === 'WAITING' && unblocked ? 'TODO' : current?.status,
         waitingContext: current?.status === 'WAITING' ? (unblocked ? undefined : { ...current.waitingContext, waitingOn, followUpDate: followUpDate || undefined }) : current?.waitingContext,
         isRecurring,
-        recurrenceRule: isRecurring ? (current?.recurrenceRule || 'daily') : undefined,
+        recurrenceRule: isRecurring ? recurrenceRule : undefined,
         dueDate: dueDate || getLocalDateString(),
         estimatedMinutes: estimatedMinutes ? Number(estimatedMinutes) : undefined,
         isCompleted: current?.isCompleted || false,
@@ -101,8 +112,8 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
-      await saveTask(newTask);
-      onTaskCreated();
+      const savedTask = await saveSpaceTask(newTask, { revealInToday });
+      await onTaskCreated(savedTask);
       onClose();
       // Reset form
       setTitle('');
@@ -111,7 +122,7 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
       setIsRecurring(false);
     } catch (err) {
       console.error('Failed to create quick task:', err);
-      setError('تعذر حفظ المهمة. بياناتك في النافذة محفوظة للمحاولة مرة أخرى.');
+      setError(err instanceof Error ? err.message : 'تعذر حفظ المهمة. حاول مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -125,46 +136,8 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
         {/* Space Selector */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-300 block">المساحة:</label>
-          <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setSpaceId('worship')} aria-pressed={spaceId === 'worship'} className={`py-2 px-3 rounded-xl border text-xs font-bold ${spaceId === 'worship' ? 'border-emerald-500 text-emerald-300 bg-emerald-500/20' : 'border-white/10 text-slate-400 bg-white/5'}`}>🕌 العبادة</button>
-              <button
-                type="button"
-                onClick={() => setSpaceId('work')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                  spaceId === 'work'
-                    ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-sm'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>العمل</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSpaceId('home')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                  spaceId === 'home'
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Home className="w-3.5 h-3.5" />
-                <span>المنزل</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSpaceId('plans')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                  spaceId === 'plans'
-                    ? 'bg-violet-500/20 border-violet-500 text-violet-300 shadow-sm'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                <span>الخطط</span>
-              </button>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" role="group" aria-label="مساحة المهمة">
+              {LIFE_SPACES_CONFIG.map(space => <button key={space.id} type="button" aria-pressed={spaceId === space.id} onClick={() => { setSpaceId(space.id); setProjectId(''); }} className={`py-3 px-2 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 ${spaceId === space.id ? 'border-emerald-400 text-emerald-300 bg-emerald-500/15' : 'border-white/10 text-slate-400 bg-white/5'}`}><span className="text-lg">{space.icon}</span>{t(space.titleKey as Parameters<typeof t>[0])}</button>)}
             </div>
           </div>
 
@@ -173,21 +146,21 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300 block">اختر الخطة التابعة لها:</label>
               <select
-                required={spaceId === 'plans'}
                 value={planId}
                 onChange={(e) => setPlanId(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-violet-500"
               >
-                <option value="">{spaceId === 'plans' ? 'اختر خطة نشطة' : 'بدون ربط بهدف'}</option>
+                <option value="">مهمة مستقلة — بدون ربط بهدف</option>
                 {activePlans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title}
                   </option>
                 ))}
               </select>
-              {activePlans.length === 0 && <p className="text-xs text-amber-300">أنشئ خطة نشطة في مساحة الخطط أولاً، أو اختر مساحة أخرى للمهمة.</p>}
+              {activePlans.length === 0 && <p className="text-xs text-slate-400">تقدر تحفظ المهمة دلوقتي وتربطها بهدف لاحقًا.</p>}
             </div>
           )}
+          {(spaceId === 'work' || spaceId === 'home') && <label className="planning-field"><span>المشروع (اختياري)</span><select value={projectId} onChange={e => setProjectId(e.target.value)}><option value="">بدون مشروع</option>{projects.filter(project => (project.spaceId || 'home') === spaceId && (project.status !== 'completed' || project.id === projectId)).map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>}
 
           {/* Task Title */}
           <div className="space-y-1.5">
@@ -244,7 +217,7 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
             <label className="text-xs text-slate-300 space-y-1.5 block"><span>المدة بالدقائق</span><input type="number" min="1" max="1440" step="1" value={estimatedMinutes} onChange={e => setEstimatedMinutes(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15" /></label>
           </div>
           {/* Recurring Toggle (Home/Work) */}
-          {spaceId !== 'plans' && (
+          {(
             <label className="flex items-center gap-2 cursor-pointer pt-1">
               <input
                 type="checkbox"
@@ -253,10 +226,12 @@ export const TodayQuickAddModal: React.FC<TodayQuickAddModalProps> = ({
                 className="w-4 h-4 rounded text-emerald-500 bg-white/5 border-white/10"
               />
               <span className="text-xs text-slate-300 font-medium">
-                تكرار يومي كـ روتين دائم
+                مهمة متكررة
               </span>
             </label>
           )}
+          {isRecurring && <label className="planning-field"><span>التكرار</span><select value={recurrenceRule} onChange={e => setRecurrenceRule(e.target.value as NonNullable<LifeTask['recurrenceRule']>)}><option value="daily">كل يوم</option><option value="weekdays">الاثنين إلى الجمعة</option><option value="weekly">أسبوعيًا في نفس يوم تاريخ البداية</option></select></label>}
+          <label className="flex items-start gap-2 text-xs text-slate-300"><input type="checkbox" checked={revealInToday} onChange={e => setRevealInToday(e.target.checked)} /><span>فعّل المساحة واظهر مهامها في Today بعد الحفظ. المهمة المستقبلية هتظهر في يومها.</span></label>
 
           {/* Submit Button */}
           <div className="pt-2 flex items-center justify-end gap-2">
