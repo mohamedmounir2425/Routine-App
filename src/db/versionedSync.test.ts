@@ -4,6 +4,8 @@ import { captureUnversionedRows, resolveSyncConflict, synchronizeVersioned, type
 import type { LifeTask } from '../types';
 import { emptyRecipe } from '../features/home/recipes/recipeModel';
 import { saveRecipe, deleteRecipe } from '../features/home/recipes/recipeRepository';
+import { emptyInventory } from '../features/home/inventory/inventoryModel';
+import { saveInventoryBatch } from '../features/home/inventory/inventoryRepository';
 
 function fakeCloud() {
   const records = new Map<string, { row: SyncRow | null; revision: number; deleted: boolean; last_operation_id: string }>();
@@ -138,6 +140,29 @@ export async function runVersionedSyncTests() {
     await resolveSyncConflict(f.b, 'owner', 'recipes:' + recipe.id, 'remote');
     await deleteRecipe((await f.a.recipes.get(recipe.id))!, f.a, 'owner'); await f.syncA(); await f.syncB();
     check('Recipe deletion propagates without resurrecting another device copy', !await f.b.recipes.get(recipe.id) && f.cloud.records.get('recipes:' + recipe.id)?.deleted === true);
+    f.a.close(); f.b.close();
+  }
+  {
+    const f = await fixture();
+    const [item] = await saveInventoryBatch([{ mode: 'count', draft: { ...emptyInventory(), name: 'Milk', quantity: 4, unit: 'كيس' } }], f.a, 'owner');
+    const up = await f.syncA(), down = await f.syncB();
+    check('Inventory and its history synchronize together to a second device', up.success && down.success && (await f.b.inventoryItems.get(item.id))?.history.length === 1 && (await f.b.inventoryItems.get(item.id))?.packageSize === null);
+    const second = (await f.b.inventoryItems.get(item.id))!;
+    await saveInventoryBatch([{ original: item, mode: 'count', draft: { ...item, quantity: 2 } }], f.a, 'owner');
+    await saveInventoryBatch([{ original: second, mode: 'count', draft: { ...second, quantity: 3 } }], f.b, 'owner');
+    await f.syncA(); const conflict = await f.syncB();
+    check('Concurrent audits preserve both quantities and histories for review', !conflict.success && (await f.b.inventoryItems.get(item.id))?.quantity === 3 && f.cloud.records.get('inventory_items:' + item.id)?.row?.quantity === 2 && !!await f.b.syncConflicts.get('inventory_items:' + item.id));
+    f.a.close(); f.b.close();
+  }
+  {
+    const f = await fixture();
+    const legacyTransport = { ...f.cloud.transport, snapshot: async () => { const result = await f.cloud.transport.snapshot(); delete result.tables.inventory_items; return result; } };
+    await f.a.tasks.put(task);
+    const result = await synchronizeVersioned(f.a, 'owner', legacyTransport);
+    check('An older cloud schema can still synchronize existing spaces without an inventory table', result.success && f.cloud.records.get(key)?.row?.title === task.title);
+    await saveInventoryBatch([{ mode: 'count', draft: { ...emptyInventory(), name: 'Pending inventory' } }], f.a, 'owner');
+    const pending = await synchronizeVersioned(f.a, 'owner', legacyTransport);
+    check('Pending inventory remains local and reports incomplete sync until its cloud schema is enabled', !pending.success && await f.a.inventoryItems.count() === 1 && await f.a.pendingSync.count() > 0);
     f.a.close(); f.b.close();
   }
   return results;

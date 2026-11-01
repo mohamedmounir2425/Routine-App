@@ -94,3 +94,15 @@ Validation: 173 existing scenarios passed, production/PWA build passed, and focu
 ## Recipe editing and home light/navigation corrections
 
 Separated edit/save button identities and prevented the edit click default action so switching modes cannot accidentally submit a newly reused button. Added a successful same-ID edit regression. Shared home theme tokens now cover warm light and dark content, portalled dialogs, global header and mobile dock. Mobile header hides secondary actions in a disclosure menu and uses a compact 52px row.
+
+## Inventory and audit workflow
+
+Added inventoryItems (Dexie v10), portable JSON backup, versioned cloud sync and per-item history carried atomically with stock. Count/purchase/correction modes distinguish replacement from additive stock; unknown is never zero. Multi-row preview supports structured entry, free text, Excel paste with reordered headers and combined quantities, plus lazy XLSX/CSV/TSV import. Full-location audits require explicit review of omitted rows. Stale source records abort the whole local batch. Separate expiry/place batches do not merge. Shopping additions are explicit.
+
+Applied 20261101181201_add_inventory_audits to LifeOS; the real two-identity transactional integration passed and fixture rollback was confirmed. Security Advisor added no findings. 194 local cases passed before final UI packaging. Optional inventory capability prevents older cloud deployments from blocking existing spaces.
+
+In response to UI feedback, adopted pinned Ant Design components with a light/dark provider, reduced the bulk entry to primary columns plus expandable details, and support direct multiline Excel paste into grid cells. Header/section spacing and full-image recipe cards were adjusted; native drop-downs in the new inventory workflow were replaced. Visual device acceptance is still required.
+
+Final validation: 195 deterministic cases passed, actual XLSX ZIP/XML decoding passed with Arabic text and numeric quantities, TypeScript and focused lint passed after Ant Design installation. Final production/PWA build is recorded with this commit. Real Supabase inventory checks and rollback confirmed. Browser/mobile visual acceptance remains unverified; source changes address the supplied screenshots.
+
+Mobile form follow-up: prevented flex compression of the inventory controls/fields, removed operation choices from new-item entry, and grouped nonessential fields behind optional details. New-item basics are name, quantity/unit and place. Unsaved close/delete now opens a separate, centered Ant Design confirmation rather than changing an easy-to-miss footer. Empty bulk forms close immediately; populated forms retain data when continuing. The underlying Radix form disables its focus trap while the confirmation is active.

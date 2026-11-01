@@ -66,6 +66,7 @@ export function useContextualSwipeNavigation({
   const resolveSpaceNavIndex = useCallback(() => {
     if (!activeSpace || !activeSpace.navigation.length) return -1;
     const nav = activeSpace.navigation;
+    if (activeSpace.id === 'home' && currentPath.startsWith('/home/inventory')) return 1;
     if (activeSpace.id === 'home' && /\/home\/(tasks|routines|maintenance|projects)/.test(currentPath)) return nav.length - 1;
 
     // Exact match

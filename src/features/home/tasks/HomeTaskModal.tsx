@@ -1,3 +1,4 @@
+import { HomeSelect } from '../HomeSelect';
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Sparkles, Folder, ShoppingCart } from 'lucide-react';
 import { LifeTask, TaskPriority, HomeProject } from '../../../types';
@@ -232,7 +233,7 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
                 <Folder className="w-3.5 h-3.5 text-amber-400" />
                 <span>ربط بمشروع منزلي (اختياري)</span>
               </label>
-              <select
+              <HomeSelect
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
@@ -243,7 +244,7 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
                     {p.title}
                   </option>
                 ))}
-              </select>
+              </HomeSelect>
             </div>
           )}
 

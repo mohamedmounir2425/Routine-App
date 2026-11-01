@@ -200,3 +200,32 @@ html.light .home-theme .text-amber-300,html.light .home-theme .text-amber-400 {c
 .home-header-menu>div {position:absolute;inset-inline-end:0;top:46px;width:220px;padding:12px;background:var(--home-panel);border:1px solid var(--home-border);border-radius:14px;box-shadow:0 8px 25px #0002;display:flex;flex-direction:column;gap:8px;z-index:60}
 .home-header-menu button {min-height:44px;color:var(--home-text)}
 @media(max-width:767px){.home-navbar>div {height:52px!important;padding-inline:12px!important}.home-navbar .home-header-extra{display:none!important}.home-navbar .home-brand-slogan,.home-navbar .home-brand-badge{display:none!important}.home-navbar .home-brand-title{font-size:15px}.home-navbar .home-brand-mark{width:32px;height:32px}.home-navbar .home-brand{gap:7px}.home-navbar .home-global-actions{gap:5px}.home-header{padding-block:11px}.home-header .home-eyebrow,.home-header-note{display:none}.home-symbol{width:34px;height:34px}.home-header h1{font-size:18px}.home-primary-nav{top:52px}.home-content{padding-top:16px}}
+
+/* Explicit section surfaces override the old global header rules. */
+.home-space .home-primary-nav {padding-top:12px}
+.home-space .home-section-heading,.home-space .recipe-hero {background:var(--home-panel)!important;border:1px solid var(--home-border);border-radius:16px;padding:20px 22px;margin-bottom:18px;box-shadow:none!important;backdrop-filter:none!important}
+.home-space .home-section-heading::before,.home-space .recipe-hero::before,.home-space .home-section-heading::after,.home-space .recipe-hero::after {display:none!important}
+.home-space .home-section-heading h2,.home-space .recipe-hero h2 {font-size:28px;line-height:1.5;margin:0}
+.home-space .home-search,.recipe-library .recipe-search {background:var(--home-input)!important;min-height:40px}
+.home-space .home-search input,.recipe-library .recipe-search input {min-height:40px;padding-block:7px;font-size:14px;background:transparent!important;color:var(--home-text)!important}
+.home-space .home-list-toolbar {align-items:center}
+.home-space .home-search {max-width:540px}
+.home-space .home-content {padding-inline:24px}
+.home-theme .ant-input,.home-theme .ant-select,.home-theme .ant-picker {font-family:inherit}
+html.light .home-theme .ant-input,html.light .home-theme .ant-input-affix-wrapper,html.light .home-theme .ant-select-selector {background:var(--home-panel)!important;color:var(--home-text)!important;border-color:var(--home-border)!important}
+.home-theme .ant-btn-primary {color:var(--home-button-text)}
+.home-theme .ant-input:focus-visible {outline:none}
+@media(max-width:600px){.home-space .home-primary-nav{padding-top:9px}.home-space .home-content{padding-inline:12px}.home-space .home-section-heading,.home-space .recipe-hero{padding:16px;gap:14px}.home-space .home-section-heading h2,.home-space .recipe-hero h2{font-size:24px}.home-space .home-search input,.recipe-library .recipe-search input{font-size:16px}.home-space .home-search{max-width:none}}
+
+.home-space .home-header {background:var(--home-bg)!important;box-shadow:none!important;backdrop-filter:none!important}
+.home-space .home-panel-heading {background:transparent!important;box-shadow:none!important}
+.home-theme .recipe-dialog-header,.home-theme .inventory-dialog-header {background:var(--home-panel)!important;box-shadow:none!important}
+.home-inventory-glance{display:flex;gap:12px;align-items:center;border-top:1px solid var(--home-border);padding-top:17px;margin-top:20px;color:var(--home-accent);text-decoration:none;min-height:64px}.home-inventory-glance>div{flex:1}.home-inventory-glance strong{font-size:14px;color:var(--home-text)}.home-inventory-glance p{font-size:12px;color:var(--home-muted);margin-top:5px}
+
+/* Beat the legacy global html.light utility overrides on both navigation surfaces. */
+html.light .home-app{background:var(--home-page)!important}
+html.light .home-navbar{background:var(--home-bg)!important;border-color:var(--home-border)!important}
+html.light .home-navbar .liquid-glass-dock,html.light .home-navbar .liquid-glass-pill,html.light .home-mobile-dock .liquid-glass-dock{background:var(--home-panel)!important;border-color:var(--home-border)!important;box-shadow:none!important}
+html.light .home-navbar nav button[aria-current=page],html.light .home-mobile-dock button[aria-current=page]{color:var(--home-accent)!important}
+
+.home-legacy-dialog .ant-select input{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}

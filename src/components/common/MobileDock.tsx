@@ -36,13 +36,14 @@ export const MobileDock: React.FC = () => {
 
     setSessionActive(isAzkarSessionActive());
 
-    const handleSessionChange = (e: any) => {
+    const handleSessionChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ active?: boolean }>).detail;
       if (!location.pathname.startsWith('/worship/azkar')) {
         setSessionActive(false);
         return;
       }
-      if (e?.detail?.active !== undefined) {
-        setSessionActive(e.detail.active);
+      if (detail?.active !== undefined) {
+        setSessionActive(detail.active);
       } else {
         setSessionActive(isAzkarSessionActive());
       }

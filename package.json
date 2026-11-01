@@ -16,12 +16,14 @@
     "@radix-ui/react-tabs": "^1.2.1",
     "@supabase/supabase-js": "^2.115.0",
     "adhan": "^4.4.6",
+    "antd": "6.6.8",
     "canvas-confetti": "^1.9.4",
     "dexie": "^4.4.5",
     "lucide-react": "^1.41.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.3",
+    "read-excel-file": "9.3.14"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

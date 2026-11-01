@@ -25,3 +25,5 @@ Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent
 Migration 20261101140907_versioned_sync_mutations.sql is applied. The transactional integration test in tests/versioned_sync_integration.sql passed against LifeOS and rolled back its temporary accounts. This supersedes the earlier expired fixture attempt.
 
 Recipe library migration: 20261101143722_add_recipe_library.sql. It adds recipes with owner-only SELECT, revokes direct writes, validates nested recipe JSON and extends versioned RPC whitelists/snapshots. tests/recipe_library_integration.sql passed against LifeOS and rolled back all synthetic fixtures.
+
+Inventory migration: 20261101181201_add_inventory_audits.sql is applied. inventory_items stores per-batch stock and its history in one CAS entity. Owner-only SELECT, RPC-only writes, quantity/state constraints and history validation are enforced. tests/inventory_integration.sql passed against LifeOS; all synthetic fixtures were rolled back.

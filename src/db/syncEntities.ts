@@ -10,6 +10,7 @@ export interface SyncEntity {
   fromCloud: (value: SyncRow, local?: SyncRow) => SyncRow;
   localKey: (value: SyncRow) => string | number;
   include?: (value: SyncRow) => boolean;
+  optional?: boolean;
 }
 const object = (value: object): SyncRow => value as SyncRow;
 const pairs = (names: string) => names.split(' ').map(pair => pair.split(':'));
@@ -22,6 +23,11 @@ function simple(cloud: string, local: string, names: string): SyncEntity {
   };
 }
 export const SYNC_ENTITIES: SyncEntity[] = [
+  {
+    ...simple('inventory_items', 'inventoryItems', 'name:name category:category location:location quantity:quantity unit:unit state:state approximate:approximate packageSize:package_size packageUnit:package_unit expiresOn:expires_on useFirst:use_first lowThreshold:low_threshold notes:notes lastCountedAt:last_counted_at history:history createdAt:created_at updatedAt:updated_at'),
+    optional: true,
+    fromCloud: row => ({ ...simple('inventory_items', 'inventoryItems', 'name:name category:category location:location quantity:quantity unit:unit state:state approximate:approximate packageSize:package_size packageUnit:package_unit expiresOn:expires_on useFirst:use_first lowThreshold:low_threshold notes:notes lastCountedAt:last_counted_at history:history createdAt:created_at updatedAt:updated_at').fromCloud(row), quantity: row.quantity ?? null, packageSize: row.package_size ?? null, expiresOn: row.expires_on ?? null, lowThreshold: row.low_threshold ?? null, lastCountedAt: row.last_counted_at ?? null }),
+  },
   {
     ...simple('recipes', 'recipes', 'title:title mealTypes:meal_types ingredients:ingredients steps:steps notes:notes imageUrl:image_url videoUrl:video_url durationMinutes:duration_minutes servings:servings isFavorite:is_favorite isLight:is_light createdAt:created_at updatedAt:updated_at'),
     fromCloud: row => ({ id: row.id, title: row.title, mealTypes: row.meal_types, ingredients: row.ingredients, steps: row.steps, notes: row.notes, imageUrl: row.image_url, videoUrl: row.video_url, durationMinutes: row.duration_minutes ?? null, servings: row.servings ?? null, isFavorite: row.is_favorite, isLight: row.is_light, createdAt: row.created_at, updatedAt: row.updated_at }),

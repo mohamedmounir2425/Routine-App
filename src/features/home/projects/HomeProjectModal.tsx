@@ -1,3 +1,4 @@
+import { HomeSelect } from '../HomeSelect';
 import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Calendar, Folder } from 'lucide-react';
@@ -153,7 +154,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
                 حالة المشروع
               </label>
-              <select
+              <HomeSelect
                 value={status}
                 onChange={(e) => setStatus(e.target.value as 'backlog' | 'in_progress' | 'waiting' | 'completed')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
@@ -162,7 +163,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
                 <option value="backlog">قيد الانتظار (لاحقاً)</option>
                 <option value="waiting">معلق (بانتظار شيء)</option>
                 <option value="completed">مكتمل بالكامل</option>
-              </select>
+              </HomeSelect>
             </div>
 
             <div>

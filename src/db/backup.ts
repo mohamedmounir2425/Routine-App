@@ -2,13 +2,14 @@ import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './
 import { db } from './database';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import { validateRecipeRecord } from '../features/home/recipes/recipeModel';
+import { validateInventoryRecord } from '../features/home/inventory/inventoryModel';
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
 export const BACKUP_TABLES = {
   exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
   settings: 'settings', azkarLogs: 'azkarLogs', tasks: 'tasks', projects: 'projects',
   plans: 'plans', planMilestones: 'planMilestones', workoutSchedules: 'workoutSchedules',
-  dayPlans: 'dayPlans', recipes: 'recipes',
+  dayPlans: 'dayPlans', recipes: 'recipes', inventoryItems: 'inventoryItems',
 } as const;
 
 export const isPortableKey = (key: string) => /^(routine_(prayers_\d{4}-\d{2}-\d{2}(_nawafil)?|quran_.*|tasbeeh_.*|prayer_(city|coords)|today_preferences|app_lang)|life_focus_sessions|movecare_theme|azkar_(auto_advance|continuous_autoscroll|cycle_muawwidhat|focus_mode|companion_dhikr|tahlil_count|include_istighfar|session_theme))$/.test(key);
@@ -27,6 +28,7 @@ export async function exportCompleteBackup(): Promise<string> {
 }
 
 function validateRecord(key: string, record: unknown): asserts record is Record<string, unknown> {
+  if (key === 'inventoryItems') validateInventoryRecord(record);
   if (key === 'recipes') validateRecipeRecord(record);
   if (!isObject(record)) throw new Error(`Invalid ${key} record`);
   if (key === 'dayPlans') {

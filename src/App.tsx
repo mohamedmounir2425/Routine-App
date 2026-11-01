@@ -14,7 +14,8 @@ import { SpaceTasksView } from './features/spaces/SpaceTasksView';
 import { SpacesOnboardingModal } from './features/spaces/components/SpacesOnboardingModal';
 import { WorshipSpace } from './features/worship/WorshipSpace';
 import { WorkSpace } from './features/work/WorkSpace';
-import { HomeSpace } from './features/home/HomeSpace';
+import { lazy, Suspense } from 'react';
+const HomeSpace = lazy(() => import('./features/home/HomeSpace').then(module => ({default:module.HomeSpace})));
 import { PlansSpace } from './features/plans/PlansSpace';
 import { GlobalProgressSpace } from './features/progress/GlobalProgressSpace';
 import { AuthModal } from './components/auth/AuthModal';
@@ -232,7 +233,7 @@ export function App() {
           <Route path="/work/*" element={<WorkSpace />} />
 
           {/* 🏠 Home Space */}
-          <Route path="/home/*" element={<HomeSpace />} />
+          <Route path="/home/*" element={<Suspense fallback={<p role="status" className="p-6">جارٍ تحميل مساحة المنزل…</p>}><HomeSpace /></Suspense>} />
 
           {/* 🎯 Plans Space */}
           <Route path="/plans/*" element={<PlansSpace />} />

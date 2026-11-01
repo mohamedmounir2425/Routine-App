@@ -69,11 +69,15 @@ export async function synchronizeVersioned(database: RoutineDatabase, uid: strin
   const snapshot = await transport.snapshot();
   if (!snapshot || !Array.isArray(snapshot.versions)) throw new Error('الخادم يحتاج تحديث بروتوكول المزامنة.');
   const versions = new Map(snapshot.versions.map(item => [entityKey(item.entity_table, item.entity_id), { ...item, revision: Number(item.revision) }]));
-  for (const entity of SYNC_ENTITIES) if (!Array.isArray(snapshot.tables[entity.cloud])) throw new Error('استجابة ناقصة من ' + entity.cloud);
+  for (const entity of SYNC_ENTITIES) if (!entity.optional && !Array.isArray(snapshot.tables[entity.cloud])) throw new Error('استجابة ناقصة من ' + entity.cloud);
   // Parents before milestones/tasks. Deletion cascades are acknowledged safely by the server.
-  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans','recipes'];
+  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans','recipes','inventory_items'];
   for (const name of order) {
     const entity = SYNC_ENTITIES.find(item => item.cloud === name)!;
+    if (entity.optional && !Array.isArray(snapshot.tables[name])) {
+      if ((local.rows[name] as SyncRow[]).length || [...local.baselines.values()].some(item => item.table === name) || [...local.pending.values()].some(item => item.table === name)) failures.push('المخزون محفوظ على الجهاز؛ يلزم تفعيل جدول المخزون في Supabase لإكمال مزامنته.');
+      continue;
+    }
     const localRows = new Map<string, SyncRow>((local.rows[name] as SyncRow[]).filter(row => !entity.include || entity.include(row)).map(row => [String(entity.toCloud(uid, row).id), row]));
     const remoteRows = new Map(snapshot.tables[name].map(row => [String(row.id), row]));
     const ids = new Set([...localRows.keys(), ...remoteRows.keys(), ...[...local.baselines.values()].filter(item => item.table === name).map(item => item.entityId), ...snapshot.versions.filter(item => item.entity_table === name).map(item => item.entity_id), ...[...local.pending.values()].filter(item => item.table === name).map(item => item.entityId)]);
