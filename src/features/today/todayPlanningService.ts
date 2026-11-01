@@ -1,12 +1,19 @@
 import { db } from '../../db/database';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { syncSingleDayPlan } from '../../db/syncEngine';
 import { DayPlan } from '../../types';
-import { addDaysToLocalDate, getLocalDateString } from '../../utils/dateUtils';
+import { addDaysToLocalDate, getLocalDateString, parseLocalDate } from '../../utils/dateUtils';
 import { saveTask } from '../../db/taskQueries';
 import { pauseActiveFocus, getPersistedActiveFocusState } from '../work/focus/focusEngine';
 
 export async function saveDayPlan(plan: DayPlan) {
-  if (!Number.isFinite(plan.availableMinutes) || plan.availableMinutes < 0 || plan.availableMinutes > 1440 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(plan.endTime)) throw new Error('Invalid day plan');
-  await db.dayPlans.put({ ...plan, essentialTaskIds: [...new Set(plan.essentialTaskIds)], updatedAt: new Date().toISOString() });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.date) || getLocalDateString(parseLocalDate(plan.date)) !== plan.date) throw new Error('Invalid day plan date');
+  if (!Number.isInteger(plan.availableMinutes) || plan.availableMinutes < 0 || plan.availableMinutes > 1440 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(plan.endTime)) throw new Error('Invalid day plan');
+  const updated = { ...plan, essentialTaskIds: [...new Set(plan.essentialTaskIds)], updatedAt: new Date().toISOString() };
+  await db.dayPlans.put(updated);
+  if (isSupabaseConfigured()) void supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session?.user) await syncSingleDayPlan(session.user.id, updated);
+  }).catch(error => console.warn('Day plan sync could not start:', error));
 }
 
 export async function deferTaskUntilTomorrow(id: string, now = new Date()) {

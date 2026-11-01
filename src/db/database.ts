@@ -33,7 +33,8 @@ export interface PendingSyncItem {
     | 'projects'
     | 'plans'
     | 'plan_milestones'
-    | 'workout_schedules';
+    | 'workout_schedules'
+    | 'day_plans';
   entityId: string;
   action: 'upsert' | 'delete';
   data: Record<string, unknown> | null;
@@ -180,6 +181,8 @@ export async function updateUserSettings(partial: Partial<UserSettings>): Promis
   const updated = { ...current, ...partial };
   await db.settings.put(updated);
 
+  syncSettingsInBackground(updated);
+
   if (partial.todayPreferences && typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem('routine_today_preferences', JSON.stringify(partial.todayPreferences));
@@ -189,4 +192,10 @@ export async function updateUserSettings(partial: Partial<UserSettings>): Promis
   }
 
   return updated;
+}
+
+export function syncSettingsInBackground(settings: UserSettings): void {
+  // Keep cloud imports out of database initialization.
+  void import('./settingsSync').then(module => module.syncSettingsInBackground(settings))
+    .catch(error => console.warn('Settings sync could not start:', error));
 }

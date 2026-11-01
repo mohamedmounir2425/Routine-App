@@ -30,7 +30,8 @@ try {
   const decisions = await server.ssrLoadModule('/src/features/today/todayDecisionEngine.test.ts');
   const spaces = await server.ssrLoadModule('/src/features/today/spaceTaskService.test.ts');
   const syncSafety = await server.ssrLoadModule('/src/db/syncSafety.test.ts');
-  const extraResults = [...workResults, ...await reliability.runReliabilityTests(), ...await decisions.runTodayDecisionTests(), ...await spaces.runSpaceTaskTests(), ...await syncSafety.runSyncSafetyTests()];
+  const cloudMappers = await server.ssrLoadModule('/src/db/cloudMappers.test.ts');
+  const extraResults = [...workResults, ...await reliability.runReliabilityTests(), ...await decisions.runTodayDecisionTests(), ...await spaces.runSpaceTaskTests(), ...await syncSafety.runSyncSafetyTests(), ...await cloudMappers.runCloudMapperTests()];
   for (const result of extraResults) console.log(`${result.passed ? 'PASS' : 'FAIL'} ${result.name}`);
   if ([...results, ...extraResults].some(result => !result.passed)) process.exitCode = 1;
   console.log(`Checked ${results.length + extraResults.length} scenarios.`);

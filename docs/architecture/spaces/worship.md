@@ -15,7 +15,7 @@
 | ورد القرآن والهدف والعلامة | مفاتيح routine_quran_* | لا يوجد |
 | التسبيح | routine_tasbeeh_today | لا يوجد |
 | سجل الأذكار | Dexie.azkarLogs | public.azkar_logs |
-| المهام | Dexie.tasks مع spaceId=worship | public.life_tasks جزئي |
+| المهام | Dexie.tasks مع spaceId=worship | public.life_tasks مع حقول المهمة الكاملة |
 | نصوص الأذكار | ملف azkar.json ضمن التطبيق | ليست بيانات مستخدم سحابية |
 
 AzkarLog: id, date, categoryKey, categoryArabic, totalDhikr, completedDhikr, isFullyCompleted, durationSeconds, completedAt. المقابلات السحابية snake_case مع user_id؛ [الأعمدة](../supabase-current.md). categoryKey يشمل morning/evening/waking/sleeping/after_prayer/ruqyah/misc/all، ولا توجد FK لفئة الأذكار.

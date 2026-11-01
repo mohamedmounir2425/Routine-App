@@ -6,19 +6,19 @@
 
 تجميع أنشطة المساحات، بحث وفلترة حسب المساحة والحالة، إضافة وتعديل مهمة من المساحات الخمس، إظهار/إخفاء المساحات، تنفيذ مباشر لبعض الأنشطة، ومواعيد تمرين. ثلاثة عروض للقرار: أعمل إيه دلوقتي؟ ضروري النهارده، وأنا وصلت لفين؟ مع وقت متاح ونهاية يوم وأساسيات اليوم وتحذير ضغط اليوم والاعتماديات.
 
-التوصيات قواعد محلية deterministic وليست خدمة AI. توازن موعد التسليم الثابت والالتزامات والوقت والحالة والارتباط بالهدف؛ لا تحول مدة مجهولة إلى تقدير مخترع. العنصر المحجوب باعتمادية لا يقدم كعمل جاهز. توجد بيانات قرار محلية لا تتزامن بعد.
+التوصيات قواعد محلية deterministic وليست خدمة AI. توازن موعد التسليم الثابت والالتزامات والوقت والحالة والارتباط بالهدف؛ لا تحول مدة مجهولة إلى تقدير مخترع. العنصر المحجوب باعتمادية لا يقدم كعمل جاهز. حقول القرار الأساسية داخل المهمة وخطة اليوم لها الآن جداول ومسارات مزامنة، دون ادعاء اكتمال حل التعارضات.
 
 ## البنية
 
 | المصدر | دوره | السحابة |
 |---|---|---|
-| tasks + projects + plans + planMilestones | العمل القابل للتنفيذ وروابطه | جزئي أو جداول مفقودة |
-| workoutSchedules / weeklySchedule / workoutLogs | مواعيد وتمارين وإنجاز | جزئي |
+| tasks + projects + plans + planMilestones | العمل القابل للتنفيذ وروابطه | جداول ومحوّلات موجودة |
+| workoutSchedules / weeklySchedule / workoutLogs | مواعيد وتمارين وإنجاز | جداول موجودة؛ تتبع كل التعديلات ما زال يحتاج استكمالًا |
 | azkarLogs وlocalStorage العبادة | الصلاة والورد والأذكار | جزئي |
-| settings.todayPreferences ومفتاح routine_today_preferences | ظهور المساحات وأنواع النشاط | لا يوجد عقد سحابي مكتمل لهذه التفضيلات |
-| dayPlans | date مفتاح، availableMinutes, endTime, essentialTaskIds, updatedAt | محلي فقط |
+| settings.todayPreferences ومفتاح routine_today_preferences | ظهور المساحات وأنواع النشاط | profiles.today_preferences؛ الشاشة تراقب تغيّر الإعدادات المحلية بعد السحب |
+| dayPlans | date مفتاح، availableMinutes, endTime, essentialTaskIds, updatedAt | day_plans، بمفتاح سحابي يضم الحساب والتاريخ |
 
-DayPlan المحلي مفتاحه date فقط لأن القاعدة الحالية لا تعزل المستخدمين؛ backend المستقبلي يحتاج userId+date. Today لا ينشئ جدولًا منفصلًا لنسخة كل مهمة. [التجميع](../../../src/features/today/todayAggregator.ts) و[الأفعال](../../../src/features/today/todayActions.ts) يربطان العرض بمصدره. [القواعد](../../../src/features/today/todayDecisionEngine.ts) و[التخطيط](../../../src/features/today/todayPlanningService.ts) يديران القرار والتأجيل.
+DayPlan المحلي مفتاحه date فقط لأن القاعدة الحالية لا تعزل المستخدمين؛ جدول day_plans السحابي لديه UNIQUE(user_id,date) وهوية حساب ضمن id، والعزل المحلي ما زال مطلوبًا. Today لا ينشئ جدولًا منفصلًا لنسخة كل مهمة. [التجميع](../../../src/features/today/todayAggregator.ts) و[الأفعال](../../../src/features/today/todayActions.ts) يربطان العرض بمصدره. [القواعد](../../../src/features/today/todayDecisionEngine.ts) و[التخطيط](../../../src/features/today/todayPlanningService.ts) يديران القرار والتأجيل.
 
 ## قواعد قائمة
 

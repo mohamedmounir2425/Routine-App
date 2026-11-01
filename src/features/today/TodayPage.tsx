@@ -5,7 +5,7 @@ import { ArrowUpRight, Plus, RefreshCw, Search } from 'lucide-react';
 import { aggregateTodayFeed } from './todayAggregator';
 import { TodayAggregationResult, TodayItem } from './todayTypes';
 import { executeToggleTask, executeTogglePrayer, executeCompleteProjectAction, executeAddQuranPage } from './todayActions';
-import { getSavedTodayPreferences } from './todayPreferencesService';
+import { getSavedTodayPreferences, saveTodayPreferences } from './todayPreferencesService';
 import { TodayHeader } from './components/TodayHeader';
 import { TodaySectionList } from './components/TodaySectionList';
 import { TodayDecisionPanel } from './components/TodayDecisionPanel';
@@ -49,6 +49,19 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
   const actionLock = useRef(false);
   const requestId = useRef(0);
   const invalidateRequests = useCallback(() => { requestId.current += 1; }, []);
+
+  useEffect(() => {
+    const subscription = liveQuery(() => db.settings.get('current_settings')).subscribe({
+      next: settings => {
+        const prefs = settings?.todayPreferences;
+        if (!prefs) return;
+        saveTodayPreferences(prefs);
+        setPreferences(current => JSON.stringify(current) === JSON.stringify(prefs) ? current : prefs);
+      },
+      error: error => console.error('Today settings could not be refreshed:', error),
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const loadFeed = useCallback(async () => {
     const request = ++requestId.current;

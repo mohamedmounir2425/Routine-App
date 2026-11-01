@@ -1,4 +1,4 @@
-import { db, getUserSettings } from '../../db/database';
+import { db, getUserSettings, syncSettingsInBackground } from '../../db/database';
 import { saveTask, syncTaskInBackground } from '../../db/taskQueries';
 import { LIFE_SPACES_CONFIG } from '../../config/spacesConfig';
 import { LifeTask, LifeSpaceId } from '../../types';
@@ -30,6 +30,7 @@ export async function saveEnabledSpaces(ids: LifeSpaceId[]): Promise<TodayPrefer
     return updated;
   });
   saveTodayPreferences(prefs);
+  syncSettingsInBackground(await getUserSettings());
   return prefs;
 }
 
@@ -64,6 +65,9 @@ export async function saveSpaceTask(task: LifeTask, options?: { revealInToday?: 
     }
   });
   syncTaskInBackground((await db.tasks.get(updated.id)) || updated);
-  if (updatedSettings?.todayPreferences) saveTodayPreferences(updatedSettings.todayPreferences);
+  if (updatedSettings?.todayPreferences) {
+    saveTodayPreferences(updatedSettings.todayPreferences);
+    syncSettingsInBackground(updatedSettings);
+  }
   return updated;
 }

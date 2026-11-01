@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const CLOUD_SYNC_TABLES = [
   'profiles', 'workout_logs', 'custom_routines', 'weekly_schedule', 'azkar_logs',
-  'life_tasks', 'projects', 'plans', 'plan_milestones', 'workout_schedules',
+  'life_tasks', 'projects', 'plans', 'plan_milestones', 'workout_schedules', 'day_plans',
 ] as const;
 
 /** Read every required source before allowing any local writes. */

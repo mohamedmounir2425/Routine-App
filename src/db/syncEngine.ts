@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { db } from './database';
+import { taskToCloud, taskFromCloud, projectToCloud, projectFromCloud, routineToCloud, routineFromCloud, dayPlanToCloud, dayPlanFromCloud, settingsToCloud } from './cloudMappers';
 import { fetchCloudSnapshot, syncErrorMessage } from './cloudSyncChecks';
 import { queueMutation, pendingMutationCount, processSyncQueue, retryFailedMutations } from './syncQueue';
 export { retryFailedMutations };
@@ -40,7 +41,7 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
   try {
     if (await pendingMutationCount(userId)) throw new Error('توجد تعديلات لم تصل للسحابة؛ لن يتم استبدال بيانات الجهاز.');
     const tables = [db.settings, db.workoutLogs, db.routines, db.weeklySchedule,
-      db.azkarLogs, db.tasks, db.projects, db.plans, db.planMilestones, db.workoutSchedules];
+      db.azkarLogs, db.tasks, db.projects, db.plans, db.planMilestones, db.workoutSchedules, db.dayPlans];
     const before = await db.transaction('r', tables, () => Promise.all(tables.map(async table => JSON.stringify(await table.toArray()))));
     const snapshot = await fetchCloudSnapshot(client, userId);
     return await db.transaction('rw', [...tables, db.pendingSync], async () => {
@@ -54,6 +55,7 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
       if (profile) {
         const localSettings = await db.settings.get('current_settings');
         const updatedSettings: UserSettings = {
+          todayPreferences: profile.today_preferences ?? localSettings?.todayPreferences,
           ...localSettings,
           id: 'current_settings',
           userName: profile.user_name || localSettings?.userName || 'بطل الروتين',
@@ -107,17 +109,7 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
       const cloudRoutines = snapshot.custom_routines;
 
       if (cloudRoutines && cloudRoutines.length > 0) {
-        const mappedRoutines: Routine[] = cloudRoutines.map((r) => ({
-          id: r.id,
-          name: r.name,
-          description: r.description || '',
-          exerciseIds: r.exercise_ids || [],
-          totalEstimatedMinutes: r.total_estimated_minutes || 10,
-          level: r.level || 'gentle',
-          tag: r.tag || 'تمرين مخصص',
-          isCustom: true,
-          customExerciseConfigs: r.custom_exercise_configs || {},
-        }));
+        const mappedRoutines: Routine[] = cloudRoutines.map(routineFromCloud);
         await db.routines.bulkPut(mappedRoutines);
       }
 
@@ -159,55 +151,15 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
       const cloudTasks = snapshot.life_tasks;
 
       if (cloudTasks && cloudTasks.length > 0) {
-        // Preserve local planning metadata until its matching remote schema is deployed.
         const localTasks = new Map((await db.tasks.toArray()).map(task => [task.id, task]));
-        const mappedTasks: LifeTask[] = cloudTasks.map((t) => ({
-          ...localTasks.get(t.id),
-          id: t.id,
-          spaceId: t.space_id,
-          title: t.title,
-          description: t.description,
-          dueDate: t.due_date,
-          scheduledTime: t.scheduled_time,
-          estimatedMinutes: t.estimated_minutes,
-          priority: t.priority,
-          isCompleted: t.is_completed,
-          completedAt: t.completed_at,
-          isRecurring: t.is_recurring,
-          recurrenceRule: t.recurrence_rule,
-          sourceType: t.source_type,
-          sourceId: t.source_id,
-          projectId: t.project_id,
-          planId: t.plan_id,
-          milestoneId: t.milestone_id,
-          recurringCompletionDates: t.recurring_completion_dates,
-          createdAt: t.created_at,
-        }));
+        const mappedTasks: LifeTask[] = cloudTasks.map(row => taskFromCloud(row, localTasks.get(row.id)));
         await db.tasks.bulkPut(mappedTasks);
       }
 
       // 7. Pull Projects (all required tables have been checked before local writes)
       const cloudProjects = snapshot.projects;
       if (cloudProjects && cloudProjects.length > 0) {
-        const mappedProjects: HomeProject[] = cloudProjects.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          status: p.status,
-          steps: p.steps || [],
-          nextActionId: p.next_action_id,
-          nextActionTitle: p.next_action_title,
-          targetDate: p.target_date,
-          createdAt: p.created_at,
-          completedAt: p.completed_at,
-          repositoryUrl: p.repository_url,
-          devUrl: p.dev_url,
-          apiUrl: p.api_url,
-          branch: p.branch,
-          runCommand: p.run_command,
-          requiresVpn: p.requires_vpn,
-          setupNotes: p.setup_notes,
-        }));
+        const mappedProjects: HomeProject[] = cloudProjects.map(projectFromCloud);
         await db.projects.bulkPut(mappedProjects);
       }
 
@@ -259,6 +211,8 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
         await db.workoutSchedules.bulkPut(mappedSchedules);
       }
 
+      const cloudDayPlans = snapshot.day_plans;
+      if (cloudDayPlans.length) await db.dayPlans.bulkPut(cloudDayPlans.map(dayPlanFromCloud));
       return {
         success: true,
         pulledCounts: {
@@ -287,31 +241,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     // 1. Push Profile / Settings
     const localSettings = await db.settings.get('current_settings');
     if (localSettings) {
-      await client.from('profiles').upsert({
-        id: userId,
-        user_name: localSettings.userName,
-        theme: localSettings.theme || 'dark',
-        active_plan_type: localSettings.activePlanType || '4-weeks',
-        current_week_number: localSettings.currentWeekNumber || 1,
-        current_level_number: localSettings.currentLevelNumber || 1,
-        sound_beeps_enabled: localSettings.soundBeepsEnabled,
-        voice_coach_enabled: localSettings.voiceCoachEnabled,
-        voice_language: localSettings.voiceLanguage || 'ar',
-        default_rest_seconds: localSettings.defaultRestSeconds || 20,
-        reminder_enabled: localSettings.reminderEnabled,
-        reminder_time: localSettings.reminderTime || '18:30',
-        reminder_days: localSettings.reminderDays || [6, 1, 3, 4],
-        work_break_reminder_enabled: localSettings.workBreakReminderEnabled,
-        work_break_interval_minutes: localSettings.workBreakIntervalMinutes || 45,
-        screen_wake_lock: localSettings.screenWakeLock,
-        workout_video_autoplay: localSettings.workoutVideoAutoplay ?? true,
-        workout_video_muted: localSettings.workoutVideoMuted ?? true,
-        workout_video_loop: localSettings.workoutVideoLoop ?? true,
-        workout_default_view_mode: localSettings.workoutDefaultViewMode || 'video',
-        enabled_spaces: localSettings.enabledSpaces || ['worship', 'health', 'work', 'plans'],
-        has_completed_onboarding: localSettings.hasCompletedOnboarding ?? true,
-        updated_at: new Date().toISOString(),
-      }).throwOnError();
+      await client.from('profiles').upsert(settingsToCloud(userId, localSettings)).throwOnError();
     }
 
     // 2. Push Workout Logs
@@ -340,17 +270,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     const allRoutines = await db.routines.toArray();
     const customRoutines = allRoutines.filter((r) => r.isCustom);
     if (customRoutines.length > 0) {
-      const records = customRoutines.map((r) => ({
-        id: r.id,
-        user_id: userId,
-        name: r.name,
-        description: r.description,
-        exercise_ids: r.exerciseIds,
-        total_estimated_minutes: r.totalEstimatedMinutes,
-        level: r.level,
-        tag: r.tag,
-        custom_exercise_configs: r.customExerciseConfigs || {},
-      }));
+      const records = customRoutines.map(routine => routineToCloud(userId, routine));
       await client.from('custom_routines').upsert(records).throwOnError();
     }
 
@@ -393,46 +313,14 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     // 6. Push Life Tasks
     const localTasks = await db.tasks.toArray();
     if (localTasks.length > 0) {
-      const records = localTasks.map((t) => ({
-        id: t.id,
-        user_id: userId,
-        space_id: t.spaceId,
-        title: t.title,
-        description: t.description,
-        due_date: t.dueDate,
-        scheduled_time: t.scheduledTime,
-        estimated_minutes: t.estimatedMinutes,
-        priority: t.priority,
-        is_completed: t.isCompleted,
-        completed_at: t.completedAt,
-        is_recurring: t.isRecurring ?? false,
-        recurrence_rule: t.recurrenceRule,
-        source_type: t.sourceType,
-        source_id: t.sourceId,
-        project_id: t.projectId,
-        plan_id: t.planId,
-        milestone_id: t.milestoneId,
-        recurring_completion_dates: t.recurringCompletionDates,
-      }));
+      const records = localTasks.map(task => taskToCloud(userId, task));
       await client.from('life_tasks').upsert(records).throwOnError();
     }
 
     // 7. Safely push Projects
     const localProjects = await db.projects.toArray();
     if (localProjects.length > 0) {
-      const records = localProjects.map((p) => ({
-        id: p.id,
-        user_id: userId,
-        title: p.title,
-        description: p.description,
-        status: p.status,
-        steps: p.steps,
-        next_action_id: p.nextActionId,
-        next_action_title: p.nextActionTitle,
-        target_date: p.targetDate,
-        created_at: p.createdAt,
-        completed_at: p.completedAt,
-      }));
+      const records = localProjects.map(project => projectToCloud(userId, project));
       await client.from('projects').upsert(records).throwOnError();
     }
 
@@ -486,6 +374,9 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
       }));
       await client.from('workout_schedules').upsert(records).throwOnError();
     }
+
+    const localDayPlans = await db.dayPlans.toArray();
+    if (localDayPlans.length) await client.from('day_plans').upsert(localDayPlans.map(plan => dayPlanToCloud(userId, plan))).throwOnError();
 
     return { success: true };
   } catch (err: unknown) {
@@ -581,107 +472,16 @@ export async function syncSingleWorkoutLog(userId: string, log: WorkoutLog): Pro
     difficulty_rating: log.difficultyRating,
     notes: log.notes,
   };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'workout_logs',
-      entityId: log.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: log.completedAt || new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('workout_logs').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for workout log, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'workout_logs',
-      entityId: log.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: log.completedAt || new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'workout_logs', log.id, 'upsert', payload);
 }
 
 export async function syncSingleTask(userId: string, task: LifeTask): Promise<void> {
-  const payload = {
-    id: task.id,
-    user_id: userId,
-    space_id: task.spaceId,
-    title: task.title,
-    description: task.description,
-    due_date: task.dueDate,
-    scheduled_time: task.scheduledTime,
-    estimated_minutes: task.estimatedMinutes,
-    priority: task.priority,
-    is_completed: task.isCompleted,
-    completed_at: task.completedAt,
-    is_recurring: task.isRecurring ?? false,
-    recurrence_rule: task.recurrenceRule,
-  };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'life_tasks',
-      entityId: task.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('life_tasks').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for task, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'life_tasks',
-      entityId: task.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  const payload = taskToCloud(userId, task);
+  await submitMutation(userId, 'life_tasks', task.id, 'upsert', payload);
 }
 
 export async function syncSingleTaskDelete(userId: string, taskId: string): Promise<void> {
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'life_tasks',
-      entityId: taskId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('life_tasks').delete().eq('id', taskId);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for task delete, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'life_tasks',
-      entityId: taskId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'life_tasks', taskId, 'delete', null);
 }
 
 export async function syncSingleAzkarLog(userId: string, log: AzkarLog): Promise<void> {
@@ -697,112 +497,16 @@ export async function syncSingleAzkarLog(userId: string, log: AzkarLog): Promise
     duration_seconds: log.durationSeconds,
     completed_at: log.completedAt,
   };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'azkar_logs',
-      entityId: log.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: log.completedAt || new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('azkar_logs').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for azkar log, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'azkar_logs',
-      entityId: log.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: log.completedAt || new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'azkar_logs', log.id, 'upsert', payload);
 }
 
 export async function syncSingleProject(userId: string, project: HomeProject): Promise<void> {
-  const payload = {
-    id: project.id,
-    user_id: userId,
-    title: project.title,
-    description: project.description,
-    status: project.status,
-    steps: project.steps,
-    next_action_id: project.nextActionId,
-    next_action_title: project.nextActionTitle,
-    target_date: project.targetDate,
-    created_at: project.createdAt,
-    completed_at: project.completedAt,
-    repository_url: project.repositoryUrl,
-    dev_url: project.devUrl,
-    api_url: project.apiUrl,
-    branch: project.branch,
-    run_command: project.runCommand,
-    requires_vpn: project.requiresVpn,
-    setup_notes: project.setupNotes,
-  };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'projects',
-      entityId: project.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('projects').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for project, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'projects',
-      entityId: project.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  const payload = projectToCloud(userId, project);
+  await submitMutation(userId, 'projects', project.id, 'upsert', payload);
 }
 
 export async function syncSingleProjectDelete(userId: string, projectId: string): Promise<void> {
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'projects',
-      entityId: projectId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('projects').delete().eq('id', projectId);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for project delete, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'projects',
-      entityId: projectId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'projects', projectId, 'delete', null);
 }
 
 export async function syncSinglePlan(userId: string, plan: GoalPlan): Promise<void> {
@@ -819,62 +523,11 @@ export async function syncSinglePlan(userId: string, plan: GoalPlan): Promise<vo
     created_at: plan.createdAt,
     updated_at: plan.updatedAt,
   };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'plans',
-      entityId: plan.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: plan.updatedAt || new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('plans').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for plan, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'plans',
-      entityId: plan.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: plan.updatedAt || new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'plans', plan.id, 'upsert', payload);
 }
 
 export async function syncSinglePlanDelete(userId: string, planId: string): Promise<void> {
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'plans',
-      entityId: planId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('plans').delete().eq('id', planId);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for plan delete, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'plans',
-      entityId: planId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'plans', planId, 'delete', null);
 }
 
 export async function syncSingleMilestone(userId: string, milestone: PlanMilestone): Promise<void> {
@@ -888,62 +541,11 @@ export async function syncSingleMilestone(userId: string, milestone: PlanMilesto
     target_date: milestone.targetDate,
     completed_at: milestone.completedAt,
   };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'plan_milestones',
-      entityId: milestone.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: milestone.completedAt || new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('plan_milestones').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for milestone, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'plan_milestones',
-      entityId: milestone.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: milestone.completedAt || new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'plan_milestones', milestone.id, 'upsert', payload);
 }
 
 export async function syncSingleMilestoneDelete(userId: string, milestoneId: string): Promise<void> {
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'plan_milestones',
-      entityId: milestoneId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('plan_milestones').delete().eq('id', milestoneId);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for milestone delete, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'plan_milestones',
-      entityId: milestoneId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'plan_milestones', milestoneId, 'delete', null);
 }
 
 export async function syncSingleWorkoutSchedule(userId: string, schedule: WorkoutScheduleEntry): Promise<void> {
@@ -957,61 +559,24 @@ export async function syncSingleWorkoutSchedule(userId: string, schedule: Workou
     duration_minutes: schedule.durationMinutes,
     is_enabled: schedule.isEnabled,
   };
-
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'workout_schedules',
-      entityId: schedule.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('workout_schedules').upsert(payload);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for workout schedule, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'workout_schedules',
-      entityId: schedule.id,
-      action: 'upsert',
-      data: payload,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'workout_schedules', schedule.id, 'upsert', payload);
 }
 
 export async function syncSingleWorkoutScheduleDelete(userId: string, scheduleId: string): Promise<void> {
-  if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    await enqueuePendingMutation({
-      table: 'workout_schedules',
-      entityId: scheduleId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase.from('workout_schedules').delete().eq('id', scheduleId);
-    if (error) throw error;
-  } catch (e) {
-    console.warn('Background sync failed for workout schedule delete, queueing offline:', e);
-    await enqueuePendingMutation({
-      table: 'workout_schedules',
-      entityId: scheduleId,
-      action: 'delete',
-      data: null,
-      userId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  await submitMutation(userId, 'workout_schedules', scheduleId, 'delete', null);
 }
 
+async function submitMutation(userId: string, table: import('./database').PendingSyncItem['table'], entityId: string, action: 'upsert' | 'delete', data: Record<string, unknown> | null) {
+  // Persist the latest intent before any request, including online saves.
+  await enqueuePendingMutation({ userId, table, entityId, action, data, timestamp: new Date().toISOString() });
+  await flushPendingSyncQueue(userId);
+}
+
+export async function syncSingleDayPlan(userId: string, plan: import('../types').DayPlan) {
+  const payload = dayPlanToCloud(userId, plan);
+  await submitMutation(userId, 'day_plans', payload.id, 'upsert', payload);
+}
+
+export async function syncSingleSettings(userId: string, settings: UserSettings) {
+  await submitMutation(userId, 'profiles', userId, 'upsert', settingsToCloud(userId, settings));
+}
