@@ -70,5 +70,8 @@ export async function runCloudMapperTests() {
   const pulled = await pullUserDataFromCloud('account-a', client);
   check('A second empty device receives full tasks, Work project context and Today plan', pulled.success && canonical(await db.tasks.get(task.id)) === canonical({ ...task, actualMinutes: 6 }) && canonical(await db.projects.get(project.id)) === canonical(project) && canonical(await db.dayPlans.get(day.date)) === canonical(day));
   check('Cloud Today preferences survive a fresh-device profile pull', canonical((await db.settings.get('current_settings'))?.todayPreferences) === canonical(settings.todayPreferences));
+  await db.settings.update('current_settings', { todayPreferences: { ...settings.todayPreferences, showWork: true } });
+  const refreshed = await pullUserDataFromCloud('account-a', client);
+  check('Synced Today preferences replace stale local preferences without being shadowed by the local spread', refreshed.success && (await db.settings.get('current_settings'))?.todayPreferences?.showWork === false);
   return results;
 }

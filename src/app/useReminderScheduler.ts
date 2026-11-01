@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../db/workspaceScope';
 import { useEffect, useRef } from 'react';
 import { UserSettings } from '../types';
 import { sendLocalNotification, getNotificationPermission } from '../utils/reminderService';
@@ -23,7 +24,7 @@ export function useReminderScheduler(
       // 1. Daily Workout Reminder Check (with Idempotency Guard)
       if (settings.reminderEnabled && settings.reminderTime) {
         const targetTime = settings.reminderTime;
-        const lastNotifDate = localStorage.getItem('routine_last_workout_notif_date');
+        const lastNotifDate = workspaceStorage.getItem('routine_last_workout_notif_date');
 
         // If time matches, user hasn't worked out today, and we haven't already notified today
         if (currentTimeStr === targetTime && !hasWorkedOutToday && lastNotifDate !== todayDateStr) {
@@ -31,7 +32,7 @@ export function useReminderScheduler(
             body: '15 دقيقة فقط لتخفيف الضغط عن عمودك الفقري وتثبيت استمراريتك. جاهز للبدء؟',
             tag: 'daily-workout-reminder',
           });
-          localStorage.setItem('routine_last_workout_notif_date', todayDateStr);
+          workspaceStorage.setItem('routine_last_workout_notif_date', todayDateStr);
         }
       }
 

@@ -1,6 +1,9 @@
-import React, { useState, useRef } from 'react';
+import { workspaceStorage } from '../../../db/workspaceScope';
+import React, { useState, useRef, useEffect } from 'react';
 import { ShieldCheck, Check, Download, Upload, RotateCcw, AlertTriangle } from 'lucide-react';
 import { exportCompleteBackup, importCompleteBackup, previewBackup, SAFETY_BACKUP_KEY, type BackupConflictMode } from '../../../db';
+import { CURRENT_WORKSPACE } from '../../../db/workspaceScope';
+import { readLegacyBackup } from '../../../db/workspaceMigration';
 
 interface BackupDataSettingsProps {
   onRefreshData?: () => void;
@@ -16,7 +19,14 @@ export const BackupDataSettings: React.FC<BackupDataSettingsProps> = ({
   const [pending, setPending] = useState<{ content: string; name: string; summary: Awaited<ReturnType<typeof previewBackup>> } | null>(null);
   const [mode, setMode] = useState<BackupConflictMode>('keep-existing');
   const [busy, setBusy] = useState(false);
-  const [hasSafety, setHasSafety] = useState(() => !!localStorage.getItem(SAFETY_BACKUP_KEY));
+  const [hasSafety, setHasSafety] = useState(() => !!workspaceStorage.getItem(SAFETY_BACKUP_KEY));
+  const [legacy, setLegacy] = useState<{ backup: string | null; pendingCount: number } | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    void readLegacyBackup().then(value => { if (mounted) setLegacy(value); })
+      .catch(() => { if (mounted) setBackupMsg({ text: 'تعذر قراءة أرشيف البيانات القديمة؛ لم يتم حذفه.', isError: true }); });
+    return () => { mounted = false; };
+  }, []);
   const download = (content: string, prefix = 'routine-life-os-backup') => {
     const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
     const a = document.createElement('a');
@@ -64,7 +74,7 @@ export const BackupDataSettings: React.FC<BackupDataSettingsProps> = ({
     setBusy(true);
     try {
       const result = await importCompleteBackup(pending.content, mode);
-      setHasSafety(!!localStorage.getItem(SAFETY_BACKUP_KEY));
+      setHasSafety(!!workspaceStorage.getItem(SAFETY_BACKUP_KEY));
       setBackupMsg({ text: result.message, isError: !result.success });
       if (result.success) { setPending(null); onRefreshData?.(); }
     } finally { setBusy(false); }
@@ -96,8 +106,18 @@ export const BackupDataSettings: React.FC<BackupDataSettingsProps> = ({
       </div>
 
       <p className="text-xs text-slate-400 leading-relaxed">
+        {CURRENT_WORKSPACE === 'guest' ? 'أنت في وضع بدون حساب، وبياناته منفصلة عن الحسابات. ' : 'النسخة تخص بيانات الحساب الحالي فقط. '}
         النسخة تشمل البيانات المحفوظة على الجهاز، وتعمل بدون Supabase. انقل ملف JSON للموبايل، وافتح نفس التطبيق ثم اختر استرجاع من ملف. الملف يحتوي بياناتك الشخصية؛ احتفظ به في مكان موثوق. النقل يدوي ولا يزامن الجهازين تلقائيًا.
       </p>
+
+      {legacy?.backup && <section className="rounded-2xl border border-amber-500/30 p-4 space-y-3 text-xs text-slate-300">
+        <h4 className="font-bold text-amber-200">بيانات الجهاز قبل فصل الحسابات</h4>
+        <p className="leading-relaxed">حفظنا البيانات السابقة في وضع بدون حساب، ولم ننسبها لأي حساب تلقائيًا. نزّل النسخة وراجعها، ثم استوردها في الحساب الذي تخصه فقط.</p>
+        {legacy.pendingCount > 0 && <p>توجد تعديلات قديمة لم تكتمل مزامنتها، محفوظة في الأرشيف وتحتاج مراجعة قبل إرسالها.</p>}
+        <button type="button" disabled={busy} className="text-teal-300 underline py-2" onClick={() => {
+          if (legacy.backup) download(legacy.backup, 'lifeos-before-account-separation');
+        }}>تنزيل نسخة البيانات السابقة</button>
+      </section>}
 
       {backupMsg && (
         <div role="status" aria-live="polite" className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 ${
@@ -140,12 +160,13 @@ export const BackupDataSettings: React.FC<BackupDataSettingsProps> = ({
 
       {busy && <p role="status" className="text-sm text-teal-300">جارٍ معالجة الملف…</p>}
       {hasSafety && <button type="button" disabled={busy} className="text-sm text-teal-300 underline py-2" onClick={() => {
-        const content = localStorage.getItem(SAFETY_BACKUP_KEY);
+        const content = workspaceStorage.getItem(SAFETY_BACKUP_KEY);
         if (content) download(content, 'lifeos-before-import');
       }}>تنزيل نسخة الأمان قبل آخر استيراد</button>}
       {pending && <section aria-label="معاينة الاستيراد" className="border border-teal-500/30 rounded-2xl p-4 space-y-4 text-sm text-slate-200">
         <h4 className="font-bold">معاينة الملف قبل الاستيراد</h4>
         <p className="break-all">{pending.name}</p>
+        {pending.summary.sourceWorkspace && pending.summary.sourceWorkspace !== CURRENT_WORKSPACE && <p className="text-amber-200 leading-relaxed">الملف صادر من حساب آخر أو من وضع بدون حساب. تأكيد الاستيراد سينقل بياناته للمساحة الحالية؛ تأكد أن ده مقصود.</p>}
         <p className="text-xs text-slate-400">إصدار الملف: {pending.summary.version} · تاريخ التصدير: {pending.summary.exportedAt && !Number.isNaN(Date.parse(pending.summary.exportedAt)) ? new Date(pending.summary.exportedAt).toLocaleString('ar-EG') : 'غير متاح'}</p>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs"><thead><tr><th scope="col" className="text-start p-2">البيانات</th><th scope="col">بالملف</th><th scope="col">جديد</th><th scope="col">مختلف</th></tr></thead>

@@ -1,14 +1,15 @@
+import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './workspaceScope';
 import { db } from './database';
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
-const BACKUP_TABLES = {
+export const BACKUP_TABLES = {
   exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
   settings: 'settings', azkarLogs: 'azkarLogs', tasks: 'tasks', projects: 'projects',
   plans: 'plans', planMilestones: 'planMilestones', workoutSchedules: 'workoutSchedules',
   dayPlans: 'dayPlans',
 } as const;
 
-const isPortableKey = (key: string) => /^(routine_(prayers_\d{4}-\d{2}-\d{2}(_nawafil)?|quran_.*|tasbeeh_.*|prayer_(city|coords)|today_preferences|app_lang)|life_focus_sessions|movecare_theme|azkar_(auto_advance|continuous_autoscroll|cycle_muawwidhat|focus_mode|companion_dhikr|tahlil_count|include_istighfar|session_theme))$/.test(key);
+export const isPortableKey = (key: string) => /^(routine_(prayers_\d{4}-\d{2}-\d{2}(_nawafil)?|quran_.*|tasbeeh_.*|prayer_(city|coords)|today_preferences|app_lang)|life_focus_sessions|movecare_theme|azkar_(auto_advance|continuous_autoscroll|cycle_muawwidhat|focus_mode|companion_dhikr|tahlil_count|include_istighfar|session_theme))$/.test(key);
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export async function exportCompleteBackup(): Promise<string> {
@@ -17,16 +18,10 @@ export async function exportCompleteBackup(): Promise<string> {
     for (const [key, name] of Object.entries(BACKUP_TABLES)) data[key] = await db.table(name).toArray();
   });
   const localData: Record<string, string> = {};
-  if (typeof localStorage !== 'undefined') {
-    for (let index = 0; index < localStorage.length; index++) {
-      const key = localStorage.key(index);
-      if (key && isPortableKey(key)) {
-        const value = localStorage.getItem(key);
-        if (value !== null) localData[key] = value;
-      }
-    }
+  for (const [key, value] of workspaceStorageEntries()) {
+    if (isPortableKey(key)) localData[key] = value;
   }
-  return JSON.stringify({ version: 3, exportedAt: new Date().toISOString(), appName: 'MoveCare Routine App', data, localData }, null, 2);
+  return JSON.stringify({ version: 3, workspace: CURRENT_WORKSPACE, exportedAt: new Date().toISOString(), appName: 'MoveCare Routine App', data, localData }, null, 2);
 }
 
 function validateRecord(key: string, record: unknown): asserts record is Record<string, unknown> {
@@ -97,8 +92,9 @@ export async function previewBackup(jsonData: string) {
     const conflicts = records.filter((record, i) => existing[i] !== undefined && JSON.stringify(existing[i]) !== JSON.stringify(record)).length;
     return { name, total: records.length, added: existing.filter(record => record === undefined).length, conflicts };
   }));
-  const preferenceConflicts = localEntries.filter(([key, value]) => localStorage.getItem(key) !== null && localStorage.getItem(key) !== value).length;
-  return { version: Number(parsed.version), exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : null, tables, preferenceConflicts };
+  const preferenceConflicts = localEntries.filter(([key, value]) => workspaceStorage.getItem(key) !== null && workspaceStorage.getItem(key) !== value).length;
+  const sourceWorkspace = typeof parsed.workspace === 'string' && /^(guest|user:[a-zA-Z0-9-]{1,128})$/.test(parsed.workspace) ? parsed.workspace : null;
+  return { version: Number(parsed.version), sourceWorkspace, exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : null, tables, preferenceConflicts };
 }
 
 export async function importCompleteBackup(jsonData: string, conflictMode: BackupConflictMode = 'use-file'): Promise<{ success: boolean; message: string }> {
@@ -107,8 +103,8 @@ export async function importCompleteBackup(jsonData: string, conflictMode: Backu
   try {
     const { entries, localEntries } = parseBackup(jsonData);
     // Fail safely if the device cannot persist the recovery snapshot.
-    localStorage.setItem(SAFETY_BACKUP_KEY, await exportCompleteBackup());
-    for (const [key] of localEntries) previousLocalData.set(key, localStorage.getItem(key));
+    workspaceStorage.setItem(SAFETY_BACKUP_KEY, await exportCompleteBackup());
+    for (const [key] of localEntries) previousLocalData.set(key, workspaceStorage.getItem(key));
     // Merge valid records atomically. An invalid/write-failing file cannot partially restore Dexie tables.
     await db.transaction('rw', entries.map(([name]) => db.table(name)), async () => {
       for (const [name, records] of entries) {
@@ -120,7 +116,7 @@ export async function importCompleteBackup(jsonData: string, conflictMode: Backu
       }
       localDataWritten = true;
       for (const [key, value] of localEntries) {
-        if (conflictMode === 'use-file' || localStorage.getItem(key) === null) localStorage.setItem(key, value);
+        if (conflictMode === 'use-file' || workspaceStorage.getItem(key) === null) workspaceStorage.setItem(key, value);
       }
     });
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
@@ -128,7 +124,7 @@ export async function importCompleteBackup(jsonData: string, conflictMode: Backu
   } catch (error: unknown) {
     if (localDataWritten) {
       for (const [key, value] of previousLocalData) {
-        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }
+        try { if (value === null) workspaceStorage.removeItem(key); else workspaceStorage.setItem(key, value); }
         catch (restoreError) { console.error('Could not roll back local storage:', restoreError); }
       }
     }

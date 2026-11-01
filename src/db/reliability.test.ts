@@ -1,3 +1,4 @@
+import { workspaceStorage } from './workspaceScope';
 import { db, initializeDatabase } from './database';
 import { exportCompleteBackup, importCompleteBackup, previewBackup, SAFETY_BACKUP_KEY } from './backup';
 import { getTaskTimeTag } from '../features/today/todayScheduling';
@@ -10,7 +11,7 @@ export async function runReliabilityTests() {
   const check = (name: string, passed: boolean) => { results.push({ name, passed }); };
   // This suite is called only by scripts/run-tests.mjs, with fake-indexeddb loaded.
   await db.transaction('rw', db.tables, async () => { for (const table of db.tables) await table.clear(); });
-  localStorage.clear();
+  workspaceStorage.clear();
   await initializeDatabase();
   const exercise = (await db.exercises.toArray())[0];
   const routine = (await db.routines.toArray())[0];
@@ -28,16 +29,16 @@ export async function runReliabilityTests() {
   const task: LifeTask = { id: 'round-trip-task', title: 'Backup test', spaceId: 'home', priority: 'medium', isCompleted: false, dueDate: date, createdAt: new Date().toISOString() };
   await db.tasks.put(task);
   await db.projects.put({ id: 'backup-project', title: 'Project', spaceId: 'home', status: 'in_progress', steps: [], createdAt: new Date().toISOString() });
-  localStorage.setItem(`routine_prayers_${date}`, '{"fajr":{"fard":true}}');
-  localStorage.setItem('life_focus_sessions', '[]');
-  localStorage.setItem('sb-private-auth-token', 'must-not-export');
+  workspaceStorage.setItem(`routine_prayers_${date}`, '{"fajr":{"fard":true}}');
+  workspaceStorage.setItem('life_focus_sessions', '[]');
+  workspaceStorage.setItem('sb-private-auth-token', 'must-not-export');
   const backup = await exportCompleteBackup();
   const parsed = JSON.parse(backup);
   check('Backup includes every portable database table and excludes credentials/queue', Object.keys(parsed.data).length === 12 && !backup.includes('must-not-export') && !('pendingSync' in parsed.data));
   await db.tasks.clear(); await db.projects.clear(); await db.exercises.delete('custom-preserve');
-  localStorage.removeItem(`routine_prayers_${date}`);
+  workspaceStorage.removeItem(`routine_prayers_${date}`);
   const restored = await importCompleteBackup(backup);
-  check('Full backup round trip restores custom exercises, tasks, projects and prayer history', restored.success && !!await db.tasks.get(task.id) && !!await db.projects.get('backup-project') && !!await db.exercises.get('custom-preserve') && localStorage.getItem(`routine_prayers_${date}`) !== null);
+  check('Full backup round trip restores custom exercises, tasks, projects and prayer history', restored.success && !!await db.tasks.get(task.id) && !!await db.projects.get('backup-project') && !!await db.exercises.get('custom-preserve') && workspaceStorage.getItem(`routine_prayers_${date}`) !== null);
 
   const invalid = JSON.parse(backup);
   invalid.data.tasks = [{ ...task, title: 'Should never be written' }];
@@ -47,26 +48,26 @@ export async function runReliabilityTests() {
   const legacy = await importCompleteBackup(JSON.stringify({ version: 1, data: { exercises: [{ ...exercise, id: 'legacy-exercise' }] } }));
   check('Legacy v1 backup restores exported exercises', legacy.success && !!await db.exercises.get('legacy-exercise'));
 
-  const originalSetItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = (key, value) => { if (key === 'movecare_theme') throw new Error('Simulated quota failure'); originalSetItem(key, value); };
+  const originalSetItem = workspaceStorage.setItem.bind(workspaceStorage);
+  workspaceStorage.setItem = (key, value) => { if (key === 'movecare_theme') throw new Error('Simulated quota failure'); originalSetItem(key, value); };
   const quotaResult = await importCompleteBackup(JSON.stringify({ version: 2, data: { tasks: [{ ...task, title: 'Uncommitted' }] }, localData: { movecare_theme: 'dark' } }));
-  localStorage.setItem = originalSetItem;
+  workspaceStorage.setItem = originalSetItem;
   check('Storage failure aborts database restoration', !quotaResult.success && (await db.tasks.get(task.id))?.title === task.title);
 
   const incoming = JSON.stringify({ version: 3, data: { tasks: [{ ...task, title: 'From phone' }, { ...task, id: 'new-phone-task' }] }, localData: { movecare_theme: 'light' } });
-  localStorage.setItem('movecare_theme', 'dark');
+  workspaceStorage.setItem('movecare_theme', 'dark');
   const preview = await previewBackup(incoming);
   check('Preview counts new records and conflicts without writing', preview.tables[0].added === 1 && preview.tables[0].conflicts === 1 && preview.preferenceConflicts === 1 && !await db.tasks.get('new-phone-task'));
   const kept = await importCompleteBackup(incoming, 'keep-existing');
-  check('Keep-existing imports new records and preserves local conflicts', kept.success && (await db.tasks.get(task.id))?.title === task.title && !!await db.tasks.get('new-phone-task') && localStorage.getItem('movecare_theme') === 'dark');
-  const safety = JSON.parse(localStorage.getItem(SAFETY_BACKUP_KEY)!);
+  check('Keep-existing imports new records and preserves local conflicts', kept.success && (await db.tasks.get(task.id))?.title === task.title && !!await db.tasks.get('new-phone-task') && workspaceStorage.getItem('movecare_theme') === 'dark');
+  const safety = JSON.parse(workspaceStorage.getItem(SAFETY_BACKUP_KEY)!);
   check('Recovery snapshot captures pre-import state without recursively exporting itself', safety.data.tasks.some((t: LifeTask) => t.id === task.id && t.title === task.title) && !('lifeos_pre_import_backup' in safety.localData));
   const overwritten = await importCompleteBackup(incoming, 'use-file');
-  check('Use-file explicitly replaces conflicting records and preferences', overwritten.success && (await db.tasks.get(task.id))?.title === 'From phone' && localStorage.getItem('movecare_theme') === 'light');
-  const storedSetItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = (key, value) => { if (key === SAFETY_BACKUP_KEY) throw new Error('No space for safety copy'); storedSetItem(key, value); };
+  check('Use-file explicitly replaces conflicting records and preferences', overwritten.success && (await db.tasks.get(task.id))?.title === 'From phone' && workspaceStorage.getItem('movecare_theme') === 'light');
+  const storedSetItem = workspaceStorage.setItem.bind(workspaceStorage);
+  workspaceStorage.setItem = (key, value) => { if (key === SAFETY_BACKUP_KEY) throw new Error('No space for safety copy'); storedSetItem(key, value); };
   const blocked = await importCompleteBackup(JSON.stringify({ version: 3, data: { tasks: [{ ...task, title: 'Blocked' }] } }), 'use-file');
-  localStorage.setItem = storedSetItem;
+  workspaceStorage.setItem = storedSetItem;
   check('Import stops without changing data when recovery snapshot cannot be saved', !blocked.success && (await db.tasks.get(task.id))?.title === 'From phone');
 
   const now = new Date(2026, 10, 1, 12, 0);

@@ -1,3 +1,5 @@
+import { requireSyncIdentity } from './syncIdentity';
+import { workspaceGuard } from './workspaceScope';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { db } from './database';
@@ -39,12 +41,15 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
   }
 
   try {
+    await requireSyncIdentity(userId, client);
     if (await pendingMutationCount(userId)) throw new Error('توجد تعديلات لم تصل للسحابة؛ لن يتم استبدال بيانات الجهاز.');
     const tables = [db.settings, db.workoutLogs, db.routines, db.weeklySchedule,
       db.azkarLogs, db.tasks, db.projects, db.plans, db.planMilestones, db.workoutSchedules, db.dayPlans];
     const before = await db.transaction('r', tables, () => Promise.all(tables.map(async table => JSON.stringify(await table.toArray()))));
     const snapshot = await fetchCloudSnapshot(client, userId);
+    await requireSyncIdentity(userId, client);
     return await db.transaction('rw', [...tables, db.pendingSync], async () => {
+      if (client === supabase) workspaceGuard.assertAccount(userId);
       for (let index = 0; index < tables.length; index++) {
         if (JSON.stringify(await tables[index].toArray()) !== before[index]) throw new Error('تم تعديل بيانات الجهاز أثناء السحب؛ أعد المزامنة لحماية التعديل الجديد.');
       }
@@ -55,8 +60,8 @@ export async function pullUserDataFromCloud(userId: string, client: SupabaseClie
       if (profile) {
         const localSettings = await db.settings.get('current_settings');
         const updatedSettings: UserSettings = {
-          todayPreferences: profile.today_preferences ?? localSettings?.todayPreferences,
           ...localSettings,
+          todayPreferences: profile.today_preferences ?? localSettings?.todayPreferences,
           id: 'current_settings',
           userName: profile.user_name || localSettings?.userName || 'بطل الروتين',
           theme: profile.theme || localSettings?.theme || 'dark',
@@ -238,9 +243,11 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
   }
 
   try {
+    await requireSyncIdentity(userId, client);
     // 1. Push Profile / Settings
     const localSettings = await db.settings.get('current_settings');
     if (localSettings) {
+      await requireSyncIdentity(userId, client);
       await client.from('profiles').upsert(settingsToCloud(userId, localSettings)).throwOnError();
     }
 
@@ -263,6 +270,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         difficulty_rating: l.difficultyRating,
         notes: l.notes,
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('workout_logs').upsert(records).throwOnError();
     }
 
@@ -271,6 +279,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     const customRoutines = allRoutines.filter((r) => r.isCustom);
     if (customRoutines.length > 0) {
       const records = customRoutines.map(routine => routineToCloud(userId, routine));
+      await requireSyncIdentity(userId, client);
       await client.from('custom_routines').upsert(records).throwOnError();
     }
 
@@ -289,6 +298,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         week_number: s.weekNumber,
         updated_at: new Date().toISOString(),
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('weekly_schedule').upsert(records).throwOnError();
     }
 
@@ -307,6 +317,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         duration_seconds: a.durationSeconds,
         completed_at: a.completedAt,
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('azkar_logs').upsert(records).throwOnError();
     }
 
@@ -314,6 +325,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     const localTasks = await db.tasks.toArray();
     if (localTasks.length > 0) {
       const records = localTasks.map(task => taskToCloud(userId, task));
+      await requireSyncIdentity(userId, client);
       await client.from('life_tasks').upsert(records).throwOnError();
     }
 
@@ -321,6 +333,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
     const localProjects = await db.projects.toArray();
     if (localProjects.length > 0) {
       const records = localProjects.map(project => projectToCloud(userId, project));
+      await requireSyncIdentity(userId, client);
       await client.from('projects').upsert(records).throwOnError();
     }
 
@@ -340,6 +353,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         created_at: p.createdAt,
         updated_at: p.updatedAt,
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('plans').upsert(records).throwOnError();
     }
 
@@ -356,6 +370,7 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         target_date: m.targetDate,
         completed_at: m.completedAt,
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('plan_milestones').upsert(records).throwOnError();
     }
 
@@ -372,11 +387,15 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
         duration_minutes: s.durationMinutes,
         is_enabled: s.isEnabled,
       }));
+      await requireSyncIdentity(userId, client);
       await client.from('workout_schedules').upsert(records).throwOnError();
     }
 
     const localDayPlans = await db.dayPlans.toArray();
-    if (localDayPlans.length) await client.from('day_plans').upsert(localDayPlans.map(plan => dayPlanToCloud(userId, plan))).throwOnError();
+    if (localDayPlans.length) {
+      await requireSyncIdentity(userId, client);
+      await client.from('day_plans').upsert(localDayPlans.map(plan => dayPlanToCloud(userId, plan))).throwOnError();
+    }
 
     return { success: true };
   } catch (err: unknown) {
@@ -432,8 +451,11 @@ export async function enqueuePendingMutation(
 let flushTail: Promise<unknown> = Promise.resolve();
 export async function flushPendingSyncQueue(userId: string): Promise<{ processed: number; failed: number }> {
   const work = async () => {
+    if (!isSupabaseConfigured()) return { processed: 0, failed: 0 };
+    await requireSyncIdentity(userId);
     if (!await checkRealConnectivity()) return { processed: 0, failed: 0 };
     return processSyncQueue(userId, async item => {
+      await requireSyncIdentity(userId);
       if (item.action === 'upsert' && (item.table === 'profiles' ? item.data?.id : item.data?.user_id) !== userId) {
         throw new Error('هوية التعديل لا تطابق الحساب؛ لم يتم إرساله.');
       }
@@ -567,6 +589,7 @@ export async function syncSingleWorkoutScheduleDelete(userId: string, scheduleId
 }
 
 async function submitMutation(userId: string, table: import('./database').PendingSyncItem['table'], entityId: string, action: 'upsert' | 'delete', data: Record<string, unknown> | null) {
+  if (isSupabaseConfigured()) await requireSyncIdentity(userId);
   // Persist the latest intent before any request, including online saves.
   await enqueuePendingMutation({ userId, table, entityId, action, data, timestamp: new Date().toISOString() });
   await flushPendingSyncQueue(userId);

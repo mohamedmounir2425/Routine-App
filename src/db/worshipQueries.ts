@@ -1,3 +1,4 @@
+import { workspaceStorage } from './workspaceScope';
 import { db } from './database';
 import { AzkarCategoryKey, AzkarLog } from '../features/worship/types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -64,7 +65,7 @@ export interface DailyPrayerRecord {
 export function getDailyPrayersState(dateStr?: string): Record<string, DailyPrayerRecord> {
   const date = dateStr || getLocalDateString();
   try {
-    const saved = localStorage.getItem(`routine_prayers_${date}`);
+    const saved = workspaceStorage.getItem(`routine_prayers_${date}`);
     return saved ? JSON.parse(saved) : {};
   } catch {
     return {};
@@ -87,7 +88,7 @@ export function toggleDailyPrayerFard(
     jamaah: nextFard ? current.jamaah : false,
   };
 
-  localStorage.setItem(storageKey, JSON.stringify(state));
+  workspaceStorage.setItem(storageKey, JSON.stringify(state));
   return state[prayerId];
 }
 
@@ -106,14 +107,14 @@ export function updateDailyPrayerRecord(
     ...updates,
   };
 
-  localStorage.setItem(storageKey, JSON.stringify(state));
+  workspaceStorage.setItem(storageKey, JSON.stringify(state));
   return state[prayerId];
 }
 
 export function getNawafilPrayersState(dateStr?: string): Record<string, boolean> {
   const date = dateStr || getLocalDateString();
   try {
-    const saved = localStorage.getItem(`routine_prayers_${date}_nawafil`);
+    const saved = workspaceStorage.getItem(`routine_prayers_${date}_nawafil`);
     return saved ? JSON.parse(saved) : {};
   } catch {
     return {};
@@ -126,7 +127,7 @@ export function toggleNawafilPrayer(nawafilId: string, dateStr?: string): boolea
   const state = getNawafilPrayersState(date);
   const next = !state[nawafilId];
   state[nawafilId] = next;
-  localStorage.setItem(storageKey, JSON.stringify(state));
+  workspaceStorage.setItem(storageKey, JSON.stringify(state));
   return next;
 }
 
@@ -151,13 +152,13 @@ export function getQuranDailyStatus(targetDateStr?: string): QuranDailyStatus {
   let bookmarkPage = 1;
 
   try {
-    const savedRead = localStorage.getItem(`routine_quran_${dateStr}`);
+    const savedRead = workspaceStorage.getItem(`routine_quran_${dateStr}`);
     if (savedRead) pagesRead = parseInt(savedRead, 10);
-    const savedTarget = localStorage.getItem('routine_quran_target');
+    const savedTarget = workspaceStorage.getItem('routine_quran_target');
     if (savedTarget) targetPages = parseInt(savedTarget, 10);
-    const savedSurah = localStorage.getItem('routine_quran_bookmark_surah');
+    const savedSurah = workspaceStorage.getItem('routine_quran_bookmark_surah');
     if (savedSurah) bookmarkSurah = savedSurah;
-    const savedPage = localStorage.getItem('routine_quran_bookmark_page');
+    const savedPage = workspaceStorage.getItem('routine_quran_bookmark_page');
     if (savedPage) bookmarkPage = parseInt(savedPage, 10);
   } catch {}
 
@@ -181,8 +182,8 @@ export function recordQuranPageRead(amount: number = 1, targetDateStr?: string):
   const nextPage = Math.min(604, Math.max(1, status.bookmarkPage + amount));
 
   try {
-    localStorage.setItem(`routine_quran_${status.dateStr}`, nextRead.toString());
-    localStorage.setItem('routine_quran_bookmark_page', nextPage.toString());
+    workspaceStorage.setItem(`routine_quran_${status.dateStr}`, nextRead.toString());
+    workspaceStorage.setItem('routine_quran_bookmark_page', nextPage.toString());
   } catch {}
 
   return getQuranDailyStatus(status.dateStr);
@@ -190,14 +191,14 @@ export function recordQuranPageRead(amount: number = 1, targetDateStr?: string):
 
 export function setQuranTargetPages(target: number): void {
   try {
-    localStorage.setItem('routine_quran_target', Math.max(1, target).toString());
+    workspaceStorage.setItem('routine_quran_target', Math.max(1, target).toString());
   } catch {}
 }
 
 export function updateQuranBookmark(surah: string, page: number): void {
   try {
-    localStorage.setItem('routine_quran_bookmark_surah', surah);
-    localStorage.setItem('routine_quran_bookmark_page', Math.min(604, Math.max(1, page)).toString());
+    workspaceStorage.setItem('routine_quran_bookmark_surah', surah);
+    workspaceStorage.setItem('routine_quran_bookmark_page', Math.min(604, Math.max(1, page)).toString());
   } catch {}
 }
 

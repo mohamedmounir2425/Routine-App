@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 import React, { useState, useEffect } from 'react';
 import { Check, Sparkles, Moon, Sun, Sunrise, Sunset, Award, MapPin, Navigation, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -55,7 +56,7 @@ export const PrayerTracker: React.FC = () => {
   // Prayer state: Record<prayerId, { fard: boolean; jamaah: boolean; sunnah: boolean }>
   const [prayerState, setPrayerState] = useState<Record<string, { fard: boolean; jamaah: boolean; sunnah: boolean }>>(() => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = workspaceStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -64,7 +65,7 @@ export const PrayerTracker: React.FC = () => {
 
   const [nawafilState, setNawafilState] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = localStorage.getItem(`${storageKey}_nawafil`);
+      const saved = workspaceStorage.getItem(`${storageKey}_nawafil`);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -88,11 +89,11 @@ export const PrayerTracker: React.FC = () => {
   }, [locationState]);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(prayerState));
+    workspaceStorage.setItem(storageKey, JSON.stringify(prayerState));
   }, [prayerState, storageKey]);
 
   useEffect(() => {
-    localStorage.setItem(`${storageKey}_nawafil`, JSON.stringify(nawafilState));
+    workspaceStorage.setItem(`${storageKey}_nawafil`, JSON.stringify(nawafilState));
   }, [nawafilState, storageKey]);
 
   const handleCityChange = (cityId: string) => {

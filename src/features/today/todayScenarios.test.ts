@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../db/workspaceScope';
 /**
  * Deterministic Test Suite for Today Aggregator & Actions Layer
  * Verifies all 9 core domain integration scenarios:
@@ -70,7 +71,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
   await db.workoutSchedules.clear();
   await db.workoutLogs.clear();
   await db.azkarLogs.clear();
-  localStorage.clear();
+  workspaceStorage.clear();
 
   // ----------------------------------------------------
   // Scenario 1: Empty day / all spaces disabled
@@ -1028,10 +1029,10 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     await db.workoutLogs.clear();
     await db.azkarLogs.clear();
     await db.projects.clear();
-    localStorage.clear();
+    workspaceStorage.clear();
 
     // 1. Seed Worship: Complete Fajr & Dhuhr (10% + 10% = 20%)
-    localStorage.setItem(
+    workspaceStorage.setItem(
       `routine_prayers_${testDate}`,
       JSON.stringify({ fajr: { fard: true }, dhuhr: { fard: true } })
     );
@@ -1247,7 +1248,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     );
 
     // 8. Verify LocalStorage synchronization for TodayPreferences (no duplicate store, synchronized by updateUserSettings)
-    const storedLocalStorage = globalThis.localStorage.getItem('routine_today_preferences');
+    const storedLocalStorage = workspaceStorage.getItem('routine_today_preferences');
     const parsedLocalStorage = storedLocalStorage ? JSON.parse(storedLocalStorage) : null;
     const localStorageSyncValid = Boolean(parsedLocalStorage && parsedLocalStorage.showWork === false);
 
@@ -1295,9 +1296,9 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     await db.workoutSchedules.clear();
     await db.plans.clear();
     await db.planMilestones.clear();
-    globalThis.localStorage.removeItem(`routine_prayers_${testDate}`);
-    globalThis.localStorage.removeItem(`routine_quran_${testDate}`);
-    globalThis.localStorage.removeItem('routine_tasbeeh_count');
+    workspaceStorage.removeItem(`routine_prayers_${testDate}`);
+    workspaceStorage.removeItem(`routine_quran_${testDate}`);
+    workspaceStorage.removeItem('routine_tasbeeh_count');
 
     // 2. Set up multi-domain entries for testDate (Tuesday = 2)
     // A. Health: Scheduled routine for Tuesday
@@ -1397,7 +1398,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     await executeCompleteAzkar('evening', testDate);
     // - Quran: Read 4 pages
     executeAddQuranPage(4, testDate);
-    globalThis.localStorage.setItem('routine_tasbeeh_count', '33');
+    workspaceStorage.setItem('routine_tasbeeh_count', '33');
     // - Workout log
     await db.workoutLogs.put({
       id: 'log-s17',

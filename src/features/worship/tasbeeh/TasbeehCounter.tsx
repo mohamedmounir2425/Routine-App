@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 import React, { useState } from 'react';
 import { sounds } from '../../../utils/audio';
 import confetti from 'canvas-confetti';
@@ -29,7 +30,7 @@ export const TasbeehCounter: React.FC = () => {
   const [round, setRound] = useState(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [totalToday, setTotalToday] = useState(() => {
-    const saved = localStorage.getItem('routine_tasbeeh_today');
+    const saved = workspaceStorage.getItem('routine_tasbeeh_today');
     return saved ? parseInt(saved, 10) : 0;
   });
 
@@ -46,7 +47,7 @@ export const TasbeehCounter: React.FC = () => {
     const nextCount = count + 1;
     const nextTotal = totalToday + 1;
     setTotalToday(nextTotal);
-    localStorage.setItem('routine_tasbeeh_today', nextTotal.toString());
+    workspaceStorage.setItem('routine_tasbeeh_today', nextTotal.toString());
 
     if (!isInfinite && nextCount >= target) {
       // Completed target round!

@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 /**
  * Focus Engine for Developer Work OS.
  * 
@@ -96,7 +97,7 @@ export function getPersistedActiveFocusState(): ActiveFocusState {
     return { focusedTaskId: null, activeSession: null };
   }
   try {
-    const raw = localStorage.getItem(ACTIVE_FOCUS_STORAGE_KEY);
+    const raw = workspaceStorage.getItem(ACTIVE_FOCUS_STORAGE_KEY);
     if (!raw) return { focusedTaskId: null, activeSession: null };
     return JSON.parse(raw);
   } catch {
@@ -108,9 +109,9 @@ export function persistActiveFocusState(state: ActiveFocusState): void {
   if (typeof window === 'undefined') return;
   try {
     if (state.focusedTaskId && state.activeSession) {
-      localStorage.setItem(ACTIVE_FOCUS_STORAGE_KEY, JSON.stringify(state));
+      workspaceStorage.setItem(ACTIVE_FOCUS_STORAGE_KEY, JSON.stringify(state));
     } else {
-      localStorage.removeItem(ACTIVE_FOCUS_STORAGE_KEY);
+      workspaceStorage.removeItem(ACTIVE_FOCUS_STORAGE_KEY);
     }
     window.dispatchEvent(new CustomEvent('work_focus_state_changed', { detail: state }));
   } catch (err) {

@@ -1,4 +1,6 @@
+import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
+import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
 import { 
   Exercise, 
   Routine, 
@@ -62,8 +64,8 @@ export class RoutineDatabase extends Dexie {
   workoutSchedules!: Table<WorkoutScheduleEntry, string>;
   dayPlans!: Table<DayPlan, string>;
 
-  constructor() {
-    super('RoutineAppDB');
+  constructor(name = workspaceDatabaseName(CURRENT_WORKSPACE)) {
+    super(name);
     this.version(1).stores({
       exercises: 'id, category, isFavorite, createdAt',
       routines: 'id, isDefault, isMiniRescue, weekNumber, sessionCode',
@@ -183,9 +185,9 @@ export async function updateUserSettings(partial: Partial<UserSettings>): Promis
 
   syncSettingsInBackground(updated);
 
-  if (partial.todayPreferences && typeof localStorage !== 'undefined') {
+  if (partial.todayPreferences && typeof workspaceStorage !== 'undefined') {
     try {
-      localStorage.setItem('routine_today_preferences', JSON.stringify(partial.todayPreferences));
+      workspaceStorage.setItem('routine_today_preferences', JSON.stringify(partial.todayPreferences));
     } catch {
       // ignore
     }

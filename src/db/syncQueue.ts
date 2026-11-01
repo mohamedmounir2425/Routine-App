@@ -4,16 +4,16 @@ import { syncErrorMessage } from './cloudSyncChecks';
 export type PendingMutation = Omit<PendingSyncItem, 'id' | 'retryCount' | 'status'>;
 
 /** Scope and squash atomically; never collapse two accounts' operations. */
-export async function queueMutation(item: PendingMutation, isCreatedOffline = false) {
-  await db.transaction('rw', db.pendingSync, async () => {
-    const existing = await db.pendingSync.where('[userId+table+entityId]')
+export async function queueMutation(item: PendingMutation, isCreatedOffline = false, database = db) {
+  await database.transaction('rw', database.pendingSync, async () => {
+    const existing = await database.pendingSync.where('[userId+table+entityId]')
       .equals([item.userId, item.table, item.entityId]).first();
     const next = { ...item, retryCount: 0, status: 'pending' as const,
       nextRetryAt: undefined, lastError: undefined,
       isCreatedOffline: item.isCreatedOffline ?? isCreatedOffline };
     // Keep deletion intentions even if an earlier create may have reached the server.
     // Cancelling them based on navigator.onLine could resurrect remote records.
-    await db.pendingSync.put({ ...next, ...(existing ? { id: existing.id } : {}) });
+    await database.pendingSync.put({ ...next, ...(existing ? { id: existing.id } : {}) });
   });
 }
 
