@@ -90,3 +90,7 @@ Implemented the approved public-facing Home & Family structure: Home, Kitchen, S
 Home prioritizes real saved recipes and meal filters, then shopping and due work. Shopping has its own live list and quick input; general tasks exclude legacy shopping/routine/maintenance records surfaced in their dedicated views. Recipe details expand progressively; deep links from Home open a specific recipe or preselect a meal. All home dialogs use Radix with mobile bottom panels. Task edits preserve existing metadata. No backend migration or account-sharing implementation is part of this change.
 
 Validation: 173 existing scenarios passed, production/PWA build passed, and focused lint passed. Chrome headless preview did not produce an image in this environment, so visual/device acceptance remains outstanding. Pantry/audits, meal planning and selective household sharing remain planned.
+
+## Recipe editing and home light/navigation corrections
+
+Separated edit/save button identities and prevented the edit click default action so switching modes cannot accidentally submit a newly reused button. Added a successful same-ID edit regression. Shared home theme tokens now cover warm light and dark content, portalled dialogs, global header and mobile dock. Mobile header hides secondary actions in a disclosure menu and uses a compact 52px row.

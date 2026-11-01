@@ -33,7 +33,9 @@ export async function runRecipeTests() {
     check('Unsafe protocols, credential URLs and disguised YouTube hosts are rejected', rejects(() => safeMediaUrl('javascript:alert(1)')) && rejects(() => safeMediaUrl('https://user:password@example.com/a.jpg')) && rejects(() => safeMediaUrl('https://youtube.com.evil.example/video', true)) && safeMediaUrl('https://www.youtube.com/watch?v=test', true).startsWith('https://'));
     check('Invalid quantities, durations, missing titles and invalid meal tags are rejected', rejects(() => cleanRecipeDraft({ ...emptyRecipe(), title: '' })) && rejects(() => cleanRecipeDraft({ ...emptyRecipe(), title: 'Food', durationMinutes: 0 })) && rejects(() => cleanRecipeDraft({ ...emptyRecipe(), title: 'Food', ingredients: [{ name: '', quantity: '2' }] })) && rejects(() => validateRecipeRecord({ ...recipe, mealTypes: ['invalid'] })));
     check('Malformed recipe backups reject non-string ingredients and invalid dates', rejects(() => validateRecipeRecord({ ...recipe, ingredients: [{ name: 42, quantity: '' }] })) && rejects(() => validateRecipeRecord({ ...recipe, createdAt: 'invalid' })));
-    await deleteRecipe(basic, database, 'owner');
+    const editedBasic = await saveRecipe({ ...basic, title: 'وصفة بعد التعديل' }, basic, database, 'owner');
+    check('Editing a current recipe updates the same ID and preserves optional fields', editedBasic.id === basic.id && (await database.recipes.get(basic.id))?.title === 'وصفة بعد التعديل' && editedBasic.durationMinutes === null);
+    await deleteRecipe(editedBasic, database, 'owner');
     check('Deleting before first sync preserves a deletion intent and baseline', !await database.recipes.get(basic.id) && (await database.pendingSync.where('[userId+table+entityId]').equals(['owner', 'recipes', basic.id]).first())?.action === 'delete' && !!await database.syncBaselines.get('recipes:' + basic.id));
     await db.recipes.put(recipe);
     const backup = await exportCompleteBackup();

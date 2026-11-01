@@ -116,14 +116,14 @@ export const MobileDock: React.FC = () => {
   }
 
   return (
-    <div className="md:hidden fixed bottom-3 inset-x-3 z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom)]">
+    <div className={`${currentPath.startsWith("/home") ? "home-mobile-dock home-theme" : ""} md:hidden fixed bottom-3 inset-x-3 z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom)]`}>
       <nav 
         ref={mobileNavRef}
         className="pointer-events-auto liquid-glass-dock w-full max-w-md px-1.5 py-1.5 rounded-3xl flex items-center justify-around shadow-2xl relative"
       >
         {/* Mobile Sliding Active Style (Pill) */}
         <div
-          className="absolute top-1.5 bottom-1.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/35 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+          className="dock-indicator absolute top-1.5 bottom-1.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/35 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
           style={{
             left: `${mobileIndicator.left}px`,
             width: `${mobileIndicator.width}px`,
@@ -141,6 +141,7 @@ export const MobileDock: React.FC = () => {
               ref={(el) => { mobileTabRefs.current[tab.path] = el; }}
               onClick={() => navigate(tab.path)}
               aria-label={t(tab.labelKey)}
+              aria-current={isActive ? "page" : undefined}
               className={`relative z-10 flex-1 flex flex-col items-center justify-center min-h-[44px] gap-0.5 py-1 px-1 rounded-2xl text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
                 isActive
                   ? 'text-emerald-400'
