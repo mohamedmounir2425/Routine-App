@@ -104,6 +104,10 @@ export class RoutineDatabase extends Dexie {
       planMilestones: 'id, planId, isCompleted, order',
       workoutSchedules: 'id, dayOfWeek, scheduledTime, isEnabled'
     });
+
+    this.version(5).stores({
+      tasks: 'id, spaceId, isCompleted, status, dueDate, priority, sourceType, projectId, planId'
+    });
   }
 }
 

@@ -201,6 +201,13 @@ export async function pullUserDataFromCloud(userId: string): Promise<SyncResult>
           targetDate: p.target_date,
           createdAt: p.created_at,
           completedAt: p.completed_at,
+          repositoryUrl: p.repository_url,
+          devUrl: p.dev_url,
+          apiUrl: p.api_url,
+          branch: p.branch,
+          runCommand: p.run_command,
+          requiresVpn: p.requires_vpn,
+          setupNotes: p.setup_notes,
         }));
         await db.projects.bulkPut(mappedProjects);
       }
@@ -872,6 +879,13 @@ export async function syncSingleProject(userId: string, project: HomeProject): P
     target_date: project.targetDate,
     created_at: project.createdAt,
     completed_at: project.completedAt,
+    repository_url: project.repositoryUrl,
+    dev_url: project.devUrl,
+    api_url: project.apiUrl,
+    branch: project.branch,
+    run_command: project.runCommand,
+    requires_vpn: project.requiresVpn,
+    setup_notes: project.setupNotes,
   };
 
   if (!isSupabaseConfigured() || (typeof navigator !== 'undefined' && !navigator.onLine)) {

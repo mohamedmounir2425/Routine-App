@@ -6,11 +6,23 @@ import { getLocalDateString } from '../utils/dateUtils';
 
 export async function saveTask(task: LifeTask): Promise<void> {
   try {
-    await db.tasks.put(task);
+    const updated: LifeTask = { ...task };
+    if (!updated.status) {
+      updated.status = updated.isCompleted ? 'DONE' : 'TODO';
+    } else {
+      updated.isCompleted = updated.status === 'DONE';
+    }
+    if (Array.isArray(updated.focusSessions)) {
+      updated.actualMinutes = updated.focusSessions.reduce(
+        (sum, s) => sum + (typeof s.durationMinutes === 'number' ? s.durationMinutes : 0),
+        0
+      );
+    }
+    await db.tasks.put(updated);
     if (isSupabaseConfigured()) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
-          syncSingleTask(session.user.id, task);
+          syncSingleTask(session.user.id, updated);
         }
       });
     }
@@ -24,6 +36,15 @@ export async function getTasksBySpace(spaceId: LifeSpaceId): Promise<LifeTask[]>
     return await db.tasks.where('spaceId').equals(spaceId).toArray();
   } catch (error) {
     console.error(`Failed to get tasks for space ${spaceId}:`, error);
+    return [];
+  }
+}
+
+export async function getTasksByProject(projectId: string): Promise<LifeTask[]> {
+  try {
+    return await db.tasks.where('projectId').equals(projectId).toArray();
+  } catch (error) {
+    console.error(`Failed to get tasks for project ${projectId}:`, error);
     return [];
   }
 }
@@ -66,8 +87,17 @@ export async function toggleTaskCompletion(id: string, targetDateStr?: string): 
       updated = {
         ...task,
         isCompleted,
+        status: isCompleted ? 'DONE' : 'TODO',
         completedAt: isCompleted ? new Date().toISOString() : undefined,
+        updatedAt: new Date().toISOString(),
       };
+    }
+
+    if (Array.isArray(updated.focusSessions)) {
+      updated.actualMinutes = updated.focusSessions.reduce(
+        (sum, s) => sum + (typeof s.durationMinutes === 'number' ? s.durationMinutes : 0),
+        0
+      );
     }
 
     await db.tasks.put(updated);

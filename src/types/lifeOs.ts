@@ -26,6 +26,15 @@ export interface LifeProject {
   targetDate?: string; // YYYY-MM-DD
   createdAt: string;
   completedAt?: string;
+
+  // Work Project Hub Dev Context (Phase 2 - No secrets/tokens)
+  repositoryUrl?: string;
+  devUrl?: string;
+  apiUrl?: string;
+  branch?: string;
+  runCommand?: string;
+  requiresVpn?: boolean;
+  setupNotes?: string;
 }
 
 // Backward compatibility aliases

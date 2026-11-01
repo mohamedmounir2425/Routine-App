@@ -22,6 +22,7 @@ import { getWorkProjects, completeProjectStep } from '../../db/projectQueries';
 import { SpaceShell } from '../../components/layout/SpaceShell';
 import { sounds } from '../../utils/audio';
 import { getFocusStats, recordCompletedFocusSession } from './focus/focusService';
+import { ProjectHubModal } from './projects/ProjectHubModal';
 
 export const WorkOverview: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export const WorkOverview: React.FC = () => {
   const [projects, setProjects] = useState<HomeProject[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [focusStats, setFocusStats] = useState(getFocusStats());
+  const [selectedHubProject, setSelectedHubProject] = useState<HomeProject | null>(null);
 
   // Quick Pomodoro Timer
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
@@ -344,9 +346,15 @@ export const WorkOverview: React.FC = () => {
                         className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between gap-3 text-xs"
                       >
                         <div className="min-w-0">
-                          <div className="text-[10px] text-cyan-300 font-bold mb-0.5">
-                            مشروع: {proj.title}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedHubProject(proj)}
+                            className="text-[10px] text-cyan-300 hover:text-cyan-200 font-bold mb-0.5 flex items-center gap-1 cursor-pointer"
+                            title="فتح Project Hub"
+                          >
+                            <span>مشروع: {proj.title}</span>
+                            <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-[9px]">Hub ⚡</span>
+                          </button>
                           <div className="text-white font-bold truncate">
                             {proj.nextActionTitle}
                           </div>
@@ -464,6 +472,14 @@ export const WorkOverview: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Project Hub Modal */}
+      <ProjectHubModal
+        isOpen={Boolean(selectedHubProject)}
+        project={selectedHubProject}
+        onClose={() => setSelectedHubProject(null)}
+        onProjectUpdated={loadData}
+      />
     </SpaceShell>
   );
 };

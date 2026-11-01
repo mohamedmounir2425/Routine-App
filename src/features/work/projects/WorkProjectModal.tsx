@@ -23,6 +23,15 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
   const [steps, setSteps] = useState<Array<{ id: string; title: string; isCompleted: boolean; order: number }>>([]);
   const [newStepText, setNewStepText] = useState('');
 
+  // Work Project Hub Dev Context
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [devUrl, setDevUrl] = useState('');
+  const [apiUrl, setApiUrl] = useState('');
+  const [branch, setBranch] = useState('');
+  const [runCommand, setRunCommand] = useState('');
+  const [requiresVpn, setRequiresVpn] = useState(false);
+  const [setupNotes, setSetupNotes] = useState('');
+
   useEffect(() => {
     if (initialProject) {
       setTitle(initialProject.title);
@@ -30,6 +39,13 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
       setStatus(initialProject.status);
       setTargetDate(initialProject.targetDate || '');
       setSteps(initialProject.steps || []);
+      setRepositoryUrl(initialProject.repositoryUrl || '');
+      setDevUrl(initialProject.devUrl || '');
+      setApiUrl(initialProject.apiUrl || '');
+      setBranch(initialProject.branch || '');
+      setRunCommand(initialProject.runCommand || '');
+      setRequiresVpn(Boolean(initialProject.requiresVpn));
+      setSetupNotes(initialProject.setupNotes || '');
     } else {
       setTitle('');
       setDescription('');
@@ -38,6 +54,13 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
       setSteps([
         { id: `step_${Date.now()}_1`, title: '', isCompleted: false, order: 1 },
       ]);
+      setRepositoryUrl('');
+      setDevUrl('');
+      setApiUrl('');
+      setBranch('');
+      setRunCommand('');
+      setRequiresVpn(false);
+      setSetupNotes('');
     }
   }, [initialProject, isOpen]);
 
@@ -74,6 +97,16 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
       .filter((s) => s.title.trim().length > 0)
       .map((s, idx) => ({ ...s, order: idx + 1 }));
 
+    const devContext = {
+      repositoryUrl: repositoryUrl.trim() || undefined,
+      devUrl: devUrl.trim() || undefined,
+      apiUrl: apiUrl.trim() || undefined,
+      branch: branch.trim() || undefined,
+      runCommand: runCommand.trim() || undefined,
+      requiresVpn: requiresVpn || undefined,
+      setupNotes: setupNotes.trim() || undefined,
+    };
+
     if (initialProject) {
       await updateProject(initialProject.id, {
         title: title.trim(),
@@ -81,6 +114,7 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
         status,
         targetDate: targetDate || undefined,
         steps: validSteps,
+        ...devContext,
       });
     } else {
       await createWorkProject({
@@ -89,6 +123,7 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
         status,
         targetDate: targetDate || undefined,
         steps: validSteps,
+        ...devContext,
       });
     }
 
@@ -174,6 +209,102 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
                 onChange={(e) => setTargetDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-sky-500/50"
               />
+            </div>
+          </div>
+
+          {/* Developer Work OS Setup Context */}
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-right">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white font-['Tajawal'] flex items-center gap-1.5">
+                <span>💻</span>
+                <span>إعدادات وبيئة عمل المشروع (Dev Setup)</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-['Tajawal']">
+                روابط وأوامر التشغيل السريع
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">رابط المستودع (Repository)</label>
+                <input
+                  type="url"
+                  value={repositoryUrl}
+                  onChange={(e) => setRepositoryUrl(e.target.value)}
+                  placeholder="https://github.com/org/repo"
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">بيئة التطوير (Dev URL)</label>
+                <input
+                  type="url"
+                  value={devUrl}
+                  onChange={(e) => setDevUrl(e.target.value)}
+                  placeholder="http://localhost:3000"
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">API / Swagger URL</label>
+                <input
+                  type="url"
+                  value={apiUrl}
+                  onChange={(e) => setApiUrl(e.target.value)}
+                  placeholder="https://api.dev.domain/docs"
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">الفرع الحالي (Branch)</label>
+                <input
+                  type="text"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  placeholder="main أو feature/xyz"
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">أمر التشغيل (Run Command)</label>
+                <input
+                  type="text"
+                  value={runCommand}
+                  onChange={(e) => setRunCommand(e.target.value)}
+                  placeholder="npm run dev أو docker-compose up"
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-sky-300 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2 flex items-center justify-between p-2 rounded-lg bg-slate-900/40 border border-white/5">
+                <span className="text-xs text-slate-300 font-medium font-['Tajawal']">
+                  يتطلب اتصال VPN للعمل؟
+                </span>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={requiresVpn}
+                    onChange={(e) => setRequiresVpn(e.target.checked)}
+                    className="rounded border-white/20 text-sky-500 focus:ring-sky-500"
+                  />
+                  <span>نعم، يحتاج VPN 🔒</span>
+                </label>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">ملاحظات الإعداد (Setup Notes)</label>
+                <textarea
+                  rows={2}
+                  value={setupNotes}
+                  onChange={(e) => setSetupNotes(e.target.value)}
+                  placeholder="متطلبات إضافية، خطوات تهيئة، أو اعتمادات محلية..."
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 resize-none font-['Tajawal']"
+                />
+              </div>
             </div>
           </div>
 

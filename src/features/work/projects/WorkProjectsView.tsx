@@ -4,12 +4,14 @@ import { HomeProject } from '../../../types';
 import { getWorkProjects, completeProjectStep, deleteProject } from '../../../db/projectQueries';
 import { SpaceShell } from '../../../components/layout/SpaceShell';
 import { WorkProjectModal } from './WorkProjectModal';
+import { ProjectHubModal } from './ProjectHubModal';
 
 export const WorkProjectsView: React.FC = () => {
   const [projects, setProjects] = useState<HomeProject[]>([]);
   const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<HomeProject | null>(null);
+  const [selectedHubProject, setSelectedHubProject] = useState<HomeProject | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
 
   const loadProjects = async () => {
@@ -106,9 +108,17 @@ export const WorkProjectsView: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-                        <h3 className="text-base sm:text-lg font-black text-white font-['Tajawal']">
-                          {project.title}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHubProject(project)}
+                          className="text-base sm:text-lg font-black text-white font-['Tajawal'] hover:text-sky-400 transition-colors text-right cursor-pointer flex items-center gap-1.5 group"
+                          title="فتح لوحة المشروع (Project Hub)"
+                        >
+                          <span>{project.title}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-lg bg-sky-500/15 text-sky-300 opacity-80 group-hover:opacity-100 font-normal">
+                            Hub ⚡
+                          </span>
+                        </button>
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                           project.status === 'completed'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -133,6 +143,15 @@ export const WorkProjectsView: React.FC = () => {
                           <span>{project.targetDate}</span>
                         </span>
                       )}
+
+                      <button
+                        onClick={() => setSelectedHubProject(project)}
+                        className="px-2.5 py-1 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        title="فتح Project Hub"
+                      >
+                        <Folder className="w-3.5 h-3.5" />
+                        <span>لوحة المشروع</span>
+                      </button>
 
                       <button
                         onClick={() => {
@@ -244,7 +263,7 @@ export const WorkProjectsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Project Modal */}
+      {/* Project Modal (Edit / Create) */}
       <WorkProjectModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -253,6 +272,18 @@ export const WorkProjectsView: React.FC = () => {
         }}
         onProjectSaved={loadProjects}
         initialProject={editingProject}
+      />
+
+      {/* Project Hub Modal */}
+      <ProjectHubModal
+        isOpen={Boolean(selectedHubProject)}
+        project={selectedHubProject}
+        onClose={() => setSelectedHubProject(null)}
+        onEditProject={(p) => {
+          setEditingProject(p);
+          setIsModalOpen(true);
+        }}
+        onProjectUpdated={loadProjects}
       />
     </SpaceShell>
   );
