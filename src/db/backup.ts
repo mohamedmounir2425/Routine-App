@@ -55,42 +55,73 @@ function validateRecord(key: string, record: unknown): asserts record is Record<
   if (key === 'settings' && record.id !== 'current_settings') throw new Error('Invalid settings ID');
 }
 
-export async function importCompleteBackup(jsonData: string): Promise<{ success: boolean; message: string }> {
+export type BackupConflictMode = 'keep-existing' | 'use-file';
+export const SAFETY_BACKUP_KEY = 'lifeos_pre_import_backup';
+function parseBackup(jsonData: string) {
+  const parsed: unknown = JSON.parse(jsonData);
+  if (!isObject(parsed) || !isObject(parsed.data) || ![1, 2, 3].includes(Number(parsed.version))) throw new Error('Unsupported backup format');
+  const data = parsed.data;
+  const entries: Array<[string, Record<string, unknown>[]]> = [];
+  for (const [key, name] of Object.entries(BACKUP_TABLES)) {
+    if (!(key in data)) continue; // Legacy v1 backups contain only the original tables.
+    const records = data[key];
+    if (!Array.isArray(records)) throw new Error(`Invalid ${key} dataset`);
+    const seen = new Set<unknown>();
+    for (const record of records) {
+      validateRecord(key, record);
+      const id = key === 'schedule' ? record.dayOfWeek : key === 'dayPlans' ? record.date : record.id;
+      if (seen.has(id)) throw new Error(`Duplicate ${key} ID`);
+      seen.add(id);
+    }
+    entries.push([name, records]);
+  }
+  if (!entries.length) throw new Error('Backup contains no supported datasets');
+  const localEntries: Array<[string, string]> = [];
+  if (parsed.localData !== undefined) {
+    if (!isObject(parsed.localData)) throw new Error('Invalid local data');
+    for (const [key, value] of Object.entries(parsed.localData)) {
+      if (!isPortableKey(key) || typeof value !== 'string') throw new Error('Invalid local data entry');
+      localEntries.push([key, value]);
+
+    }
+  }
+
+  return { parsed, entries, localEntries };
+}
+export async function previewBackup(jsonData: string) {
+  const { parsed, entries, localEntries } = parseBackup(jsonData);
+  const tables = await Promise.all(entries.map(async ([name, records]) => {
+    const table = db.table(name);
+    const keys = records.map(record => record[name === 'weeklySchedule' ? 'dayOfWeek' : name === 'dayPlans' ? 'date' : 'id']);
+    const existing = await table.bulkGet(keys as string[]);
+    const conflicts = records.filter((record, i) => existing[i] !== undefined && JSON.stringify(existing[i]) !== JSON.stringify(record)).length;
+    return { name, total: records.length, added: existing.filter(record => record === undefined).length, conflicts };
+  }));
+  const preferenceConflicts = localEntries.filter(([key, value]) => localStorage.getItem(key) !== null && localStorage.getItem(key) !== value).length;
+  return { version: Number(parsed.version), exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : null, tables, preferenceConflicts };
+}
+
+export async function importCompleteBackup(jsonData: string, conflictMode: BackupConflictMode = 'use-file'): Promise<{ success: boolean; message: string }> {
   const previousLocalData = new Map<string, string | null>();
   let localDataWritten = false;
   try {
-    const parsed: unknown = JSON.parse(jsonData);
-    if (!isObject(parsed) || !isObject(parsed.data) || ![1, 2, 3].includes(Number(parsed.version))) throw new Error('Unsupported backup format');
-    const data = parsed.data;
-    const entries: Array<[string, Record<string, unknown>[]]> = [];
-    for (const [key, name] of Object.entries(BACKUP_TABLES)) {
-      if (!(key in data)) continue; // Legacy v1 backups contain only the original tables.
-      const records = data[key];
-      if (!Array.isArray(records)) throw new Error(`Invalid ${key} dataset`);
-      const seen = new Set<unknown>();
-      for (const record of records) {
-        validateRecord(key, record);
-        const id = key === 'schedule' ? record.dayOfWeek : key === 'dayPlans' ? record.date : record.id;
-        if (seen.has(id)) throw new Error(`Duplicate ${key} ID`);
-        seen.add(id);
-      }
-      entries.push([name, records]);
-    }
-    if (!entries.length) throw new Error('Backup contains no supported datasets');
-    const localEntries: Array<[string, string]> = [];
-    if (parsed.localData !== undefined) {
-      if (!isObject(parsed.localData)) throw new Error('Invalid local data');
-      for (const [key, value] of Object.entries(parsed.localData)) {
-        if (!isPortableKey(key) || typeof value !== 'string') throw new Error('Invalid local data entry');
-        localEntries.push([key, value]);
-        previousLocalData.set(key, localStorage.getItem(key));
-      }
-    }
+    const { entries, localEntries } = parseBackup(jsonData);
+    // Fail safely if the device cannot persist the recovery snapshot.
+    localStorage.setItem(SAFETY_BACKUP_KEY, await exportCompleteBackup());
+    for (const [key] of localEntries) previousLocalData.set(key, localStorage.getItem(key));
     // Merge valid records atomically. An invalid/write-failing file cannot partially restore Dexie tables.
     await db.transaction('rw', entries.map(([name]) => db.table(name)), async () => {
-      for (const [name, records] of entries) if (records.length) await db.table(name).bulkPut(records);
+      for (const [name, records] of entries) {
+        const table = db.table(name);
+        const keys = records.map(record => record[name === 'weeklySchedule' ? 'dayOfWeek' : name === 'dayPlans' ? 'date' : 'id']);
+        const existing = conflictMode === 'keep-existing' ? await table.bulkGet(keys as string[]) : [];
+        const selected = conflictMode === 'use-file' ? records : records.filter((_, index) => existing[index] === undefined);
+        if (selected.length) await table.bulkPut(selected);
+      }
       localDataWritten = true;
-      for (const [key, value] of localEntries) localStorage.setItem(key, value);
+      for (const [key, value] of localEntries) {
+        if (conflictMode === 'use-file' || localStorage.getItem(key) === null) localStorage.setItem(key, value);
+      }
     });
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
     return { success: true, message: 'تم استرجاع النسخة الاحتياطية بنجاح!' };

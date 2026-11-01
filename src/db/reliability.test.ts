@@ -1,5 +1,5 @@
 import { db, initializeDatabase } from './database';
-import { exportCompleteBackup, importCompleteBackup } from './backup';
+import { exportCompleteBackup, importCompleteBackup, previewBackup, SAFETY_BACKUP_KEY } from './backup';
 import { getTaskTimeTag } from '../features/today/todayScheduling';
 import { aggregateTodayFeed } from '../features/today/todayAggregator';
 import { DEFAULT_TODAY_PREFERENCES, LifeTask } from '../types';
@@ -52,6 +52,22 @@ export async function runReliabilityTests() {
   const quotaResult = await importCompleteBackup(JSON.stringify({ version: 2, data: { tasks: [{ ...task, title: 'Uncommitted' }] }, localData: { movecare_theme: 'dark' } }));
   localStorage.setItem = originalSetItem;
   check('Storage failure aborts database restoration', !quotaResult.success && (await db.tasks.get(task.id))?.title === task.title);
+
+  const incoming = JSON.stringify({ version: 3, data: { tasks: [{ ...task, title: 'From phone' }, { ...task, id: 'new-phone-task' }] }, localData: { movecare_theme: 'light' } });
+  localStorage.setItem('movecare_theme', 'dark');
+  const preview = await previewBackup(incoming);
+  check('Preview counts new records and conflicts without writing', preview.tables[0].added === 1 && preview.tables[0].conflicts === 1 && preview.preferenceConflicts === 1 && !await db.tasks.get('new-phone-task'));
+  const kept = await importCompleteBackup(incoming, 'keep-existing');
+  check('Keep-existing imports new records and preserves local conflicts', kept.success && (await db.tasks.get(task.id))?.title === task.title && !!await db.tasks.get('new-phone-task') && localStorage.getItem('movecare_theme') === 'dark');
+  const safety = JSON.parse(localStorage.getItem(SAFETY_BACKUP_KEY)!);
+  check('Recovery snapshot captures pre-import state without recursively exporting itself', safety.data.tasks.some((t: LifeTask) => t.id === task.id && t.title === task.title) && !('lifeos_pre_import_backup' in safety.localData));
+  const overwritten = await importCompleteBackup(incoming, 'use-file');
+  check('Use-file explicitly replaces conflicting records and preferences', overwritten.success && (await db.tasks.get(task.id))?.title === 'From phone' && localStorage.getItem('movecare_theme') === 'light');
+  const storedSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = (key, value) => { if (key === SAFETY_BACKUP_KEY) throw new Error('No space for safety copy'); storedSetItem(key, value); };
+  const blocked = await importCompleteBackup(JSON.stringify({ version: 3, data: { tasks: [{ ...task, title: 'Blocked' }] } }), 'use-file');
+  localStorage.setItem = storedSetItem;
+  check('Import stops without changing data when recovery snapshot cannot be saved', !blocked.success && (await db.tasks.get(task.id))?.title === 'From phone');
 
   const now = new Date(2026, 10, 1, 12, 0);
   check('Home/plan task time windows classify upcoming, current and late items',

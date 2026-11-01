@@ -32,3 +32,13 @@ The test suite includes preservation of custom seed data, full backup round trip
 Browser verification was attempted but the local preview could not be reached, and the browser automation tool later became unavailable. Desktop/mobile layout, focus behavior and the full UI interaction flows still need visual acceptance testing.
 
 This does not certify the entire app as production-ready. The original source lint backlog, large main bundle, full cloud sync error/conflict handling, account-switch isolation, backend row-level security and closed-app reminder delivery remain separate hardening work. Most existing domain labels remain Arabic; the redesigned dashboard header, controls, space tools and workout scheduler support the selected language.
+
+## Reviewed JSON import
+
+Settings now previews file version/date, record totals, new IDs and conflicts before import. The default keeps existing records/preferences; users can explicitly choose file values. Neither option deletes records absent from the file. Preview is a point-in-time comparison, not a timestamp-based conflict resolver.
+
+Before every import, the current portable snapshot is saved under the non-exported localStorage key lifeos_pre_import_backup. Settings offers a download of that recovery file. Only the latest recovery snapshot is retained. If persistence fails (including quota), import stops before writing records. This snapshot is on the same device: download a separate copy for device loss protection. File selection is limited to 25 MiB.
+
+To transfer manually: export JSON on the source device, transfer it privately, open Settings on the destination device, select the file, review conflicts and confirm. For an older phone copy, choose file values only after reviewing the summary. This workflow works locally without Supabase, does not initiate a cloud upload, and does not resolve cloud/account sync issues. Auth credentials and pending cloud operations are not transferred.
+
+Verification adds preview-without-write, both conflict choices, safety snapshot exclusion/capture, and quota-failure protection scenarios. Visual mobile/device acceptance remains to be performed.
