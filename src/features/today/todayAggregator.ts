@@ -1,5 +1,6 @@
 import { db } from '../../db/database';
 import { getTaskTimeTag } from './todayScheduling';
+import { isSpaceTaskDue } from './spaceTaskService';
 import { 
   TodayItem, 
   TodayAggregationResult, 
@@ -493,6 +494,7 @@ export async function aggregateTodayFeed(
 
     // Filter relevant for target date: recurring, due today, overdue, or unscheduled
     let relevantWorkTasks = workTasks.filter((t) => {
+      if (!isSpaceTaskDue(t, targetDateStr)) return false;
       if (t.isRecurring) return true;
       if (!t.dueDate) return true;
       return t.dueDate === targetDateStr || isPastDate(t.dueDate);
@@ -722,12 +724,12 @@ export async function aggregateTodayFeed(
             id: `task_plan_${t.id}_${targetDateStr}`,
             sourceId: t.id,
             type: 'plan_action',
-            space: 'plans',
+            space: t.spaceId,
             title: t.title,
             subtitle: `خطة: ${plan.title}`,
             categoryLabel: plan.title,
             scheduledTime: t.scheduledTime,
-            estimatedMinutes: t.estimatedMinutes || 30,
+            estimatedMinutes: t.estimatedMinutes,
             priority: t.priority || 'medium',
             timeTag,
             status,
@@ -746,7 +748,27 @@ export async function aggregateTodayFeed(
   // ==========================================
   // Ordering: NOW -> OVERDUE -> SCHEDULED -> HIGH PRIORITY -> FLEXIBLE -> PLAN ACTIONS -> COMPLETED
   // With chronological ordering preserved inside SCHEDULED.
-  const sortedItems = [...rawItems].sort((a, b) => a.sortKey - b.sortKey);
+  // Reconcile all five spaces using the same task calendar and avoid duplicate linked tasks.
+  const allTasks = await db.tasks.toArray();
+  const tasksById = new Map(allTasks.map(task => [task.id, task]));
+  const visible: Record<LifeSpaceId, boolean> = { worship: prefs.showWorship, health: prefs.showHealth, work: prefs.showWork, home: prefs.showHome, plans: prefs.showPlans };
+  const reconciled = rawItems.filter(item => item.actionType !== 'toggle_task' || !tasksById.has(item.sourceId) || isSpaceTaskDue(tasksById.get(item.sourceId)!, targetDateStr));
+  for (const task of allTasks) {
+    if (!visible[task.spaceId] || !isSpaceTaskDue(task, targetDateStr) || reconciled.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
+    if (task.spaceId === 'work' && prefs.workOptions?.top3Only) continue;
+    if (task.spaceId === 'home' && (task.isRecurring ? prefs.homeOptions?.routines === false : prefs.homeOptions?.nextActionsOnly)) continue;
+    if (task.spaceId === 'plans' && prefs.plansOptions?.showDailyActions === false) continue;
+    // Linked plan actions are handled above; this also supports standalone planning tasks.
+    if (task.spaceId === 'plans' && task.planId) continue;
+    const completed = task.isRecurring ? !!task.recurringCompletionDates?.includes(targetDateStr) : task.isCompleted;
+    const type: TodayItemType = task.spaceId === 'health' ? 'health_task' : task.spaceId === 'work' ? 'work_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : task.isRecurring ? 'home_routine' : 'home_task';
+    const timeTag = getTaskTimeTag(task, completed, targetDateStr);
+    reconciled.push({ id: `task_${task.spaceId}_${task.id}_${targetDateStr}`, sourceId: task.id, type, space: task.spaceId, title: task.title,
+      subtitle: task.description, scheduledTime: task.scheduledTime, estimatedMinutes: task.estimatedMinutes, priority: task.priority,
+      timeTag, status: deriveItemStatus(completed, timeTag), isCompleted: completed, actionType: 'toggle_task',
+      actionPayload: { taskId: task.id, targetDateStr }, sortKey: computeTodaySortKey(timeTag, completed, task.priority, type, task.scheduledTime) });
+  }
+  const sortedItems = reconciled.sort((a, b) => a.sortKey - b.sortKey);
 
   const rawSections: Array<{ id: TodaySectionId; title: string; items: TodayItem[] }> = [
     {
