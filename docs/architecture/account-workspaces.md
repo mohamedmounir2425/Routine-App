@@ -55,3 +55,6 @@ RoutineAppDB القديمة لم تكن تحمل ملكية موثوقة لكل 
 الاختبارات المحلية تستخدم fake-indexeddb: فصل نفس المعرف في حسابين، فصل الطوابير والتفضيلات، منع تبويب قديم من المزامنة، فشل التخزين وإعادة الترحيل، عدم ترقية الأصل، منع نسخ التوكنات، وتوقف التركيز دون تكرار الوقت. تبقى تجربة تسجيل دخول حسابين فعليين على المتصفح والموبايل مطلوبة.
 
 ما زال مطلوبًا: حسم تعارضات السحابة بإصدار سجل خادمي، نشر الحذف، تتبع كل التعديلات التي لم تُرفع، ومراجعة طابور النسخة القديمة مع مالك البيانات قبل إرساله. هذه المرحلة لا تعني اكتمال المزامنة دون تعارضات.
+
+
+Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.

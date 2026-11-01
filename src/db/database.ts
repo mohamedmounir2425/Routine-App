@@ -1,6 +1,7 @@
 import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
 import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
+import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import { 
   Exercise, 
   Routine, 
@@ -47,6 +48,30 @@ export interface PendingSyncItem {
   status: 'pending' | 'failed';
   lastError?: string;
   isCreatedOffline?: boolean;
+  operationId?: string;
+  expectedRevision?: number;
+}
+
+export interface SyncBaseline {
+  key: string;
+  table: string;
+  entityId: string;
+  revision: number;
+  deleted: boolean;
+  fingerprint: string | null;
+  localKey?: string | number;
+  allowRestore?: boolean;
+}
+
+export interface SyncConflict {
+  key: string;
+  table: string;
+  entityId: string;
+  local: Record<string, unknown> | null;
+  remote: Record<string, unknown> | null;
+  remoteRevision: number;
+  remoteDeleted: boolean;
+  detectedAt: string;
 }
 
 export class RoutineDatabase extends Dexie {
@@ -63,6 +88,8 @@ export class RoutineDatabase extends Dexie {
   planMilestones!: Table<PlanMilestone, string>;
   workoutSchedules!: Table<WorkoutScheduleEntry, string>;
   dayPlans!: Table<DayPlan, string>;
+  syncBaselines!: Table<SyncBaseline, string>;
+  syncConflicts!: Table<SyncConflict, string>;
 
   constructor(name = workspaceDatabaseName(CURRENT_WORKSPACE)) {
     super(name);
@@ -117,6 +144,20 @@ export class RoutineDatabase extends Dexie {
     this.version(7).stores({
       pendingSync: '++id, entityId, userId, status, nextRetryAt, [table+entityId], [userId+table+entityId]',
     });
+    this.version(8).stores({ syncBaselines: 'key, table', syncConflicts: 'key, table' }).upgrade(async transaction => {
+      const owner = name.match(/^LifeOS_user_([a-zA-Z0-9-]+)_v1$/);
+      if (!owner) return;
+      const userId = owner[1];
+      for (const entity of SYNC_ENTITIES) {
+        for (const row of await transaction.table(entity.local).toArray()) {
+          if (entity.include && !entity.include(row)) continue;
+          const payload = entity.toCloud(userId, row);
+          await transaction.table('syncBaselines').put({ key: entityKey(entity.cloud, String(payload.id)),
+            table: entity.cloud, entityId: String(payload.id), revision: 0, deleted: false,
+            localKey: entity.localKey(row), fingerprint: syncFingerprint(payload) });
+        }
+      }
+    });
   }
 }
 
@@ -125,7 +166,7 @@ export const db = new RoutineDatabase();
 // Initialize DB with seed data on first run or when updated
 export async function initializeDatabase(forceRefresh: boolean = false): Promise<void> {
   try {
-    await db.transaction('rw', [db.exercises, db.routines, db.weeklySchedule, db.settings], async () => {
+    await db.transaction('rw', [db.exercises, db.routines, db.weeklySchedule, db.settings, db.syncBaselines], async () => {
       // Repair missing defaults without deleting user-created records or schedules.
       const existingExercises = new Map((await db.exercises.toArray()).map(exercise => [exercise.id, exercise]));
       for (const exercise of INITIAL_EXERCISES) {
@@ -140,7 +181,8 @@ export async function initializeDatabase(forceRefresh: boolean = false): Promise
       }
       const existingDays = new Set(await db.weeklySchedule.toCollection().primaryKeys());
       for (const day of INITIAL_WEEKLY_SCHEDULE) {
-        if (!existingDays.has(day.dayOfWeek)) await db.weeklySchedule.put(day);
+        const deleted = CURRENT_WORKSPACE !== 'guest' && (await db.syncBaselines.get(entityKey('weekly_schedule', CURRENT_WORKSPACE.slice(5) + '_day_' + day.dayOfWeek)))?.deleted;
+        if (!existingDays.has(day.dayOfWeek) && !deleted) await db.weeklySchedule.put(day);
       }
       if (!await db.settings.get('current_settings')) await db.settings.put(DEFAULT_USER_SETTINGS);
     });

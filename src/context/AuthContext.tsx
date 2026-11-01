@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { syncAllWithCloud, flushPendingSyncQueue, getPendingSyncCount, retryFailedMutations } from '../db/syncEngine';
+import { syncAllWithCloud, getPendingSyncCount, retryFailedMutations } from '../db/syncEngine';
 import { ACTIVE_WORKSPACE_KEY, CURRENT_WORKSPACE, persistWorkspaceForSession, readWorkspaceScope, scopeForUser, workspaceGuard } from '../db/workspaceScope';
 import { prepareLegacyWorkspace, readLegacyBackup } from '../db/workspaceMigration';
 import { initializeDatabase } from '../db/database';
 import { suspendCurrentWorkspaceFocus, reconcileWorkspaceFocus } from '../db/workspaceFocus';
+import { liveQuery } from 'dexie';
+import { SYNC_ENTITIES } from '../db/syncEntities';
+import { db } from '../db/database';
 import { canOpenCachedWorkspace } from '../db/workspaceOffline';
+import { captureUnversionedRows } from '../db/versionedSync';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 export type AuthModalMode = 'signin' | 'signup' | 'forgot';
@@ -69,12 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSyncStatus('syncing');
     try {
       workspaceGuard.assertAccount(userId);
-      await flushPendingSyncQueue(userId);
-      const remainingCount = await getPendingSyncCount(userId);
-      workspaceGuard.assertAccount(userId);
-      if (userRef.current?.id !== userId) return;
-      setPendingCount(remainingCount);
-      if (remainingCount) throw new Error('توجد ' + remainingCount + ' تعديلات لم تصل للسحابة. لن نسحب بيانات فوقها؛ أعد المحاولة.');
       const result = await syncAllWithCloud(userId);
       workspaceGuard.assertAccount(userId);
       if (userRef.current?.id !== userId) return;
@@ -154,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (disposed || request !== generation) return;
             if (needsReload) { window.location.reload(); return; }
             await initializeDatabase();
+            if (id) await captureUnversionedRows(db, id);
             await reconcileWorkspaceFocus();
             if (disposed || request !== generation) return;
             readyScopeRef.current = CURRENT_WORKSPACE;
@@ -189,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (readyScopeRef.current !== CURRENT_WORKSPACE) {
             await prepareLegacyWorkspace();
             await initializeDatabase();
+            if (CURRENT_WORKSPACE !== 'guest') await captureUnversionedRows(db, CURRENT_WORKSPACE.slice(5));
             await reconcileWorkspaceFocus();
           }
           if (disposed || request !== generation || readWorkspaceScope() !== CURRENT_WORKSPACE) return;
@@ -267,6 +267,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('storage', handleStorage);
     };
   }, [isConfigured, runSync]);
+
+  useEffect(() => {
+    if (!workspaceReady || !user?.id || offlineWorkspace) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let first = true;
+    let signature = '';
+    const subscription = liveQuery(async () => JSON.stringify([
+      await Promise.all(SYNC_ENTITIES.map(entity => db.table(entity.local).toArray())),
+      (await db.pendingSync.toArray()).map(item => [item.table, item.entityId, item.operationId, item.action, item.data]),
+    ])).subscribe({
+      next: value => {
+        if (value === signature) return;
+        signature = value;
+        if (first) { first = false; return; }
+        setSyncStatus('idle');
+        clearTimeout(timer);
+        timer = setTimeout(() => { void runSync(user.id); }, 1500);
+      },
+      error: () => { setSyncStatus('error'); setSyncError('تعذر متابعة التعديلات المحلية. أعد المزامنة.'); },
+    });
+    return () => { clearTimeout(timer); subscription.unsubscribe(); };
+  }, [workspaceReady, user?.id, offlineWorkspace, runSync]);
 
   const openAuthModal = (mode: AuthModalMode = 'signin') => { setAuthModalMode(mode); setIsAuthModalOpen(true); };
   const closeAuthModal = () => setIsAuthModalOpen(false);

@@ -1,3 +1,6 @@
+import { synchronizeVersioned, countUnresolvedChanges } from './versionedSync';
+import { versionedTransport } from './versionedTransport';
+import { CURRENT_WORKSPACE } from './workspaceScope';
 import { requireSyncIdentity } from './syncIdentity';
 import { workspaceGuard } from './workspaceScope';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -5,7 +8,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { db } from './database';
 import { taskToCloud, taskFromCloud, projectToCloud, projectFromCloud, routineToCloud, routineFromCloud, dayPlanToCloud, dayPlanFromCloud, settingsToCloud } from './cloudMappers';
 import { fetchCloudSnapshot, syncErrorMessage } from './cloudSyncChecks';
-import { queueMutation, pendingMutationCount, processSyncQueue, retryFailedMutations } from './syncQueue';
+import { queueMutation, pendingMutationCount, retryFailedMutations } from './syncQueue';
 export { retryFailedMutations };
 
 import { 
@@ -36,8 +39,8 @@ export interface SyncResult {
  * Pull all data belonging to the user from Supabase and update local Dexie DB.
  */
 export async function pullUserDataFromCloud(userId: string, client: SupabaseClient = supabase): Promise<SyncResult> {
-  if (client === supabase && !isSupabaseConfigured()) {
-    return { success: false, error: 'Supabase is not configured' };
+  if (client === supabase) {
+    return { success: false, error: 'استخدم المزامنة المحمية بإصدارات السجلات.' };
   }
 
   try {
@@ -409,20 +412,18 @@ export async function pushLocalDataToCloud(userId: string, client: SupabaseClien
  * 1. Pull cloud changes first into local Dexie.
  * 2. Push any remaining local records to ensure cloud is up to date.
  */
+let activeVersionedSync: Promise<SyncResult> | undefined;
 export async function syncAllWithCloud(userId: string): Promise<SyncResult> {
-  if (!isSupabaseConfigured()) {
-    return { success: false, error: 'Supabase is not configured' };
-  }
-
-  if (await pendingMutationCount(userId)) return { success: false, error: 'توجد تعديلات مؤجلة أو فاشلة لم تصل للسحابة.' };
-  const pullResult = await pullUserDataFromCloud(userId);
-  if (!pullResult.success) {
-    return pullResult;
-  }
-
-  const pushResult = await pushLocalDataToCloud(userId);
-  if (pushResult.success && await pendingMutationCount(userId)) return { success: false, error: 'وصلت تعديلات جديدة لم تتزامن بعد؛ أعد المحاولة.' };
-  return pushResult;
+  if (!isSupabaseConfigured()) return { success: false, error: 'Supabase is not configured' };
+  if (activeVersionedSync) return activeVersionedSync;
+  const work = async () => {
+    try {
+      await requireSyncIdentity(userId);
+      return await synchronizeVersioned(db, userId, versionedTransport(supabase, userId));
+    } catch (error) { return { success: false, error: syncErrorMessage(error) }; }
+  };
+  activeVersionedSync = work();
+  try { return await activeVersionedSync; } finally { activeVersionedSync = undefined; }
 }
 
 /**
@@ -448,30 +449,15 @@ export async function enqueuePendingMutation(
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('lifeos:sync-pending'));
 }
 
-let flushTail: Promise<unknown> = Promise.resolve();
 export async function flushPendingSyncQueue(userId: string): Promise<{ processed: number; failed: number }> {
-  const work = async () => {
-    if (!isSupabaseConfigured()) return { processed: 0, failed: 0 };
-    await requireSyncIdentity(userId);
-    if (!await checkRealConnectivity()) return { processed: 0, failed: 0 };
-    return processSyncQueue(userId, async item => {
-      await requireSyncIdentity(userId);
-      if (item.action === 'upsert' && (item.table === 'profiles' ? item.data?.id : item.data?.user_id) !== userId) {
-        throw new Error('هوية التعديل لا تطابق الحساب؛ لم يتم إرساله.');
-      }
-      const result = item.action === 'delete'
-        ? await supabase.from(item.table).delete().eq('id', item.entityId).eq(item.table === 'profiles' ? 'id' : 'user_id', userId)
-        : await supabase.from(item.table).upsert(item.data!);
-      if (result.error) throw result.error;
-    });
-  };
-  const pending = flushTail.then(work, work);
-  flushTail = pending.catch(() => undefined);
-  return pending;
+  const before = await pendingMutationCount(userId);
+  const result = await syncAllWithCloud(userId);
+  const after = await pendingMutationCount(userId);
+  return { processed: Math.max(0, before - after), failed: result.success ? 0 : after };
 }
 
 export async function getPendingSyncCount(userId: string): Promise<number> {
-  return pendingMutationCount(userId);
+  return countUnresolvedChanges(db, userId);
 }
 
 /**
@@ -589,10 +575,10 @@ export async function syncSingleWorkoutScheduleDelete(userId: string, scheduleId
 }
 
 async function submitMutation(userId: string, table: import('./database').PendingSyncItem['table'], entityId: string, action: 'upsert' | 'delete', data: Record<string, unknown> | null) {
-  if (isSupabaseConfigured()) await requireSyncIdentity(userId);
+  if (isSupabaseConfigured() && (CURRENT_WORKSPACE === 'guest' || CURRENT_WORKSPACE.slice(5) !== userId)) return;
   // Persist the latest intent before any request, including online saves.
   await enqueuePendingMutation({ userId, table, entityId, action, data, timestamp: new Date().toISOString() });
-  await flushPendingSyncQueue(userId);
+  // AuthProvider debounces cloud work; saving never waits for session refresh.
 }
 
 export async function syncSingleDayPlan(userId: string, plan: import('../types').DayPlan) {

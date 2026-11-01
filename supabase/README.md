@@ -19,3 +19,7 @@ The local `npm test` suite uses fake-indexeddb and a fake cloud transport. It ve
 An attempted transaction-based RLS test with temporary Auth users and rollback did not execute because the tool confirmation expired. A subsequent read-only check confirmed there are no persisted test accounts. Real authenticated two-account CRUD, device switching, offline conflict handling and deletion propagation still require acceptance testing after local account isolation is implemented.
 
 Before future changes, inspect the current remote schema, create a migration with the installed CLI, retain the reviewed SQL and verify the remote version matches the local history. Verify CLI syntax via `--help`; do not guess flags or apply the same migration under a second version.
+
+
+Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
+Migration 20261101140907_versioned_sync_mutations.sql is applied. The transactional integration test in tests/versioned_sync_integration.sql passed against LifeOS and rolled back its temporary accounts. This supersedes the earlier expired fixture attempt.

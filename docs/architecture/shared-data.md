@@ -2,7 +2,7 @@
 
 ## الموجود
 
-الواجهة React + TypeScript. التخزين المحلي Dexie فوق IndexedDB بمخطط version 7: قاعدة لكل حساب ووضع بدون حساب مستقل. RoutineAppDB أصبح مصدر النسخة القديمة المحفوظ، وليس قاعدة التشغيل المشتركة. التطبيق PWA، لكن تثبيته لا يجعل المزامنة تلقائية أو يضمن تشغيل مهام في الخلفية وهو مغلق.
+الواجهة React + TypeScript. التخزين المحلي Dexie فوق IndexedDB بمخطط version 8: قاعدة لكل حساب ووضع بدون حساب مستقل. RoutineAppDB أصبح مصدر النسخة القديمة المحفوظ، وليس قاعدة التشغيل المشتركة. التطبيق PWA، لكن تثبيته لا يجعل المزامنة تلقائية أو يضمن تشغيل مهام في الخلفية وهو مغلق.
 
 المراجع: [تعريف قاعدة البيانات](../../src/db/database.ts)، [الأنواع](../../src/types/index.ts)، [المهام](../../src/types/tasks.ts)، [الكيانات الممتدة](../../src/types/lifeOs.ts)، [المزامنة](../../src/db/syncEngine.ts)، [الحسابات](../../src/context/AuthContext.tsx).
 
@@ -67,3 +67,6 @@ AuthContext يفرغ الطابور ثم يشغل مزامنة كاملة. ال�
 قبل الاستيراد تحفظ أحدث نسخة أمان فقط في localStorage تحت lifeos_pre_import_backup. إذا تعذر حفظها يتوقف الاستيراد. يمكن تنزيلها من الإعدادات، لكنها على الجهاز نفسه وليست حماية من فقد الجهاز. ملفات أكبر من 25 MiB ترفضها الشاشة. البيانات المستوردة لا تُرفع مباشرة من دالة الاستيراد، لكن مزامنة لاحقة للحساب قد تتعامل معها؛ تحتاج ملكية البيانات مراجعة عند نقل ملف بين حسابين، ويظهر اختلاف مصدر النسخة قبل التأكيد.
 
 النسخة JSON ليست نسخة كاملة من backend: لا تشمل حسابات Auth أو سياسات RLS أو الدوال أو محتوى Storage. روابط الصور لا تضمن حفظ الصورة نفسها. نقل الملف للموبايل يدوي ولا يدمج تعديلات جهازين تلقائيًا.
+
+
+Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.

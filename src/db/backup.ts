@@ -1,5 +1,6 @@
 import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './workspaceScope';
 import { db } from './database';
+import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
 export const BACKUP_TABLES = {
@@ -106,13 +107,24 @@ export async function importCompleteBackup(jsonData: string, conflictMode: Backu
     workspaceStorage.setItem(SAFETY_BACKUP_KEY, await exportCompleteBackup());
     for (const [key] of localEntries) previousLocalData.set(key, workspaceStorage.getItem(key));
     // Merge valid records atomically. An invalid/write-failing file cannot partially restore Dexie tables.
-    await db.transaction('rw', entries.map(([name]) => db.table(name)), async () => {
+    await db.transaction('rw', [...entries.map(([name]) => db.table(name)), db.syncBaselines], async () => {
       for (const [name, records] of entries) {
         const table = db.table(name);
         const keys = records.map(record => record[name === 'weeklySchedule' ? 'dayOfWeek' : name === 'dayPlans' ? 'date' : 'id']);
         const existing = conflictMode === 'keep-existing' ? await table.bulkGet(keys as string[]) : [];
         const selected = conflictMode === 'use-file' ? records : records.filter((_, index) => existing[index] === undefined);
         if (selected.length) await table.bulkPut(selected);
+        // Imported IDs may already exist on another device. Retain an unversioned
+        // baseline so an offline delete before first sync cannot be resurrected.
+        const entity = SYNC_ENTITIES.find(item => item.local === name);
+        if (entity && CURRENT_WORKSPACE !== 'guest') for (const record of selected) {
+          if (entity.include && !entity.include(record)) continue;
+          const payload = entity.toCloud(CURRENT_WORKSPACE.slice(5), record);
+          const key = entityKey(entity.cloud, String(payload.id));
+          if (!await db.syncBaselines.get(key)) await db.syncBaselines.put({ key, table: entity.cloud,
+            entityId: String(payload.id), localKey: entity.localKey(record), revision: 0, deleted: false,
+            fingerprint: syncFingerprint(payload) });
+        }
       }
       localDataWritten = true;
       for (const [key, value] of localEntries) {

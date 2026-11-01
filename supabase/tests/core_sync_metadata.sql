@@ -12,9 +12,9 @@ select
   (select count(*)=5 from new_tables t join pg_policies p on p.tablename=t.table_name and p.schemaname='public'
     where p.cmd='ALL' and p.roles=array['authenticated']::name[] and p.qual like '%auth.uid()%user_id%' and p.with_check like '%auth.uid()%user_id%') as own_row_policies_present,
   (select bool_and(has_table_privilege('authenticated','public.'||table_name,'SELECT')
-    and has_table_privilege('authenticated','public.'||table_name,'INSERT')
-    and has_table_privilege('authenticated','public.'||table_name,'UPDATE')
-    and has_table_privilege('authenticated','public.'||table_name,'DELETE')
+    and not has_table_privilege('authenticated','public.'||table_name,'INSERT')
+    and not has_table_privilege('authenticated','public.'||table_name,'UPDATE')
+    and not has_table_privilege('authenticated','public.'||table_name,'DELETE')
     and not has_table_privilege('anon','public.'||table_name,'SELECT')) from new_tables) as explicit_access_grants_valid,
   (select count(*)=17 from expected_task_fields e join information_schema.columns c
     on c.table_schema='public' and c.table_name='life_tasks' and c.column_name=e.column_name) as full_task_fields_present,

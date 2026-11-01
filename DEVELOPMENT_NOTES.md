@@ -72,3 +72,7 @@ Legacy RoutineAppDB is read dynamically without schema upgrade/deletion, archive
 Task focus is paused in its original workspace on account changes. The task and its pending upload are persisted atomically for the original owner; retrying cache cleanup deduplicates the session and preserves its original end time. Existing valid focus sessions still survive ordinary reloads. Corrected profile preference merge ordering so incoming Today settings are not shadowed by a local spread.
 
 Verification uses fake-indexeddb to exercise two separate databases, scoped storage, stale-tab/session guards, legacy migration failure/retry, original database preservation, private backup contents and focus cleanup failure/retry. Auth/browser/mobile acceptance still remains; no new Supabase migration was needed. Optimistic cloud conflicts, multi-device deletion propagation and full dirty tracking remain separate work. See docs/architecture/account-workspaces.md.
+
+
+Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
+154 local scenarios passed. Real transactional Supabase integration passed with two temporary Auth identities and no persisted test accounts. Migration 20261101140907_versioned_sync_mutations.sql is applied. LocalStorage-only activities remain local plus JSON backup.

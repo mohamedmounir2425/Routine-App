@@ -307,3 +307,6 @@ public.handle_new_user() ما زالت trigger بصلاحية SECURITY DEFINER �
 ## حدود التحقق
 
 نجحت اختبارات النقل المحلية بمحاكاة cloud transport، وفحص metadata السحابية وSecurity Advisor. محاولة اختبار RLS بإنشاء حسابين مؤقتين داخل transaction ثم ROLLBACK لم تنفذ: انتهت صلاحية تأكيد execute_sql. لذلك لا يوجد ادعاء بأن اختبار حسابين أو جهازين حقيقيين قد نجح. عزل الحسابات المحلي منفذ كما في account-workspaces.md؛ التعارضات والحذف متعدد الأجهزة واختبارات الأجهزة الفعلية ما زالت مطلوبة قبل الاعتماد الكامل على المزامنة.
+
+
+Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.

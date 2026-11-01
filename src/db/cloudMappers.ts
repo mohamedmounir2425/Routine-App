@@ -13,7 +13,7 @@ export function taskToCloud(userId: string, task: LifeTask) {
     source_type: task.sourceType ?? null, source_id: task.sourceId ?? null,
     project_id: task.projectId ?? null, plan_id: task.planId ?? null, milestone_id: task.milestoneId ?? null,
     focus_sessions: task.focusSessions ?? [],
-    actual_minutes: task.focusSessions ? task.focusSessions.reduce((sum, session) => sum + session.durationMinutes, 0) : task.actualMinutes ?? null,
+    actual_minutes: task.focusSessions ? task.focusSessions.reduce((sum, session) => sum + session.durationMinutes, 0) : task.actualMinutes ?? 0,
     waiting_context: task.waitingContext ?? null, interruption_context: task.interruptionContext ?? null,
     deadline_at: task.deadlineAt ?? null, commitment: task.commitment ?? null,
     goal_impact: task.goalImpact ?? null, depends_on_task_ids: task.dependsOnTaskIds ?? [],
