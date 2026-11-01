@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export interface ModalProps {
@@ -85,12 +86,17 @@ export const Modal: React.FC<ModalProps> = ({
       }
     };
   }, [isOpen, onClose]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!isOpen) return null;
 
-  return (
+  // Render modal content
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
       aria-hidden="false"
     >
@@ -101,11 +107,11 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? 'modal-accessible-title' : undefined}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxWidth} liquid-glass-card rounded-3xl p-5 sm:p-6 border border-white/15 shadow-2xl text-right text-slate-100 font-['Tajawal'] my-auto focus:outline-none ${className}`}
+        className={`relative w-full ${maxWidth} liquid-glass-card rounded-3xl border border-white/15 shadow-2xl text-right text-slate-100 font-['Tajawal'] max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden focus:outline-none ${className}`}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 shrink-0">
             {title ? (
               <div id="modal-accessible-title" className="text-base sm:text-lg font-black text-white">
                 {title}
@@ -119,7 +125,7 @@ export const Modal: React.FC<ModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="إغلاق النافذة"
-                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -128,8 +134,14 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Body */}
-        {children}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {children}
+        </div>
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') return null;
+
+  return createPortal(modalContent, document.body);
 };

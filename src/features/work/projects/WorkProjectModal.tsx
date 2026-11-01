@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Calendar } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Plus, Trash2, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { HomeProject, ProjectStep } from '../../../types';
 import { createWorkProject, updateProject } from '../../../db/projectQueries';
 
@@ -24,6 +25,7 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
   const [newStepText, setNewStepText] = useState('');
 
   // Work Project Hub Dev Context
+  const [isDevSetupExpanded, setIsDevSetupExpanded] = useState(false);
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [devUrl, setDevUrl] = useState('');
   const [apiUrl, setApiUrl] = useState('');
@@ -63,6 +65,11 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
       setSetupNotes('');
     }
   }, [initialProject, isOpen]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -131,27 +138,32 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div 
+        className="relative w-full max-w-lg liquid-glass-card rounded-3xl border border-white/10 shadow-2xl text-right max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden"
+        dir="rtl"
+      >
+        {/* Header (Sticky / Non-scrolling) */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xl">📂</span>
-            <h2 className="text-lg font-black text-white font-['Tajawal']">
+            <h2 className="text-base sm:text-lg font-black text-white font-['Tajawal']">
               {initialProject ? 'تعديل مشروع عمل' : 'إنشاء مشروع عمل جديد'}
             </h2>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title="إغلاق"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} id="work-project-form" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1.5 font-['Tajawal']">
@@ -212,100 +224,120 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
             </div>
           </div>
 
-          {/* Developer Work OS Setup Context */}
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-right">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white font-['Tajawal'] flex items-center gap-1.5">
+          {/* Developer Work OS Setup Context (Collapsible) */}
+          <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden text-right">
+            <button
+              type="button"
+              onClick={() => setIsDevSetupExpanded(!isDevSetupExpanded)}
+              className="w-full p-3.5 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
                 <span>💻</span>
-                <span>إعدادات وبيئة عمل المشروع (Dev Setup)</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-['Tajawal']">
-                روابط وأوامر التشغيل السريع
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">رابط المستودع (Repository)</label>
-                <input
-                  type="url"
-                  value={repositoryUrl}
-                  onChange={(e) => setRepositoryUrl(e.target.value)}
-                  placeholder="https://github.com/org/repo"
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">بيئة التطوير (Dev URL)</label>
-                <input
-                  type="url"
-                  value={devUrl}
-                  onChange={(e) => setDevUrl(e.target.value)}
-                  placeholder="http://localhost:3000"
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">API / Swagger URL</label>
-                <input
-                  type="url"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  placeholder="https://api.dev.domain/docs"
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">الفرع الحالي (Branch)</label>
-                <input
-                  type="text"
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  placeholder="main أو feature/xyz"
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">أمر التشغيل (Run Command)</label>
-                <input
-                  type="text"
-                  value={runCommand}
-                  onChange={(e) => setRunCommand(e.target.value)}
-                  placeholder="npm run dev أو docker-compose up"
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-sky-300 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
-                />
-              </div>
-
-              <div className="sm:col-span-2 flex items-center justify-between p-2 rounded-lg bg-slate-900/40 border border-white/5">
-                <span className="text-xs text-slate-300 font-medium font-['Tajawal']">
-                  يتطلب اتصال VPN للعمل؟
+                <span className="text-xs font-bold text-white font-['Tajawal']">
+                  إعدادات وبيئة عمل المشروع (Dev Setup - اختياري)
                 </span>
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
-                  <input
-                    type="checkbox"
-                    checked={requiresVpn}
-                    onChange={(e) => setRequiresVpn(e.target.checked)}
-                    className="rounded border-white/20 text-sky-500 focus:ring-sky-500"
-                  />
-                  <span>نعم، يحتاج VPN 🔒</span>
-                </label>
+                {(repositoryUrl || devUrl || apiUrl || branch || runCommand || requiresVpn || setupNotes) && (
+                  <span className="w-2 h-2 rounded-full bg-sky-400" />
+                )}
               </div>
+              <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                <span className="text-[10px]">
+                  {isDevSetupExpanded ? 'إخفاء' : 'عرض التفاصيل'}
+                </span>
+                {isDevSetupExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </div>
+            </button>
 
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">ملاحظات الإعداد (Setup Notes)</label>
-                <textarea
-                  rows={2}
-                  value={setupNotes}
-                  onChange={(e) => setSetupNotes(e.target.value)}
-                  placeholder="متطلبات إضافية، خطوات تهيئة، أو اعتمادات محلية..."
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 resize-none font-['Tajawal']"
-                />
+            {isDevSetupExpanded && (
+              <div className="p-4 pt-1 space-y-3 border-t border-white/5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">رابط المستودع (Repository)</label>
+                    <input
+                      type="url"
+                      value={repositoryUrl}
+                      onChange={(e) => setRepositoryUrl(e.target.value)}
+                      placeholder="https://github.com/org/repo"
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">بيئة التطوير (Dev URL)</label>
+                    <input
+                      type="url"
+                      value={devUrl}
+                      onChange={(e) => setDevUrl(e.target.value)}
+                      placeholder="http://localhost:3000"
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">API / Swagger URL</label>
+                    <input
+                      type="url"
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                      placeholder="https://api.dev.domain/docs"
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">الفرع الحالي (Branch)</label>
+                    <input
+                      type="text"
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      placeholder="main أو feature/xyz"
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">أمر التشغيل (Run Command)</label>
+                    <input
+                      type="text"
+                      value={runCommand}
+                      onChange={(e) => setRunCommand(e.target.value)}
+                      placeholder="npm run dev أو docker-compose up"
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-sky-300 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 font-mono"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 flex items-center justify-between p-2 rounded-lg bg-slate-900/40 border border-white/5">
+                    <span className="text-xs text-slate-300 font-medium font-['Tajawal']">
+                      يتطلب اتصال VPN للعمل؟
+                    </span>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
+                      <input
+                        type="checkbox"
+                        checked={requiresVpn}
+                        onChange={(e) => setRequiresVpn(e.target.checked)}
+                        className="rounded border-white/20 text-sky-500 focus:ring-sky-500"
+                      />
+                      <span>نعم، يحتاج VPN 🔒</span>
+                    </label>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">ملاحظات الإعداد (Setup Notes)</label>
+                    <textarea
+                      rows={2}
+                      value={setupNotes}
+                      onChange={(e) => setSetupNotes(e.target.value)}
+                      placeholder="متطلبات إضافية، خطوات تهيئة، أو اعتمادات محلية..."
+                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50 resize-none font-['Tajawal']"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Project Steps / Sequential Actions */}
@@ -335,7 +367,7 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleRemoveStep(idx)}
-                    className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                    className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -361,31 +393,34 @@ export const WorkProjectModal: React.FC<WorkProjectModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddStep}
-                className="px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold hover:bg-sky-500/30 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold hover:bg-sky-500/30 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-            >
-              {initialProject ? 'حفظ التعديلات' : 'إنشاء المشروع'}
-            </button>
-          </div>
         </form>
+
+        {/* Footer (Sticky / Non-scrolling) */}
+        <div className="flex items-center justify-end gap-2.5 p-4 sm:p-5 border-t border-white/10 bg-slate-950/50 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            إلغاء
+          </button>
+          <button
+            type="submit"
+            form="work-project-form"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            {initialProject ? 'حفظ التعديلات' : 'إنشاء المشروع'}
+          </button>
+        </div>
       </div>
     </div>
   );
+
+  return (!mounted || typeof document === 'undefined') ? null : createPortal(modalContent, document.body);
 };

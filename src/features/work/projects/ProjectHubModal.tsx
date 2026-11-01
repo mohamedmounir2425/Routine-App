@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Plus, 
@@ -25,6 +26,7 @@ interface ProjectHubModalProps {
   onClose: () => void;
   onEditProject?: (project: LifeProject) => void;
   onProjectUpdated?: () => void;
+  onStartFocusTask?: (taskId: string) => void;
 }
 
 export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
@@ -33,6 +35,7 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
   onClose,
   onEditProject,
   onProjectUpdated,
+  onStartFocusTask,
 }) => {
   const [tasks, setTasks] = useState<LifeTask[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
@@ -74,6 +77,11 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
       setTaskEstimatedMinutes('');
     }
   }, [isOpen, project]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!isOpen || !project) return null;
 
@@ -129,14 +137,14 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
   const activeTasks = tasks.filter((t) => !t.isCompleted);
   const completedTasks = tasks.filter((t) => t.isCompleted);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-2xl liquid-glass-card rounded-3xl p-5 sm:p-7 border border-white/10 shadow-2xl text-right max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative w-full max-w-2xl liquid-glass-card rounded-3xl border border-white/10 shadow-2xl text-right max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden"
         dir="rtl"
       >
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-white/10 shrink-0 gap-3">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-white/10 shrink-0 gap-3">
           <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="w-3 h-3 rounded-full bg-sky-400 shrink-0" />
@@ -189,7 +197,7 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 pl-1">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* Section 1: Developer Context Cards */}
           {(project.repositoryUrl || project.devUrl || project.apiUrl || project.branch || project.runCommand || project.setupNotes) ? (
             <div className="space-y-2.5">
@@ -484,6 +492,19 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 text-slate-400 text-[11px]">
+                      {onStartFocusTask && (
+                        <button
+                          onClick={() => {
+                            onStartFocusTask(task.id);
+                            onClose();
+                          }}
+                          className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          title="بدء التركيز على هذه المهمة"
+                        >
+                          <span>تركيز</span>
+                          <span>⚡</span>
+                        </button>
+                      )}
                       {task.estimatedMinutes && (
                         <span className="flex items-center gap-1 font-mono text-[10px]">
                           <Clock className="w-3 h-3 text-slate-500" />
@@ -535,8 +556,8 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="pt-3 border-t border-white/10 flex items-center justify-between shrink-0 text-xs">
+        {/* Footer (Sticky / Non-scrolling) */}
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/50 flex items-center justify-between shrink-0 text-xs">
           <span className="text-slate-500 font-mono text-[11px]">
             {project.steps?.length || 0} خطوات متسلسلة • {tasks.length} مهام
           </span>
@@ -551,4 +572,6 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
       </div>
     </div>
   );
+
+  return (!mounted || typeof document === 'undefined') ? null : createPortal(modalContent, document.body);
 };
