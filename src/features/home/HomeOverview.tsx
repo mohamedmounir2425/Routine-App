@@ -27,7 +27,6 @@ export function HomeOverview() {
   const suggestions = [...recipes].sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3);
   const toggle = async (task: LifeTask) => { if (busy) return; setBusy(task.id); try { await toggleTaskCompletion(task.id, today); } catch { setError('تعذر حفظ التغيير. حاول مرة أخرى.'); } finally { setBusy(''); } };
   return <div className="home-overview">
-    <section className="home-welcome"><div><p className="home-eyebrow">مساحة مرتبة لما يهمك</p><h2>كل ما يحتاجه منزلك،<br /><span>في مكان واحد.</span></h2><p>وصفات تلهمك، ومشتريات واضحة، وأعمال منزلية يسهل متابعتها.</p></div><div className="home-welcome-art" aria-hidden="true"><CookingPot size={65} strokeWidth={1.1} /><span>طبخة طيبة، يوم أجمل</span></div></section>
     {error && <p className="home-error" role="alert">{error}</p>}
     <section className="home-panel home-kitchen-preview"><div className="home-panel-heading"><div><span className="home-eyebrow"><CookingPot size={16} /> المطبخ</span><h2>ماذا نأكل اليوم؟</h2><p>ابدأ من وصفاتك، واختر ما يناسب وقتك.</p></div><Link className="home-text-link" to="/home/recipes">كل الوصفات <ArrowLeft size={16} /></Link></div>
       <div className="home-meal-links">{MEAL_TYPES.map(type => <Link key={type.id} to={'/home/recipes?meal=' + type.id}><span aria-hidden="true">{type.icon}</span>{type.label}</Link>)}</div>

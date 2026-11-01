@@ -106,3 +106,11 @@ In response to UI feedback, adopted pinned Ant Design components with a light/da
 Final validation: 195 deterministic cases passed, actual XLSX ZIP/XML decoding passed with Arabic text and numeric quantities, TypeScript and focused lint passed after Ant Design installation. Final production/PWA build is recorded with this commit. Real Supabase inventory checks and rollback confirmed. Browser/mobile visual acceptance remains unverified; source changes address the supplied screenshots.
 
 Mobile form follow-up: prevented flex compression of the inventory controls/fields, removed operation choices from new-item entry, and grouped nonessential fields behind optional details. New-item basics are name, quantity/unit and place. Unsaved close/delete now opens a separate, centered Ant Design confirmation rather than changing an easy-to-miss footer. Empty bulk forms close immediately; populated forms retain data when continuing. The underlying Radix form disables its focus trap while the confirmation is active.
+
+
+## Home compact workflow pass — 2026-11-01
+- Removed decorative Home welcome banner and repeated header slogan; reduced section title/panel sizing while keeping mobile touch targets.
+- Inventory now offers compact list (default) and card views with the same filters/actions.
+- XLSX, CSV, TSV, pasted cells and free text now populate the editable grid before preview/save. Imported rows append to existing rows, enforce the combined 500-row limit, and offer immediate undo (cleared after grid edits).
+- No database/schema changes. Weekly meal/task planner remains outstanding: one Sunday–Saturday week, mobile day agenda and desktop seven-day view. Existing-item reviewed stocktake remains outstanding.
+- Validation: 195 existing deterministic scenarios passed; TypeScript passed. Browser/mobile visual acceptance has not been performed for this pass.

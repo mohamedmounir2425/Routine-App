@@ -229,3 +229,14 @@ html.light .home-navbar .liquid-glass-dock,html.light .home-navbar .liquid-glass
 html.light .home-navbar nav button[aria-current=page],html.light .home-mobile-dock button[aria-current=page]{color:var(--home-accent)!important}
 
 .home-legacy-dialog .ant-select input{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+
+/* Compact household workspace; touch controls retain comfortable targets. */
+.home-space .home-header{padding:12px 20px}
+.home-space .home-header h1{font-size:20px}
+.home-space .home-symbol{width:36px;height:36px;border-radius:10px}
+.home-space .home-section-heading,.home-space .recipe-hero{padding:14px 16px;border-radius:12px;margin-bottom:16px}
+.home-space .home-section-heading h2,.home-space .recipe-hero h2{font-size:22px}
+.home-space .home-panel{border-radius:14px;padding:18px}
+.home-space .home-panel-heading h2{font-size:20px}
+.home-space .home-overview{gap:16px}
+@media(max-width:600px){.home-space .home-header{padding:10px 12px}.home-space .home-header h1{font-size:18px}.home-space .home-primary-nav a{min-height:52px}.home-space .home-section-heading,.home-space .recipe-hero{padding:12px}.home-space .home-panel{padding:14px}}
