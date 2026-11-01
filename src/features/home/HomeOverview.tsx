@@ -122,6 +122,9 @@ export const HomeOverview: React.FC = () => {
       }
     >
       <div className="space-y-6 text-right font-['Tajawal']">
+        <button type="button" onClick={() => navigate('/home/recipes')} className="w-full rounded-3xl bg-[#f8f3e8] border border-[#e2d8c4] p-5 sm:p-7 text-right flex items-center justify-between gap-4 cursor-pointer">
+          <div><span className="text-xs font-bold text-[#526a48]">🍽️ من مطبخنا</span><h2 className="text-2xl font-black text-[#352d25] mt-1">ناكل إيه؟</h2><p className="text-sm text-[#73685c] mt-1">اقتراحاتنا للفطار والغدا والعشاء والسناكس والسندوتشات</p></div><ArrowRight className="text-[#466349] rotate-180 shrink-0" />
+        </button>
         {/* Quick KPI Overview Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 space-y-1">

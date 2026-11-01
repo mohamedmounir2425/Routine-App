@@ -33,7 +33,9 @@ try {
   const cloudMappers = await server.ssrLoadModule('/src/db/cloudMappers.test.ts');
   const workspaceIsolation = await server.ssrLoadModule('/src/db/workspaceIsolation.test.ts');
   const versioned = await server.ssrLoadModule('/src/db/versionedSync.test.ts');
+  const recipes = await server.ssrLoadModule('/src/features/home/recipes/recipeModel.test.ts');
   const extraResults = [...workResults, ...await reliability.runReliabilityTests(), ...await decisions.runTodayDecisionTests(), ...await spaces.runSpaceTaskTests(), ...await syncSafety.runSyncSafetyTests(), ...await cloudMappers.runCloudMapperTests(), ...await workspaceIsolation.runWorkspaceIsolationTests(), ...await versioned.runVersionedSyncTests()];
+  extraResults.push(...await recipes.runRecipeTests());
   for (const result of extraResults) console.log(`${result.passed ? 'PASS' : 'FAIL'} ${result.name}`);
   if ([...results, ...extraResults].some(result => !result.passed)) process.exitCode = 1;
   console.log(`Checked ${results.length + extraResults.length} scenarios.`);

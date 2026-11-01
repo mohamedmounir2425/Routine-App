@@ -6,6 +6,7 @@ import { resolveSyncConflict } from '../../../db/versionedSync';
 import { useAuth } from '../../../context/AuthContext';
 
 const fields: Record<string, string> = {
+  meal_types: 'الوجبات', ingredients: 'المكونات', notes: 'ملاحظات', image_url: 'الصورة', video_url: 'الفيديو', duration_minutes: 'المدة', servings: 'الأفراد', is_favorite: 'مفضلة', is_light: 'خفيفة',
   title: 'العنوان', name: 'الاسم', description: 'التفاصيل', status: 'الحالة', priority: 'الأولوية',
   due_date: 'يوم التنفيذ', scheduled_time: 'الوقت', deadline_at: 'موعد التسليم', estimated_minutes: 'المدة المقدرة',
   actual_minutes: 'وقت التركيز', is_completed: 'مكتملة', completed_at: 'وقت الإكمال', steps: 'الخطوات',

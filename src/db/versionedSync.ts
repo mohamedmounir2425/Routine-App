@@ -71,7 +71,7 @@ export async function synchronizeVersioned(database: RoutineDatabase, uid: strin
   const versions = new Map(snapshot.versions.map(item => [entityKey(item.entity_table, item.entity_id), { ...item, revision: Number(item.revision) }]));
   for (const entity of SYNC_ENTITIES) if (!Array.isArray(snapshot.tables[entity.cloud])) throw new Error('استجابة ناقصة من ' + entity.cloud);
   // Parents before milestones/tasks. Deletion cascades are acknowledged safely by the server.
-  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans'];
+  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans','recipes'];
   for (const name of order) {
     const entity = SYNC_ENTITIES.find(item => item.cloud === name)!;
     const localRows = new Map<string, SyncRow>((local.rows[name] as SyncRow[]).filter(row => !entity.include || entity.include(row)).map(row => [String(entity.toCloud(uid, row).id), row]));

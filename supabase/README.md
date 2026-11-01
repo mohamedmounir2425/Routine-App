@@ -23,3 +23,5 @@ Before future changes, inspect the current remote schema, create a migration wit
 
 Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
 Migration 20261101140907_versioned_sync_mutations.sql is applied. The transactional integration test in tests/versioned_sync_integration.sql passed against LifeOS and rolled back its temporary accounts. This supersedes the earlier expired fixture attempt.
+
+Recipe library migration: 20261101143722_add_recipe_library.sql. It adds recipes with owner-only SELECT, revokes direct writes, validates nested recipe JSON and extends versioned RPC whitelists/snapshots. tests/recipe_library_integration.sql passed against LifeOS and rolled back all synthetic fixtures.

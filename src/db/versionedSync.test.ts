@@ -2,6 +2,8 @@ import { RoutineDatabase } from './database';
 import { SYNC_ENTITIES, entityKey, type SyncRow } from './syncEntities';
 import { captureUnversionedRows, resolveSyncConflict, synchronizeVersioned, type VersionedTransport, type MutationRequest, type MutationReply } from './versionedSync';
 import type { LifeTask } from '../types';
+import { emptyRecipe } from '../features/home/recipes/recipeModel';
+import { saveRecipe, deleteRecipe } from '../features/home/recipes/recipeRepository';
 
 function fakeCloud() {
   const records = new Map<string, { row: SyncRow | null; revision: number; deleted: boolean; last_operation_id: string }>();
@@ -122,6 +124,20 @@ export async function runVersionedSyncTests() {
     await f.a.tasks.put({ ...task, projectId: 'project' }); await f.syncA(); await f.syncB();
     await f.a.projects.delete('project'); await f.a.tasks.delete(task.id); await f.syncA(); await f.syncB();
     check('Parent deletion cascades to tasks and a second device cannot re-upload the deleted children', !await f.b.projects.get('project') && !await f.b.tasks.get(task.id) && f.cloud.records.get(key)?.deleted === true);
+    f.a.close(); f.b.close();
+  }
+  {
+    const f = await fixture();
+    const recipe = await saveRecipe({ ...emptyRecipe(), title: 'فطار الشغل', mealTypes: ['breakfast', 'sandwich'], ingredients: [{ name: 'جبنة', quantity: 'شريحة' }], steps: ['نجهز السندوتشات'] }, undefined, f.a, 'owner');
+    const up = await f.syncA(), down = await f.syncB();
+    check('Recipes sync offline creation and full details to a second device', up.success && down.success && (await f.b.recipes.get(recipe.id))?.steps[0] === 'نجهز السندوتشات' && (await f.b.recipes.get(recipe.id))?.durationMinutes === null);
+    await f.a.recipes.update(recipe.id, { notes: 'نسخة الجهاز الأول' });
+    await f.b.recipes.update(recipe.id, { notes: 'نسخة الجهاز الثاني' });
+    await f.syncA(); const conflict = await f.syncB();
+    check('Concurrent recipe edits preserve both copies for explicit review', !conflict.success && (await f.b.syncConflicts.get('recipes:' + recipe.id))?.remote?.notes === 'نسخة الجهاز الأول' && (await f.b.recipes.get(recipe.id))?.notes === 'نسخة الجهاز الثاني');
+    await resolveSyncConflict(f.b, 'owner', 'recipes:' + recipe.id, 'remote');
+    await deleteRecipe((await f.a.recipes.get(recipe.id))!, f.a, 'owner'); await f.syncA(); await f.syncB();
+    check('Recipe deletion propagates without resurrecting another device copy', !await f.b.recipes.get(recipe.id) && f.cloud.records.get('recipes:' + recipe.id)?.deleted === true);
     f.a.close(); f.b.close();
   }
   return results;

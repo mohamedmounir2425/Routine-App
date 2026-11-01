@@ -1,13 +1,14 @@
 import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './workspaceScope';
 import { db } from './database';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
+import { validateRecipeRecord } from '../features/home/recipes/recipeModel';
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
 export const BACKUP_TABLES = {
   exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
   settings: 'settings', azkarLogs: 'azkarLogs', tasks: 'tasks', projects: 'projects',
   plans: 'plans', planMilestones: 'planMilestones', workoutSchedules: 'workoutSchedules',
-  dayPlans: 'dayPlans',
+  dayPlans: 'dayPlans', recipes: 'recipes',
 } as const;
 
 export const isPortableKey = (key: string) => /^(routine_(prayers_\d{4}-\d{2}-\d{2}(_nawafil)?|quran_.*|tasbeeh_.*|prayer_(city|coords)|today_preferences|app_lang)|life_focus_sessions|movecare_theme|azkar_(auto_advance|continuous_autoscroll|cycle_muawwidhat|focus_mode|companion_dhikr|tahlil_count|include_istighfar|session_theme))$/.test(key);
@@ -26,6 +27,7 @@ export async function exportCompleteBackup(): Promise<string> {
 }
 
 function validateRecord(key: string, record: unknown): asserts record is Record<string, unknown> {
+  if (key === 'recipes') validateRecipeRecord(record);
   if (!isObject(record)) throw new Error(`Invalid ${key} record`);
   if (key === 'dayPlans') {
     if (typeof record.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.date) || !Number.isFinite(record.availableMinutes) || Number(record.availableMinutes) < 0 || Number(record.availableMinutes) > 1440 || !Array.isArray(record.essentialTaskIds) || record.essentialTaskIds.some(id => typeof id !== 'string') || typeof record.endTime !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(record.endTime)) throw new Error('Invalid day plan');

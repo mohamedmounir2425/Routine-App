@@ -2,7 +2,7 @@
 
 ## الموجود
 
-الواجهة React + TypeScript. التخزين المحلي Dexie فوق IndexedDB بمخطط version 8: قاعدة لكل حساب ووضع بدون حساب مستقل. RoutineAppDB أصبح مصدر النسخة القديمة المحفوظ، وليس قاعدة التشغيل المشتركة. التطبيق PWA، لكن تثبيته لا يجعل المزامنة تلقائية أو يضمن تشغيل مهام في الخلفية وهو مغلق.
+الواجهة React + TypeScript. التخزين المحلي Dexie فوق IndexedDB بمخطط version 9: قاعدة لكل حساب ووضع بدون حساب مستقل. RoutineAppDB أصبح مصدر النسخة القديمة المحفوظ، وليس قاعدة التشغيل المشتركة. التطبيق PWA، لكن تثبيته لا يجعل المزامنة تلقائية أو يضمن تشغيل مهام في الخلفية وهو مغلق.
 
 المراجع: [تعريف قاعدة البيانات](../../src/db/database.ts)، [الأنواع](../../src/types/index.ts)، [المهام](../../src/types/tasks.ts)، [الكيانات الممتدة](../../src/types/lifeOs.ts)، [المزامنة](../../src/db/syncEngine.ts)، [الحسابات](../../src/context/AuthContext.tsx).
 
@@ -22,6 +22,7 @@
 | planMilestones | id | plan_milestones |
 | workoutSchedules | id | workout_schedules |
 | dayPlans | date | day_plans؛ مفتاح سحابي يضم الحساب والتاريخ |
+| recipes | id | recipes؛ اقتراحات الأكل وتفاصيلها مع الإصدارات والحذف |
 | pendingSync | رقم تلقائي | طابور محلي، ليس جدول بيانات ينقل بين الأجهزة |
 
 ## المهام المشتركة بين المساحات
@@ -60,7 +61,7 @@ AuthContext يفرغ الطابور ثم يشغل مزامنة كاملة. ال�
 
 ## JSON والعمل دون السحابة
 
-[backup.ts](../../src/db/backup.ts) يصدر format v3 ويقبل v1/v2/v3. يشمل 12 جدولًا محمولًا من القائمة السابقة باستثناء pendingSync، مع قائمة مسموحة من مفاتيح localStorage للصلاة والقرآن والتسبيح والتفضيلات وسجل التركيز. يستبعد توكنات الدخول وحالة التركيز الجارية وطابور الجهاز ونسخة الأمان نفسها.
+[backup.ts](../../src/db/backup.ts) يصدر format v3 ويقبل v1/v2/v3. يشمل 13 جدولًا محمولًا من القائمة السابقة باستثناء pendingSync، مع قائمة مسموحة من مفاتيح localStorage للصلاة والقرآن والتسبيح والتفضيلات وسجل التركيز. يستبعد توكنات الدخول وحالة التركيز الجارية وطابور الجهاز ونسخة الأمان نفسها.
 
 المعاينة تعرض السجلات الجديدة والمختلفة. الاستيراد يضيف أو يستبدل بالمعرف حسب اختيار المستخدم، ولا يحذف الغائب من الملف. افتراضي الشاشة يحتفظ بالموجود؛ استدعاء الدالة البرمجية القديم افتراضيه use-file للتوافق. المعاينة لا تحكم أي نسخة أحدث.
 
@@ -69,4 +70,4 @@ AuthContext يفرغ الطابور ثم يشغل مزامنة كاملة. ال�
 النسخة JSON ليست نسخة كاملة من backend: لا تشمل حسابات Auth أو سياسات RLS أو الدوال أو محتوى Storage. روابط الصور لا تضمن حفظ الصورة نفسها. نقل الملف للموبايل يدوي ولا يدمج تعديلات جهازين تلقائيًا.
 
 
-Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
+Current protocol (2026-11-01): local schema v9. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.

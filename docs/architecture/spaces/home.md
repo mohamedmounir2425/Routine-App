@@ -2,6 +2,16 @@
 
 ## الموجود فعليًا
 
+مكتبة الأكلات `/home/recipes` منفذة: الكل افتراضيًا، وتصنيفات متعددة لنفس الأكلة، وبحث بالاسم وبمكونات متعددة (كل المكونات المطلوبة)، ومفضلة ووسم خفيفة شخصي وفلتر ٣٠ دقيقة وترتيب الاسم/المدة/آخر تعديل. الاسم فقط مطلوب؛ المكونات باسم وكمية اختيارية، وخطوات التحضير والمدة والأفراد والملاحظات وروابط الصورة وYouTube اختيارية. الفيديو يفتح عند الطلب.
+
+Radix Dialog يدير التركيز والإغلاق؛ نافذة للكمبيوتر ولوحة سفلية للموبايل. N للإضافة، / للبحث، Ctrl/Cmd+Enter للحفظ، وEsc للإغلاق مع مراجعة التعديلات غير المحفوظة. الحذف يحتاج تأكيدًا، ونسخة قديمة لا تستبدل تعديلًا أحدث أثناء التحرير.
+
+Dexie schema v9: recipes بمفتاح id وفهارس title/updatedAt/*mealTypes. JSON v3 يشمل recipes ويقبل الملفات القديمة بدونه. Supabase public.recipes مربوط بالإصدارات والتعارضات والحذف؛ كل حساب يقرأ بياناته فقط. **المشاركة بين حسابين، ربط المخزون، وجدول الأسبوع لم يُنفذوا بعد.**
+
+حقول Supabase: id text PK، user_id uuid FK إلى auth.users مع cascade، title text، meal_types text[]، ingredients JSONB من {name, quantity}، steps JSONB نصوص مرتبة، notes/image_url/video_url text، duration_minutes وservings أرقام اختيارية، is_favorite/is_light boolean، created_at/updated_at timestamptz. فهرس (user_id,updated_at). RLS يسمح SELECT للمالك؛ الكتابة عبر sync_apply_mutation فقط، واللقطة عبر sync_read_snapshot. Trigger يتحقق من JSON ويحدث sync_entity_versions. الكتابة المباشرة وanon ممنوعان.
+
+Migration: [add_recipe_library](../../../supabase/migrations/20261101143722_add_recipe_library.sql). [اختبار backend](../../../supabase/tests/recipe_library_integration.sql) نجح بحسابين مؤقتين ثم ROLLBACK. إجمالي الاختبارات المحلية 173. المراجعة البصرية توقفت لأن أداة التحكم لم تستطع تأكيد URL؛ تجربة الموبايل الفعلية لم تُجرَ.
+
 المسارات تحت /home: tasks, projects, routines, maintenance. مهام منزلية ومهام متكررة ومشاريع متعددة الخطوات وإجراء تالٍ وصيانة بقوالب جاهزة. التصميم الحالي يستخدم شكل المساحات العام ولم يتحول بعد لتصميم المطبخ المتفق عليه.
 
 | الكيان | التخزين المحلي | Supabase الحالي |

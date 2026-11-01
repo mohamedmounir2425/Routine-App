@@ -1,5 +1,7 @@
 # بنية Supabase الحالية
 
+تحديث مكتبة الأكلات 2026-11-01: أضيف public.recipes إلى 11 جدول بيانات سابقًا، مع sync_entity_versions (إجمالي 13 جدولًا). تفاصيل حقول recipes وRLS والمنح واختبارات backend في [توثيق المنزل](spaces/home.md). migration المطبق: [add_recipe_library](../../supabase/migrations/20261101143722_add_recipe_library.sql). اختبار CRUD وCAS والحذف والملكية والمجهول نجح بحسابين مؤقتين داخل transaction تم التراجع عنها.
+
 آخر مراجعة: 2026-11-01، بعد تطبيق migration [complete_core_sync_schema](../../supabase/migrations/20261101101704_complete_core_sync_schema.sql) على LifeOS. تم التأكد من وجود 11 جدولًا ومن RLS والمنح والسياسات للجداول الجديدة. هذه metadata وليست نسخة بيانات.
 
 [اللقطة السابقة قبل الاستكمال](supabase-before-sync-schema.md) محفوظة للمقارنة. ملف migration يحتوي baseline للجداول الستة القديمة وتغييرات إضافية، ويفترض توفر مخطط Supabase Auth. لا يمثل نسخة كاملة من إعدادات المشروع أو محتوى Storage.

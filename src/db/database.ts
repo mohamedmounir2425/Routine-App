@@ -1,5 +1,6 @@
 import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
+import type { Recipe } from '../features/home/recipes/recipeModel';
 import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import { 
@@ -37,7 +38,8 @@ export interface PendingSyncItem {
     | 'plans'
     | 'plan_milestones'
     | 'workout_schedules'
-    | 'day_plans';
+    | 'day_plans'
+    | 'recipes';
   entityId: string;
   action: 'upsert' | 'delete';
   data: Record<string, unknown> | null;
@@ -90,6 +92,7 @@ export class RoutineDatabase extends Dexie {
   dayPlans!: Table<DayPlan, string>;
   syncBaselines!: Table<SyncBaseline, string>;
   syncConflicts!: Table<SyncConflict, string>;
+  recipes!: Table<Recipe, string>;
 
   constructor(name = workspaceDatabaseName(CURRENT_WORKSPACE)) {
     super(name);
@@ -149,6 +152,7 @@ export class RoutineDatabase extends Dexie {
       if (!owner) return;
       const userId = owner[1];
       for (const entity of SYNC_ENTITIES) {
+        if (entity.local === 'recipes') continue; // Introduced in v9, outside this upgrade transaction.
         for (const row of await transaction.table(entity.local).toArray()) {
           if (entity.include && !entity.include(row)) continue;
           const payload = entity.toCloud(userId, row);
@@ -158,6 +162,7 @@ export class RoutineDatabase extends Dexie {
         }
       }
     });
+    this.version(9).stores({ recipes: 'id, title, updatedAt, *mealTypes' });
   }
 }
 

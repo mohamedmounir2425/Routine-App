@@ -76,3 +76,9 @@ Verification uses fake-indexeddb to exercise two separate databases, scoped stor
 
 Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
 154 local scenarios passed. Real transactional Supabase integration passed with two temporary Auth identities and no persisted test accounts. Migration 20261101140907_versioned_sync_mutations.sql is applied. LocalStorage-only activities remain local plus JSON backup.
+
+## Recipe library (2026-11-01)
+
+Implemented /home/recipes with lazy-loaded warm responsive UI, Radix dialog, structured ingredient entry, multi-meal tags, search/all-ingredient filtering, favorites, quick/light filters, details and HTTPS image/YouTube links. Name-only saves are supported. Keyboard shortcuts and unsaved-change/delete confirmation included. Local v9 schema, JSON v3 backup compatibility and complete versioned cloud sync include recipes. Stale editors fail safely.
+
+Migration 20261101143722_add_recipe_library applied to LifeOS. 173 local scenarios passed and real two-identity transactional recipe integration passed, with fixture rollback confirmed. Security Advisor adds no new findings. Computer Use stopped because it could not verify the browser URL; visual browser/mobile acceptance was not completed. Sharing between accounts, pantry matching and weekly planning remain separate features.

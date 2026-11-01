@@ -48,7 +48,7 @@ RoutineAppDB القديمة لم تكن تحمل ملكية موثوقة لكل 
 
 ## JSON
 
-نسخة format v3 ما زالت تضم 12 جدولًا محمولًا، ولكن من المساحة الحالية فقط. مفاتيح التفضيلات داخل الملف تبقى بالأسماء المحمولة القديمة دون prefix حتى يمكن نقلها. حقل workspace اختياري يوضح مصدر النسخة، ولا يغير الحساب أثناء الاستيراد. اختلاف المصدر عن المساحة الحالية يظهر تنبيهًا قبل التأكيد، ومؤشر الحساب وتوكنات Auth لا تُقبل ضمن localData.
+نسخة format v3 ما زالت تضم 13 جدولًا محمولًا، ولكن من المساحة الحالية فقط. مفاتيح التفضيلات داخل الملف تبقى بالأسماء المحمولة القديمة دون prefix حتى يمكن نقلها. حقل workspace اختياري يوضح مصدر النسخة، ولا يغير الحساب أثناء الاستيراد. اختلاف المصدر عن المساحة الحالية يظهر تنبيهًا قبل التأكيد، ومؤشر الحساب وتوكنات Auth لا تُقبل ضمن localData.
 
 ## التحقق والحدود
 
@@ -57,4 +57,4 @@ RoutineAppDB القديمة لم تكن تحمل ملكية موثوقة لكل 
 ما زال مطلوبًا: حسم تعارضات السحابة بإصدار سجل خادمي، نشر الحذف، تتبع كل التعديلات التي لم تُرفع، ومراجعة طابور النسخة القديمة مع مالك البيانات قبل إرساله. هذه المرحلة لا تعني اكتمال المزامنة دون تعارضات.
 
 
-Current protocol (2026-11-01): local schema v8. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.
+Current protocol (2026-11-01): local schema v9. Versioned CAS writes, persistent deletion tombstones, durable offline-change detection and explicit local/cloud conflict choices in Settings are implemented. See sync-conflicts.md. Earlier remaining-work notes describe the preceding stage. Physical browser/mobile acceptance remains outstanding.

@@ -34,7 +34,7 @@ export async function runReliabilityTests() {
   workspaceStorage.setItem('sb-private-auth-token', 'must-not-export');
   const backup = await exportCompleteBackup();
   const parsed = JSON.parse(backup);
-  check('Backup includes every portable database table and excludes credentials/queue', Object.keys(parsed.data).length === 12 && !backup.includes('must-not-export') && !('pendingSync' in parsed.data));
+  check('Backup includes every portable database table and excludes credentials/queue', Object.keys(parsed.data).length === 13 && !backup.includes('must-not-export') && !('pendingSync' in parsed.data));
   await db.tasks.clear(); await db.projects.clear(); await db.exercises.delete('custom-preserve');
   workspaceStorage.removeItem(`routine_prayers_${date}`);
   const restored = await importCompleteBackup(backup);
