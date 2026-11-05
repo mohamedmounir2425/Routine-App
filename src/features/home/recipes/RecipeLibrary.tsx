@@ -278,7 +278,7 @@ export function RecipeLibrary() {
                   : 'مكونات مفصولة بفاصلة (فراخ، جبن…)'
               }
               inputRef={search}
-              selectWidth={125}
+              selectWidth={120}
             />
           </div>
 

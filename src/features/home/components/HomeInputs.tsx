@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
-import { Input, Select, Space, type InputProps, type InputRef, type SelectProps } from 'antd';
+import { Button, Input, Select, Space, type InputProps, type InputRef, type SelectProps } from 'antd';
 import type { TextAreaProps } from 'antd/es/input';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 /* =========================================================================
    1. HomeInput: Base unified text input with Ant Design & Tailwind styling
@@ -68,6 +68,11 @@ export interface HomeCompactSearchProps {
   className?: string;
   selectWidth?: number | string;
   shortcut?: string;
+  addButton?: boolean | React.ReactNode;
+  onAdd?: (value: string) => void;
+  loading?: boolean;
+  maxLength?: number;
+  modeLabel?: string;
 }
 
 export const HomeCompactSearch: React.FC<HomeCompactSearchProps> = ({
@@ -79,26 +84,56 @@ export const HomeCompactSearch: React.FC<HomeCompactSearchProps> = ({
   placeholder,
   inputRef,
   className = '',
-  selectWidth = 125,
-  shortcut = '/'
+  selectWidth = 120,
+  shortcut = '/',
+  addButton = false,
+  onAdd,
+  loading = false,
+  maxLength,
+  modeLabel
 }) => {
+  const submit = () => {
+    if (value.trim() && !loading) onAdd?.(value.trim());
+  };
   return (
     <Space.Compact block className={`home-compact-search w-full flex items-center ${className}`.trim()}>
       <Select
+        aria-label={modeLabel}
         value={mode}
         onChange={onModeChange}
         options={modeOptions}
         popupMatchSelectWidth={false}
         style={{ width: selectWidth }}
-        className="home-compact-select shrink-0 font-bold"
+        className="home-compact-select shrink-0"
       />
       <Input
         ref={inputRef}
-        type="search"
+        type={addButton ? 'text' : 'search'}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={shortcut ? `${placeholder ?? ''} (${shortcut})` : placeholder}
-        prefix={<Search size={15} className="text-[var(--home-muted)] shrink-0 me-1" />}
+        prefix={!addButton && <Search size={15} className="text-[var(--home-muted)] shrink-0 me-1" />}
+        aria-label={placeholder}
+        disabled={loading}
+        maxLength={maxLength}
+        onPressEnter={e => {
+          if (addButton && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        suffix={addButton ? (
+          <Button
+            type="primary"
+            className="home-compact-add-button"
+            icon={<Plus size={14} />}
+            loading={loading}
+            disabled={!value.trim() || loading || !onAdd}
+            onClick={submit}
+          >
+            {addButton === true ? 'إضافة' : addButton}
+          </Button>
+        ) : undefined}
         allowClear
         aria-keyshortcuts={shortcut}
         className="home-compact-input flex-1 text-[13px]"
@@ -118,7 +153,7 @@ export interface HomeSelectProps<T = any> extends SelectProps<T> {
 export const HomeSelect = <T,>({ className = '', style, ...props }: HomeSelectProps<T>) => {
   return (
     <Select<T>
-      className={`home-unified-select h-[40px] text-[12.5px] font-bold ${className}`.trim()}
+      className={`home-unified-select h-[40px] text-[12.5px] ${className}`.trim()}
       style={style}
       popupMatchSelectWidth={false}
       {...props}

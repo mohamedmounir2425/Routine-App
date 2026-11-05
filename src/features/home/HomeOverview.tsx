@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { liveQuery } from 'dexie';
 import { Link } from 'react-router-dom';
-import { App, Select } from 'antd';
+import { App } from 'antd';
 import {
   Archive,
   ArrowLeft,
@@ -28,7 +28,7 @@ import { isSpaceTaskDue } from '../today/taskCalendar';
 import { inventoryFlags, type InventoryItem } from './inventory/inventoryModel';
 import { parseShoppingTitle } from './tasks/HomeTasksView';
 import { toggleRecipeFavorite } from './recipes/recipeRepository';
-import { QuickInlineAdd } from './components/QuickInlineAdd';
+import { HomeCompactSearch } from './components/HomeInputs';
 
 export function HomeOverview() {
   const { message: antMessage } = App.useApp();
@@ -49,6 +49,7 @@ export function HomeOverview() {
 
   // Shopping List Filter & Scroll State (max 5.5 items with scroll shadows)
   const [shoppingFilter, setShoppingFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [shoppingDraft, setShoppingDraft] = useState('');
   const shoppingListRef = useRef<HTMLUListElement>(null);
   const [shoppingScroll, setShoppingScroll] = useState({ top: false, bottom: false });
 
@@ -263,6 +264,7 @@ export function HomeOverview() {
         priority: 'medium',
         createdAt: new Date().toISOString()
       });
+      setShoppingDraft('');
       antMessage.success(`أُضيف «${text}» إلى المشتريات 🛒`);
     } catch {
       antMessage.error('تعذر إضافة الغرض للمشتريات.');
@@ -662,20 +664,23 @@ export function HomeOverview() {
 
           {/* شريط الإضافة والفلترة في نفس الصف */}
           <div className="home-shopping-action-row">
-            <Select
-              value={shoppingFilter}
-              onChange={setShoppingFilter}
-              className="home-shopping-select"
-              options={[
+            <HomeCompactSearch
+              mode={shoppingFilter}
+              onModeChange={setShoppingFilter}
+              modeLabel="تصفية المشتريات"
+              modeOptions={[
                 { value: 'pending', label: `لم يُشترَ (${pendingShopping.length})` },
                 { value: 'completed', label: `تم الشراء (${completedShopping.length})` },
                 { value: 'all', label: `الكل (${allShoppingTasks.length})` }
               ]}
-            />
-            <QuickInlineAdd
+              value={shoppingDraft}
+              onChange={setShoppingDraft}
               placeholder="أضف طلبًا سريعًا…"
-              buttonText="إضافة"
-              loading={busy === 'quick_shop'}
+              addButton
+              shortcut=""
+              selectWidth={145}
+              maxLength={150}
+              loading={!!busy}
               onAdd={addQuickShopItem}
               className="home-shopping-quick-add"
             />
