@@ -1,8 +1,8 @@
-import { Segmented, Grid, Tooltip } from 'antd';
+import { Segmented, Grid, Tooltip, Dropdown } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
 import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { Archive, ClipboardList, Pencil, Plus, ShoppingBasket } from 'lucide-react';
+import { Archive, ClipboardList, Ellipsis, SlidersHorizontal, Pencil, Plus, ShoppingBasket } from 'lucide-react';
 import { db } from '../../../db/database';
 import { saveTask } from '../../../db/taskQueries';
 import { getLocalDateString } from '../../../utils/dateUtils';
@@ -26,6 +26,8 @@ export function InventoryLibrary() {
   const view = preferredView ?? (screens.md ? 'table' : 'list');
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const compact = !screens.md;
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [place, setPlace] = useState('all');
   const [category, setCategory] = useState('all');
@@ -170,6 +172,11 @@ export function InventoryLibrary() {
       setMessage(exists ? 'الصنف موجود بالفعل في المشتريات.' : `أُضيف «${item.name}» إلى قائمة المشتريات.`);
     });
 
+  const markOut = (item: InventoryItem) => run(async () => {
+    await saveInventoryBatch([{ original: item, mode: 'count', draft: { ...item, quantity: 0, state: 'out' } }]);
+    setMessage('تم تسجيل نفاد «' + item.name + '» مع الحفاظ على سجله.');
+  });
+
   const saved = (text: string) => {
     setMessage(text);
     setError('');
@@ -237,7 +244,7 @@ export function InventoryLibrary() {
         </div>
 
         <div className="kitchen-header-left">
-          {(filterCounts.low > 0 || filterCounts.out > 0) && (
+          {!compact && (filterCounts.low > 0 || filterCounts.out > 0) && (
             <Tooltip title="إضافة كل الأصناف المنتهية والناقصة إلى قائمة المشتريات">
               <button
                 type="button"
@@ -260,7 +267,7 @@ export function InventoryLibrary() {
               <span>جرد مكان</span>
             </button>
           </Tooltip>}
-          {items.length > 0 && <button className="kitchen-action-btn secondary" onClick={() => setBulk(true)}>إدخال جماعي</button>}
+          {!compact && items.length > 0 && <button className="kitchen-action-btn secondary" onClick={() => setBulk(true)}>إدخال جماعي</button>}
           {items.length > 0 && <button
             type="button"
             className="kitchen-action-btn primary"
@@ -271,6 +278,12 @@ export function InventoryLibrary() {
             <Plus size={16} />
             <span>إضافة صنف</span>
           </button>}
+          {compact && items.length > 0 && <Dropdown trigger={['click']} menu={{ items: [
+            { key: 'bulk', label: 'إدخال جماعي / Excel', onClick: () => setBulk(true) },
+            ...(filterCounts.low + filterCounts.out > 0 ? [{ key: 'shopping', label: 'النواقص للمشتريات', disabled: busy, onClick: () => void addAllShortagesToShopping() }] : [])
+          ] }}>
+            <button className="kitchen-action-btn secondary" aria-label="إجراءات الخزين"><Ellipsis size={18} /></button>
+          </Dropdown>}
           <button
             type="button"
             className="kitchen-action-btn secondary kitchen-shortcuts-btn"
@@ -284,7 +297,7 @@ export function InventoryLibrary() {
       </header>
 
       {items.length > 0 && <>
-      <div className="home-list-toolbar inventory-filters">
+      <div className={"home-list-toolbar inventory-filters" + (filtersOpen ? " pantry-filters-open" : "")}>
         <HomeSearchInput
           ref={search}
           value={query}
@@ -293,6 +306,9 @@ export function InventoryLibrary() {
           placeholder="ابحث بالاسم، المكان، أو التصنيف…"
           className="flex-1 min-w-[200px]"
         />
+        {compact && <button className="pantry-filter-toggle home-secondary-button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(open => !open)}>
+          <SlidersHorizontal size={16} /> فلترة{place !== 'all' || category !== 'all' ? ' •' : ''}
+        </button>}
         <HomeSelect
           showSearch
           aria-label="مكان التخزين"
@@ -441,6 +457,13 @@ export function InventoryLibrary() {
                   )}
                 </div>}
 
+                {compact ? <Dropdown trigger={['click']} menu={{ items: [
+                  { key: 'edit', label: 'تعديل وسجل الجرد', onClick: () => setSelection(item) },
+                  { key: 'shopping', label: 'إضافة للمشتريات', disabled: busy, onClick: () => void shopping(item) },
+                  ...(!flags.out ? [{ key: 'out', label: 'تسجيل النفاد', disabled: busy, onClick: () => void markOut(item) }] : [])
+                ] }}>
+                  <button type="button" className="pantry-row-more" aria-label={'إجراءات ' + item.name}><Ellipsis size={18} /></button>
+                </Dropdown> : (
                 <div className="inventory-row-actions">
                   <button type="button" className="home-secondary-button" onClick={() => setSelection(item)}>
                     <Pencil size={15} /> تعديل / سجل الجرد
@@ -458,19 +481,13 @@ export function InventoryLibrary() {
                       type="button"
                       className="home-secondary-button"
                       disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          await saveInventoryBatch([
-                            { original: item, mode: 'count', draft: { ...item, quantity: 0, state: 'out' } }
-                          ]);
-                          saved(`تم تسجيل نفاد «${item.name}» مع الحفاظ على سجله.`);
-                        })
-                      }
+                      onClick={() => void markOut(item)}
                     >
                       تسجيل النفاد
                     </button>
                   )}
                 </div>
+                )}
               </li>
             );
           })}
