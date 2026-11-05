@@ -1,7 +1,8 @@
-import { Input, Select, Segmented, Grid, Tooltip } from 'antd';
+import { Segmented, Grid, Tooltip } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
-import { Archive, ClipboardList, Pencil, Plus, Search, ShoppingBasket } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Archive, ClipboardList, Pencil, Plus, ShoppingBasket } from 'lucide-react';
 import { db } from '../../../db/database';
 import { saveTask } from '../../../db/taskQueries';
 import { getLocalDateString } from '../../../utils/dateUtils';
@@ -10,12 +11,15 @@ import { inventoryFlags, type InventoryItem } from './inventoryModel';
 import { saveInventoryBatch } from './inventoryRepository';
 import { InventoryDialog } from './InventoryDialog';
 import { InventoryBulkDialog } from './InventoryBulkDialog';
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
+import { HomeSearchInput, HomeSelect } from '../components/HomeInputs';
 import './inventory.css';
 import { InventoryTable } from './InventoryTable';
 
 type StockFilter = 'all' | 'first' | 'expiring' | 'low' | 'out';
 
 export function InventoryLibrary() {
+  const navigate = useNavigate();
   const screens = Grid.useBreakpoint();
   const [preferredView, setView] = useState<'list' | 'cards' | 'table' | null>(null);
   const view = preferredView ?? (screens.md ? 'table' : 'list');
@@ -27,6 +31,7 @@ export function InventoryLibrary() {
   const [filter, setFilter] = useState<StockFilter>('all');
   const [selection, setSelection] = useState<InventoryItem | 'new' | null>(null);
   const [bulk, setBulk] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -40,7 +45,7 @@ export function InventoryLibrary() {
         setLoading(false);
       },
       error: () => {
-        setError('تعذر تحميل المخزون. أعد فتح الصفحة.');
+        setError('تعذر تحميل خزين البيت. أعد فتح الصفحة.');
         setLoading(false);
       }
     });
@@ -61,15 +66,20 @@ export function InventoryLibrary() {
       if (event.key === '/') {
         event.preventDefault();
         search.current?.focus();
-      }
-      if (event.key.toLowerCase() === 'n') {
+      } else if (event.key.toLowerCase() === 'n') {
         event.preventDefault();
         setSelection('new');
+      } else if (event.key === '[' || event.key === ']') {
+        event.preventDefault();
+        navigate('/home/recipes');
+      } else if (event.key === '?') {
+        event.preventDefault();
+        setShowShortcuts(prev => !prev);
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [selection, bulk]);
+  }, [selection, bulk, navigate]);
 
   // Compute filter counts
   const filterCounts = useMemo(() => {
@@ -192,54 +202,90 @@ export function InventoryLibrary() {
 
   return (
     <section className="inventory-library" dir="rtl">
-      <header className="home-section-heading">
-        <div>
-          <p className="home-eyebrow">
-            <Archive size={16} /> المطبخ
-          </p>
-          <h2>المخزون والجرد</h2>
-          <p>اعرف المتاح في البيت، وحدّث الجرد وقتما يناسبك دون تسجيل إجباري لكل استهلاك.</p>
+      <header className="kitchen-unified-header">
+        <div className="kitchen-header-right">
+          <span className="kitchen-eyebrow">
+            <Archive size={15} /> المطبخ
+          </span>
+          <div className="kitchen-segmented-switch" role="tablist" aria-label="أقسام المطبخ">
+            <NavLink
+              to="/home/recipes"
+              className={({ isActive }) => `kitchen-switch-btn ${isActive ? 'is-active' : ''}`}
+            >
+              <span className="switch-full">🍲 أكلات البيت</span>
+              <span className="switch-short">🍲 أكلات</span>
+            </NavLink>
+            <NavLink
+              to="/home/inventory"
+              className={({ isActive }) => `kitchen-switch-btn ${isActive ? 'is-active' : ''}`}
+            >
+              <span className="switch-full">🧊 خزين البيت</span>
+              <span className="switch-short">🧊 خزين</span>
+            </NavLink>
+          </div>
         </div>
-        <div className="inventory-heading-actions">
-          <button type="button" className="home-primary-button" onClick={() => setSelection('new')}>
-            <Plus size={18} /> إضافة صنف
-          </button>
-          <button type="button" className="home-secondary-button" onClick={() => setBulk(true)}>
-            <ClipboardList size={18} /> بدء جرد دوري
-          </button>
+
+        <div className="kitchen-header-left">
           {(filterCounts.low > 0 || filterCounts.out > 0) && (
-            <Tooltip title="إضافة كل الأصناف المنتهية والناقصة إلى قائمة المشتريات بضغطة زر">
+            <Tooltip title="إضافة كل الأصناف المنتهية والناقصة إلى قائمة المشتريات">
               <button
                 type="button"
-                className="home-secondary-button text-amber-300"
+                className="kitchen-action-btn secondary text-amber-500"
                 onClick={() => void addAllShortagesToShopping()}
                 disabled={busy}
               >
-                <ShoppingBasket size={17} /> إضافة النواقص للمشتريات ({filterCounts.low + filterCounts.out})
+                <ShoppingBasket size={15} />
+                <span className="hidden-sm">النواقص للمشتريات ({filterCounts.low + filterCounts.out})</span>
               </button>
             </Tooltip>
           )}
+          <Tooltip title="بدء جرد دوري لعدة أصناف">
+            <button
+              type="button"
+              className="kitchen-action-btn secondary"
+              onClick={() => setBulk(true)}
+            >
+              <ClipboardList size={15} />
+              <span className="hidden-sm">جرد دوري</span>
+            </button>
+          </Tooltip>
+          <button
+            type="button"
+            className="kitchen-action-btn primary"
+            onClick={() => setSelection('new')}
+            title="إضافة صنف جديد (N)"
+            aria-keyshortcuts="N"
+          >
+            <Plus size={16} />
+            <span>إضافة صنف</span>
+          </button>
+          <button
+            type="button"
+            className="kitchen-action-btn secondary kitchen-shortcuts-btn"
+            onClick={() => setShowShortcuts(true)}
+            title="اختصارات لوحة المفاتيح (?)"
+            aria-label="اختصارات لوحة المفاتيح"
+          >
+            <kbd style={{ fontSize: 11, padding: '2px 5px', borderRadius: 4, background: 'var(--home-kbd-bg, rgba(0,0,0,0.06))' }}>?</kbd>
+          </button>
         </div>
       </header>
 
       <div className="inventory-info">
-        <strong>{items.length} صنف مسجل في المخزون</strong>
+        <strong>{items.length} صنف مسجل في خزين البيت</strong>
         <span>الكميات تعبر عن آخر تسجيل فعلي؛ وعدم تحديد الكمية لا يعني نفاد الصنف.</span>
       </div>
 
       <div className="home-list-toolbar inventory-filters">
-        <Input
-          type="search"
+        <HomeSearchInput
           ref={search}
           value={query}
           onChange={event => setQuery(event.target.value)}
-          prefix={<Search size={17} />}
-          allowClear
-          className="home-antd-search"
-          aria-label="البحث في المخزون"
+          aria-label="البحث في خزين البيت"
           placeholder="ابحث بالاسم، المكان، أو التصنيف…"
+          className="flex-1 min-w-[200px]"
         />
-        <Select
+        <HomeSelect
           showSearch
           aria-label="مكان التخزين"
           value={place}
@@ -257,7 +303,7 @@ export function InventoryLibrary() {
           ]}
           style={{ minWidth: 150 }}
         />
-        <Select
+        <HomeSelect
           showSearch
           aria-label="التصنيف"
           value={category}
@@ -446,6 +492,11 @@ export function InventoryLibrary() {
         />
       )}
       {bulk && <InventoryBulkDialog items={items} onClose={() => setBulk(false)} onSaved={saved} />}
+
+      <KeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </section>
   );
 }

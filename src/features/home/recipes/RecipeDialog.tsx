@@ -30,9 +30,10 @@ export function RecipeDialog({ recipe, creating, onClose, onSaved }: { recipe?: 
     catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر الحذف.'); setConfirm(null); }
     finally { setBusy(false); }
   };
-  let image = '', video = '';
+  let image = '', video = '', draftImage = '';
   try { image = safeMediaUrl(recipe?.imageUrl ?? ''); } catch { /* Invalid legacy links are never rendered. */ }
   try { video = safeMediaUrl(recipe?.videoUrl ?? '', true); } catch { /* Invalid legacy links are never rendered. */ }
+  try { draftImage = safeMediaUrl(draft.imageUrl); } catch { draftImage = ''; }
   return <Dialog.Root open onOpenChange={open => { if (!open) close(); }}>
     <Dialog.Portal>
       <Dialog.Overlay className="recipe-overlay" />
@@ -58,7 +59,43 @@ export function RecipeDialog({ recipe, creating, onClose, onSaved }: { recipe?: 
           <details className="recipe-extra" open={!!recipe}><summary>طريقة التحضير وتفاصيل إضافية</summary><div className="recipe-extra-body">
           <label className="recipe-field">طريقة التحضير <small>كل خطوة في سطر منفصل</small><textarea rows={4} maxLength={400000} value={stepsText} onChange={event => setStepsText(event.target.value)} placeholder={'نتبل الفراخ.\nنشوح الفلفل ونضيف الفراخ.\nنجهز السندوتشات.'} /></label>
           <div className="recipe-two-columns"><label className="recipe-field">المدة بالدقائق<input inputMode="numeric" type="number" min={1} max={1440} step={1} value={draft.durationMinutes ?? ''} onChange={event => update('durationMinutes', event.target.value === '' ? null : Number(event.target.value))} placeholder="اختياري" /></label><label className="recipe-field">عدد الأفراد<input inputMode="numeric" type="number" min={1} max={100} step={1} value={draft.servings ?? ''} onChange={event => update('servings', event.target.value === '' ? null : Number(event.target.value))} placeholder="اختياري" /></label></div>
-          <div className="recipe-two-columns"><label className="recipe-field">رابط الصورة<input dir="ltr" type="url" inputMode="url" maxLength={2048} value={draft.imageUrl} onChange={event => update('imageUrl', event.target.value)} placeholder="https://…" /></label><label className="recipe-field">رابط فيديو YouTube<input dir="ltr" type="url" inputMode="url" maxLength={2048} value={draft.videoUrl} onChange={event => update('videoUrl', event.target.value)} placeholder="https://youtu.be/…" /></label></div>
+          <div className="recipe-two-columns">
+            <div className="recipe-field">
+              <span>رابط الصورة</span>
+              <input
+                dir="ltr"
+                type="url"
+                inputMode="url"
+                maxLength={2048}
+                value={draft.imageUrl}
+                onChange={event => update('imageUrl', event.target.value)}
+                placeholder="https://…"
+              />
+              {draftImage && (
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <img
+                    src={draftImage}
+                    alt="معاينة"
+                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--home-border)' }}
+                    onError={e => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                  <small style={{ color: 'var(--home-green-text)', fontSize: 11 }}>معاينة الرابط ✓</small>
+                </div>
+              )}
+            </div>
+            <label className="recipe-field">
+              <span>رابط فيديو YouTube</span>
+              <input
+                dir="ltr"
+                type="url"
+                inputMode="url"
+                maxLength={2048}
+                value={draft.videoUrl}
+                onChange={event => update('videoUrl', event.target.value)}
+                placeholder="https://youtu.be/…"
+              />
+            </label>
+          </div>
           <label className="recipe-field">ملاحظات<textarea rows={2} maxLength={8000} value={draft.notes} onChange={event => update('notes', event.target.value)} placeholder="بدائل، تجهيز من بليل، أو تعديل جربتوه…" /></label>
           </div></details>
           <div className="recipe-checks"><label><input type="checkbox" checked={draft.isFavorite} onChange={event => update('isFavorite', event.target.checked)} /> إضافة إلى المفضلة</label><label><input type="checkbox" checked={draft.isLight} onChange={event => update('isLight', event.target.checked)} /> وصفة خفيفة حسب اختيارك</label></div>
