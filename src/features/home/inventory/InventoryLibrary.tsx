@@ -1,7 +1,7 @@
 import { Segmented, Grid, Tooltip } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { Archive, ClipboardList, Pencil, Plus, ShoppingBasket } from 'lucide-react';
 import { db } from '../../../db/database';
 import { saveTask } from '../../../db/taskQueries';
@@ -14,6 +14,7 @@ import { InventoryBulkDialog } from './InventoryBulkDialog';
 import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
 import { HomeSearchInput, HomeSelect } from '../components/HomeInputs';
 import './inventory.css';
+import { PantryReview } from './PantryReview';
 import { InventoryTable } from './InventoryTable';
 
 type StockFilter = 'all' | 'first' | 'expiring' | 'low' | 'out';
@@ -28,7 +29,15 @@ export function InventoryLibrary() {
   const [query, setQuery] = useState('');
   const [place, setPlace] = useState('all');
   const [category, setCategory] = useState('all');
-  const [filter, setFilter] = useState<StockFilter>('all');
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('filter');
+  const filter: StockFilter = requested === 'first' || requested === 'expiring' || requested === 'low' || requested === 'out' ? requested : 'all';
+  const setFilter = (next: StockFilter) => setParams(current => {
+    const updated = new URLSearchParams(current);
+    if (next === 'all') updated.delete('filter'); else updated.set('filter', next);
+    return updated;
+  }, { replace: true });
+  const [review, setReview] = useState(false);
   const [selection, setSelection] = useState<InventoryItem | 'new' | null>(null);
   const [bulk, setBulk] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -53,7 +62,7 @@ export function InventoryLibrary() {
   }, []);
 
   useEffect(() => {
-    if (selection || bulk) return;
+    if (selection || bulk || review || showShortcuts) return;
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
@@ -79,38 +88,40 @@ export function InventoryLibrary() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [selection, bulk, navigate]);
+  }, [selection, bulk, review, showShortcuts, navigate]);
 
-  // Compute filter counts
+  const scopedItems = useMemo(() => {
+    const term = normalizeFoodText(query.trim());
+    return items.filter(item =>
+      (place === 'all' || item.location === place) &&
+      (category === 'all' || item.category === category) &&
+      (!term || normalizeFoodText([item.name, item.location, item.notes, item.category].join(' ')).includes(term))
+    );
+  }, [items, place, category, query]);
+  const needsAttention = (flags: ReturnType<typeof inventoryFlags>) => flags.useFirst || flags.expired || flags.expiring;
   const filterCounts = useMemo(() => {
     let first = 0;
     let expiring = 0;
     let low = 0;
     let out = 0;
-    for (const item of items) {
+    for (const item of scopedItems) {
       const flags = inventoryFlags(item, today);
-      if (flags.useFirst) first++;
+      if (needsAttention(flags)) first++;
       if (flags.expiring || flags.expired) expiring++;
       if (flags.low) low++;
       if (flags.out) out++;
     }
-    return { all: items.length, first, expiring, low, out };
-  }, [items, today]);
+    return { all: scopedItems.length, first, expiring, low, out };
+  }, [scopedItems, today]);
 
   const visible = useMemo(
     () =>
-      items
+      scopedItems
         .filter(item => {
           const flags = inventoryFlags(item, today);
           return (
-            (place === 'all' || item.location === place) &&
-            (category === 'all' || item.category === category) &&
-            (!query.trim() ||
-              normalizeFoodText([item.name, item.notes, item.category].join(' ')).includes(
-                normalizeFoodText(query)
-              )) &&
             (filter === 'all' ||
-              (filter === 'first' && flags.useFirst) ||
+              (filter === 'first' && needsAttention(flags)) ||
               (filter === 'expiring' && (flags.expiring || flags.expired)) ||
               (filter === 'low' && flags.low) ||
               (filter === 'out' && flags.out))
@@ -123,7 +134,7 @@ export function InventoryLibrary() {
             (a.expiresOn ?? '9999').localeCompare(b.expiresOn ?? '9999') ||
             a.name.localeCompare(b.name, 'ar')
         ),
-    [items, query, place, category, filter, today]
+    [scopedItems, filter, today]
   );
 
   const run = async (callback: () => Promise<void>) => {
@@ -166,7 +177,7 @@ export function InventoryLibrary() {
 
   const addAllShortagesToShopping = () =>
     run(async () => {
-      const shortages = items.filter(item => {
+      const shortages = scopedItems.filter(item => {
         const flags = inventoryFlags(item, today);
         return flags.out || flags.low;
       });
@@ -175,13 +186,12 @@ export function InventoryLibrary() {
         return;
       }
       const currentTasks = await db.tasks.where('spaceId').equals('home').toArray();
+      const known = new Set(currentTasks.filter(task => !task.isCompleted).map(task => normalizeFoodText(task.title)));
       let added = 0;
       for (const item of shortages) {
         const title = '🛒 ' + item.name;
-        const exists = currentTasks.some(
-          task => !task.isCompleted && normalizeFoodText(task.title) === normalizeFoodText(title)
-        );
-        if (!exists) {
+        const key = normalizeFoodText(title);
+        if (!known.has(key)) {
           await saveTask({
             id: crypto.randomUUID(),
             spaceId: 'home',
@@ -190,6 +200,7 @@ export function InventoryLibrary() {
             priority: 'medium',
             createdAt: new Date().toISOString()
           });
+          known.add(key);
           added++;
         }
       }
@@ -235,21 +246,22 @@ export function InventoryLibrary() {
                 disabled={busy}
               >
                 <ShoppingBasket size={15} />
-                <span className="hidden-sm">النواقص للمشتريات ({filterCounts.low + filterCounts.out})</span>
+                <span className="hidden-sm">النواقص للمشتريات</span>
               </button>
             </Tooltip>
           )}
-          <Tooltip title="بدء جرد دوري لعدة أصناف">
+          {items.length > 0 && <Tooltip title="مراجعة أصناف مكان">
             <button
               type="button"
               className="kitchen-action-btn secondary"
-              onClick={() => setBulk(true)}
+              onClick={() => setReview(true)}
             >
               <ClipboardList size={15} />
-              <span className="hidden-sm">جرد دوري</span>
+              <span>جرد مكان</span>
             </button>
-          </Tooltip>
-          <button
+          </Tooltip>}
+          {items.length > 0 && <button className="kitchen-action-btn secondary" onClick={() => setBulk(true)}>إدخال جماعي</button>}
+          {items.length > 0 && <button
             type="button"
             className="kitchen-action-btn primary"
             onClick={() => setSelection('new')}
@@ -258,7 +270,7 @@ export function InventoryLibrary() {
           >
             <Plus size={16} />
             <span>إضافة صنف</span>
-          </button>
+          </button>}
           <button
             type="button"
             className="kitchen-action-btn secondary kitchen-shortcuts-btn"
@@ -271,11 +283,7 @@ export function InventoryLibrary() {
         </div>
       </header>
 
-      <div className="inventory-info">
-        <strong>{items.length} صنف مسجل في خزين البيت</strong>
-        <span>الكميات تعبر عن آخر تسجيل فعلي؛ وعدم تحديد الكمية لا يعني نفاد الصنف.</span>
-      </div>
-
+      {items.length > 0 && <>
       <div className="home-list-toolbar inventory-filters">
         <HomeSearchInput
           ref={search}
@@ -321,14 +329,27 @@ export function InventoryLibrary() {
           ]}
           style={{ minWidth: 150 }}
         />
+      <div className="inventory-view-toolbar">
+
+        <Segmented
+          aria-label="طريقة عرض المخزون"
+          value={view}
+          onChange={value => setView(value as typeof view)}
+          options={[
+            { value: 'table', label: 'جدول' },
+            { value: 'list', label: 'قائمة' },
+            { value: 'cards', label: 'بطاقات' }
+          ]}
+        />
+      </div>
       </div>
 
       <div className="home-list-filters" aria-label="فلاتر حالة المخزون">
         {(
           [
             { id: 'all', label: 'الكل', count: filterCounts.all },
-            { id: 'first', label: 'استخدم أولًا', count: filterCounts.first },
-            { id: 'expiring', label: 'الصلاحية قريبة / تجاوزت', count: filterCounts.expiring },
+            { id: 'first', label: 'يحتاج انتباه', count: filterCounts.first },
+            { id: 'expiring', label: 'الصلاحية', count: filterCounts.expiring },
             { id: 'low', label: 'قليل', count: filterCounts.low },
             { id: 'out', label: 'نفد', count: filterCounts.out }
           ] as const
@@ -346,20 +367,9 @@ export function InventoryLibrary() {
         ))}
       </div>
 
-      <div className="inventory-view-toolbar">
-        <span>{visible.length} صنف مطابق</span>
-        <Segmented
-          aria-label="طريقة عرض المخزون"
-          value={view}
-          onChange={value => setView(value as typeof view)}
-          options={[
-            { value: 'table', label: 'جدول تفاعلي' },
-            { value: 'list', label: 'قائمة مدمجة' },
-            { value: 'cards', label: 'بطاقات' }
-          ]}
-        />
-      </div>
 
+
+      </>}
       {message && <p role="status" className="inventory-success">{message}</p>}
       {error && <p role="alert" className="home-error">{error}</p>}
 
@@ -367,36 +377,19 @@ export function InventoryLibrary() {
         <p className="home-empty" role="status">
           جارٍ تحميل المخزون…
         </p>
+      ) : items.length === 0 ? (
+        <div className="home-panel pantry-start">
+          <Archive size={30} /><h2>ابدأ خزين البيت</h2>
+          <p>سجّل صنف بالاسم والمكان، أو انسخ الجرد من Excel مرة واحدة.</p>
+          <div><button className="home-primary-button" onClick={() => setSelection('new')}>إضافة صنف</button>
+          <button className="home-secondary-button" onClick={() => setBulk(true)}>لصق من Excel</button></div>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="home-empty"><h3>لا توجد أصناف تطابق البحث</h3>
+          <button className="home-secondary-button" onClick={() => { setQuery(''); setPlace('all'); setCategory('all'); setFilter('all'); }}>مسح الفلاتر</button>
+        </div>
       ) : view === 'table' ? (
         <InventoryTable items={visible} today={today} onOpen={setSelection} onSaved={saved} />
-      ) : visible.length === 0 ? (
-        <div className="home-empty home-panel">
-          <Archive size={34} />
-          <h3>{items.length ? 'لا توجد أصناف تطابق البحث' : 'ابدأ بما تعرفه عن مخزونك'}</h3>
-          <p>
-            {items.length
-              ? 'جرّب تغيير البحث أو الفلاتر لعرض أصناف أخرى.'
-              : 'سجّل الاسم والمكان حتى لو لم تكن متأكدًا من الكمية أو الصلاحية.'}
-          </p>
-          {items.length > 0 ? (
-            <button
-              type="button"
-              className="home-secondary-button"
-              onClick={() => {
-                setQuery('');
-                setPlace('all');
-                setCategory('all');
-                setFilter('all');
-              }}
-            >
-              مسح الفلاتر
-            </button>
-          ) : (
-            <button type="button" className="home-primary-button" onClick={() => setBulk(true)}>
-              إدخال أول جرد
-            </button>
-          )}
-        </div>
       ) : (
         <ul className={`inventory-list inventory-view-${view}`}>
           {visible.map(item => {
@@ -416,10 +409,11 @@ export function InventoryLibrary() {
               <li key={item.id}>
                 <div className="inventory-row-main">
                   <div>
-                    <h3>{item.name}</h3>
+                    <h3><button className="pantry-item-name" onClick={() => setSelection(item)}>{item.name}</button></h3>
                     <p>
                       {item.location}
                       {item.category ? ` · ${item.category}` : ''}
+                      {view === 'list' && item.packageSize !== null && ` · العبوة ${item.packageSize} ${item.packageUnit}`}
                     </p>
                   </div>
                   <strong className="inventory-quantity">{formattedQty}</strong>
@@ -437,7 +431,7 @@ export function InventoryLibrary() {
                   )}
                 </div>
 
-                <div className="inventory-row-meta">
+                {view === 'cards' && <div className="inventory-row-meta">
                   <span>
                     آخر جرد: {item.lastCountedAt ? new Date(item.lastCountedAt).toLocaleDateString('ar-EG') : 'لم يُسجل'}
                   </span>
@@ -445,7 +439,7 @@ export function InventoryLibrary() {
                   {item.packageSize !== null && (
                     <span>العبوة: {item.packageSize} {item.packageUnit}</span>
                   )}
-                </div>
+                </div>}
 
                 <div className="inventory-row-actions">
                   <button type="button" className="home-secondary-button" onClick={() => setSelection(item)}>
@@ -491,7 +485,8 @@ export function InventoryLibrary() {
           onSaved={saved}
         />
       )}
-      {bulk && <InventoryBulkDialog items={items} onClose={() => setBulk(false)} onSaved={saved} />}
+      {review && <PantryReview items={items} initialPlace={place} onClose={() => setReview(false)} onSaved={saved} />}
+      {bulk && <InventoryBulkDialog initialTab={items.length ? 'grid' : 'paste'} items={items} onClose={() => setBulk(false)} onSaved={saved} />}
 
       <KeyboardShortcutsModal
         isOpen={showShortcuts}

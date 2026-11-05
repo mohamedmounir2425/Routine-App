@@ -280,7 +280,7 @@ export function InventoryTable({
                       )}
                       {flags.useFirst && <Tag color="gold">استخدم أولًا</Tag>}
                       {!flags.low && !flags.expired && !flags.expiring && !flags.useFirst && (
-                        <Tag color="success">{item.quantity === null && item.state === 'unknown' ? 'غير معروف' : 'متاح'}</Tag>
+                        <Tag color={item.quantity === null && item.state === 'unknown' ? 'default' : 'success'}>{item.quantity === null && item.state === 'unknown' ? 'غير معروف' : 'متاح'}</Tag>
                       )}
                     </>
                   )}

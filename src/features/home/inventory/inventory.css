@@ -69,3 +69,21 @@
   .inventory-two-columns{grid-template-columns:1fr}
   .inventory-inline-primary-row{grid-template-columns:1fr}
 }
+.pantry-start{display:grid;justify-items:center;text-align:center;gap:12px;margin-top:16px;padding-block:clamp(32px,5vw,64px)!important}
+.pantry-start>svg{color:var(--home-accent)}
+.pantry-start h2{font-size:22px;font-weight:750}
+.pantry-start p,.pantry-review p,.pantry-review small{color:var(--home-muted)}
+.pantry-start>div{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.pantry-review{display:grid;gap:12px;max-height:65dvh;overflow:auto}
+.pantry-review>label,.pantry-review small{display:grid;gap:4px}
+.pantry-review-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(95px,32%);align-items:center;gap:10px;border-bottom:1px solid var(--home-border);padding:8px 0}
+.pantry-review small{font-size:12px}
+.inventory-library>.inventory-filters{margin-top:12px}
+.inventory-library .inventory-view-toolbar{border-bottom:1px solid var(--home-border);padding-bottom:8px}
+.pantry-count-input{display:grid;gap:5px}
+.inventory-library .inventory-filters .inventory-view-toolbar{border:0;padding:0;margin:0}
+.inventory-filters{flex-wrap:wrap}
+.pantry-item-name{color:var(--home-text);text-align:start;min-height:36px}
+.pantry-item-name:hover{text-decoration:underline}
+.inventory-library .inventory-filters .home-search-input input{background:transparent!important}
+@media(max-width:700px){.inventory-filters>.ant-select{min-width:0!important;flex:1}.inventory-filters .inventory-view-toolbar{flex-basis:100%}.inventory-library .home-list-filters{overflow-x:auto;flex-wrap:nowrap}.inventory-filter-pill{flex-shrink:0}}

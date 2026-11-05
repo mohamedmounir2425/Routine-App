@@ -9,12 +9,12 @@ import { inventoryIdentity, INVENTORY_LOCATIONS, type InventoryItem, type Invent
 import { saveInventoryBatch, type InventoryChange } from './inventoryRepository';
 
 const blankRow = () => ['', '', '', 'غير محدد', '', '', ''];
-export function InventoryBulkDialog({ items, onClose, onSaved }: { items: InventoryItem[]; onClose: () => void; onSaved: (text: string) => void }) {
+export function InventoryBulkDialog({ items, initialTab = 'grid', onClose, onSaved }: { initialTab?: 'paste' | 'grid'; items: InventoryItem[]; onClose: () => void; onSaved: (text: string) => void }) {
   const screens = Grid.useBreakpoint();
   const [beforeImport, setBeforeImport] = useState<string[][] | null>(null);
   const [importHint, setImportHint] = useState('');
   const [rows, setRows] = useState<string[][]>([blankRow()]);
-  const [tab, setTab] = useState<'grid' | 'paste' | 'text'>('grid');
+  const [tab, setTab] = useState<'grid' | 'paste' | 'text'>(initialTab);
   const [text, setText] = useState('');
   const [location, setLocation] = useState('غير محدد');
   const [mode, setMode] = useState<InventoryMode>('count');
