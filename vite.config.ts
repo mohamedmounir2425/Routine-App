@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true, // يتيح فتح السيرفر من الموبايل على نفس الشبكة المحلية
+    allowedHosts: true, // يسمح بالوصول عبر روابط النفق (Tunnels) والشبكة
+  },
   plugins: [
     react(),
     tailwindcss(),
