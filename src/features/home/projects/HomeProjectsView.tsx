@@ -10,7 +10,7 @@ import {
   ChevronUp,
   Sparkles
 } from 'lucide-react';
-import { SpaceShell } from '../../../components/layout/SpaceShell';
+import { HomeSection as SpaceShell } from '../HomeSection';
 import { HomeProject } from '../../../types';
 import { getHomeProjects, deleteProject, completeProjectStep } from '../../../db/projectQueries';
 import { HomeProjectModal } from './HomeProjectModal';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LIFE_SPACES_CONFIG } from "../../config/spacesConfig";
-import { useTranslation } from "../../i18n";
+import { type TranslationDictionary, useTranslation } from "../../i18n";
 import { getSpaceTheme } from "../../theme/spaceTheme";
 import {
   Compass,
@@ -67,13 +67,14 @@ export const SpaceContextBar: React.FC = () => {
 
     setSessionActive(isAzkarSessionActive());
 
-    const handleSessionChange = (e: any) => {
+    const handleSessionChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ active?: boolean }>).detail;
       if (!currentPath.startsWith('/worship/azkar')) {
         setSessionActive(false);
         return;
       }
-      if (e?.detail?.active !== undefined) {
-        setSessionActive(e.detail.active);
+      if (detail?.active !== undefined) {
+        setSessionActive(detail.active);
       } else {
         setSessionActive(isAzkarSessionActive());
       }
@@ -113,7 +114,7 @@ export const SpaceContextBar: React.FC = () => {
     return () => cancelAnimationFrame(raf);
   }, [currentPath, activeSpace?.id]);
 
-  if (!activeSpace || sessionActive || isAzkarSessionActive()) {
+  if (!activeSpace || activeSpace.id === 'home' || sessionActive || isAzkarSessionActive()) {
     return null;
   }
 
@@ -139,7 +140,7 @@ export const SpaceContextBar: React.FC = () => {
           >
             <span>{activeSpace.icon}</span>
             <span className="hidden md:inline font-['Tajawal']">
-              {t(activeSpace.titleKey as any)}
+              {t(activeSpace.titleKey as keyof TranslationDictionary)}
             </span>
           </div>
         </div>
@@ -170,7 +171,7 @@ export const SpaceContextBar: React.FC = () => {
                     isActive ? spaceTheme.activeNavIconClass : "text-slate-400"
                   }`}
                 />
-                <span>{t(item.labelKey as any)}</span>
+                <span>{t(item.labelKey as keyof TranslationDictionary)}</span>
               </button>
             );
           })}

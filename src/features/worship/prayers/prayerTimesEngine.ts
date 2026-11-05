@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 import { Coordinates, CalculationMethod, PrayerTimes, Madhab } from 'adhan';
 
 export interface CityOption {
@@ -180,7 +181,7 @@ export function getNextPrayerInfo(
  */
 export function getSavedLocation(): { city: CityOption; coords: { latitude: number; longitude: number } } {
   try {
-    const savedCityId = localStorage.getItem(STORAGE_KEY_CITY);
+    const savedCityId = workspaceStorage.getItem(STORAGE_KEY_CITY);
     if (savedCityId) {
       const found = PRESET_CITIES.find(c => c.id === savedCityId);
       if (found) {
@@ -188,7 +189,7 @@ export function getSavedLocation(): { city: CityOption; coords: { latitude: numb
       }
     }
 
-    const savedCoordsRaw = localStorage.getItem(STORAGE_KEY_COORDS);
+    const savedCoordsRaw = workspaceStorage.getItem(STORAGE_KEY_COORDS);
     if (savedCoordsRaw) {
       const parsed = JSON.parse(savedCoordsRaw);
       if (parsed.latitude && parsed.longitude) {
@@ -218,10 +219,10 @@ export function getSavedLocation(): { city: CityOption; coords: { latitude: numb
 export function saveLocation(cityId: string, customCoords?: { latitude: number; longitude: number; cityName?: string }) {
   try {
     if (cityId === 'custom' && customCoords) {
-      localStorage.setItem(STORAGE_KEY_CITY, 'custom');
-      localStorage.setItem(STORAGE_KEY_COORDS, JSON.stringify(customCoords));
+      workspaceStorage.setItem(STORAGE_KEY_CITY, 'custom');
+      workspaceStorage.setItem(STORAGE_KEY_COORDS, JSON.stringify(customCoords));
     } else {
-      localStorage.setItem(STORAGE_KEY_CITY, cityId);
+      workspaceStorage.setItem(STORAGE_KEY_CITY, cityId);
     }
   } catch {}
 }

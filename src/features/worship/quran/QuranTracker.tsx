@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 import React, { useState, useEffect } from 'react';
 import { Bookmark, Plus, Minus, Award } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -8,35 +9,35 @@ export const QuranTracker: React.FC = () => {
   const storageKey = `routine_quran_${today}`;
 
   const [pagesReadToday, setPagesReadToday] = useState<number>(() => {
-    const saved = localStorage.getItem(storageKey);
+    const saved = workspaceStorage.getItem(storageKey);
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [targetPages] = useState<number>(() => {
-    const saved = localStorage.getItem('routine_quran_target');
+    const saved = workspaceStorage.getItem('routine_quran_target');
     return saved ? parseInt(saved, 10) : 10;
   });
 
   const [currentSurah, setCurrentSurah] = useState<string>(() => {
-    return localStorage.getItem('routine_quran_bookmark_surah') || 'سورة البقرة';
+    return workspaceStorage.getItem('routine_quran_bookmark_surah') || 'سورة البقرة';
   });
 
   const [currentPage, setCurrentPage] = useState<number>(() => {
-    const saved = localStorage.getItem('routine_quran_bookmark_page');
+    const saved = workspaceStorage.getItem('routine_quran_bookmark_page');
     return saved ? parseInt(saved, 10) : 1;
   });
 
   useEffect(() => {
-    localStorage.setItem(storageKey, pagesReadToday.toString());
+    workspaceStorage.setItem(storageKey, pagesReadToday.toString());
   }, [pagesReadToday, storageKey]);
 
   useEffect(() => {
-    localStorage.setItem('routine_quran_target', targetPages.toString());
+    workspaceStorage.setItem('routine_quran_target', targetPages.toString());
   }, [targetPages]);
 
   useEffect(() => {
-    localStorage.setItem('routine_quran_bookmark_surah', currentSurah);
-    localStorage.setItem('routine_quran_bookmark_page', currentPage.toString());
+    workspaceStorage.setItem('routine_quran_bookmark_surah', currentSurah);
+    workspaceStorage.setItem('routine_quran_bookmark_page', currentPage.toString());
   }, [currentSurah, currentPage]);
 
   const handleAddPage = (amount: number = 1) => {

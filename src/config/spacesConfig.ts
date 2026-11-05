@@ -11,6 +11,7 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     defaultEnabled: true,
     navigation: [
       { id: 'worship-overview', path: '/worship', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'worship-tasks', path: '/worship/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
       { id: 'worship-prayers', path: '/worship/prayers', labelKey: 'spaceNavPrayers', iconName: 'Clock' },
       { id: 'worship-azkar', path: '/worship/azkar', labelKey: 'spaceNavAzkar', iconName: 'BookOpen' },
       { id: 'worship-quran', path: '/worship/quran', labelKey: 'spaceNavQuran', iconName: 'BookMarked' },
@@ -28,6 +29,7 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     defaultEnabled: true,
     navigation: [
       { id: 'health-overview', path: '/health', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'health-tasks', path: '/health/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
       { id: 'health-exercises', path: '/health/exercises', labelKey: 'spaceNavExercises', iconName: 'Dumbbell' },
       { id: 'health-plans', path: '/health/plans', labelKey: 'spaceNavPlans', iconName: 'Calendar' },
       { id: 'health-progress', path: '/health/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
@@ -58,11 +60,10 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/home',
     defaultEnabled: true,
     navigation: [
-      { id: 'home-overview', path: '/home', labelKey: 'spaceNavOverview', iconName: 'Compass' },
-      { id: 'home-tasks', path: '/home/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
-      { id: 'home-projects', path: '/home/projects', labelKey: 'spaceNavProjects', iconName: 'FolderKanban' },
-      { id: 'home-routines', path: '/home/routines', labelKey: 'spaceNavRoutines', iconName: 'ListChecks' },
-      { id: 'home-maintenance', path: '/home/maintenance', labelKey: 'spaceNavMaintenance', iconName: 'Wrench' },
+      { id: 'home-overview', path: '/home', labelKey: 'spaceNavHome', iconName: 'Compass' },
+      { id: 'home-kitchen', path: '/home/recipes', labelKey: 'spaceNavKitchen', iconName: 'BookOpen' },
+      { id: 'home-shopping', path: '/home/shopping', labelKey: 'spaceNavShopping', iconName: 'CheckSquare' },
+      { id: 'home-management', path: '/home/tasks', labelKey: 'spaceNavHomeManagement', iconName: 'ListChecks' },
     ],
   },
   {
@@ -75,6 +76,7 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     defaultEnabled: true,
     navigation: [
       { id: 'plans-overview', path: '/plans', labelKey: 'spaceNavOverview', iconName: 'Compass' },
+      { id: 'plans-tasks', path: '/plans/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
       { id: 'plans-list', path: '/plans/list', labelKey: 'spaceNavPlansList', iconName: 'FolderKanban' },
       { id: 'plans-goals', path: '/plans/goals', labelKey: 'spaceNavGoals', iconName: 'Milestone' },
       { id: 'plans-progress', path: '/plans/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },

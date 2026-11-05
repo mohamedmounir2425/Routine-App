@@ -6,6 +6,7 @@ export type TodayItemType =
   | 'quran'
   | 'workout'
   | 'work_task'
+  | 'health_task'
   | 'home_task'
   | 'worship_task'
   | 'home_routine'

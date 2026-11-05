@@ -1,9 +1,11 @@
+import { HomeSelect } from '../HomeSelect';
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Sparkles, Folder, ShoppingCart } from 'lucide-react';
 import { LifeTask, TaskPriority, HomeProject } from '../../../types';
 import { saveTask } from '../../../db/taskQueries';
-
-import { Modal } from '../../../components/common/Modal';
+import { parseShoppingTitle } from './HomeTasksView';
+import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
+import { getLocalDateString } from '../../../utils/dateUtils';
 
 interface HomeTaskModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
   defaultCategory,
 }) => {
   const [title, setTitle] = useState('');
+  const [shoppingQty, setShoppingQty] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
@@ -32,10 +35,22 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState<'daily' | 'weekdays' | 'weekly'>('daily');
   const [isShopping, setIsShopping] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    setError('');
     if (initialTask) {
-      setTitle(initialTask.title);
+      if (initialTask.title.startsWith('🛒') || (initialTask.description || '').includes('مشتريات') || defaultCategory === 'shopping') {
+        const parsed = parseShoppingTitle(initialTask.title);
+        setTitle(parsed.name);
+        setShoppingQty(parsed.quantity);
+        setIsShopping(true);
+      } else {
+        setTitle(initialTask.title);
+        setShoppingQty('');
+        setIsShopping(false);
+      }
       setDescription(initialTask.description || '');
       setPriority(initialTask.priority);
       setDueDate(initialTask.dueDate || '');
@@ -44,12 +59,12 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
       setProjectId(initialTask.projectId || '');
       setIsRecurring(!!initialTask.isRecurring);
       setRecurrenceRule(initialTask.recurrenceRule || 'daily');
-      setIsShopping(initialTask.title.startsWith('🛒') || (initialTask.description || '').includes('مشتريات'));
     } else {
       setTitle('');
+      setShoppingQty('');
       setDescription('');
       setPriority('medium');
-      setDueDate(new Date().toISOString().split('T')[0]);
+      setDueDate(defaultCategory === 'shopping' ? '' : getLocalDateString());
       setScheduledTime('');
       setEstimatedMinutes(15);
       setProjectId('');
@@ -61,14 +76,17 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || saving) return;
 
     let finalTitle = title.trim();
-    if (isShopping && !finalTitle.startsWith('🛒')) {
-      finalTitle = `🛒 ${finalTitle}`;
+    if (isShopping) {
+      const cleanTitle = finalTitle.replace(/^🛒\s*/, '').trim();
+      const qtyPart = shoppingQty.trim() ? ` · ${shoppingQty.trim()}` : '';
+      finalTitle = `🛒 ${cleanTitle}${qtyPart}`;
     }
 
     const taskToSave: LifeTask = {
+      ...(initialTask ?? {}),
       id: initialTask?.id || `task_home_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       spaceId: 'home',
       title: finalTitle,
@@ -87,9 +105,10 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
       createdAt: initialTask?.createdAt || new Date().toISOString(),
     };
 
-    await saveTask(taskToSave);
-    onTaskSaved();
-    onClose();
+    setSaving(true); setError('');
+    try { await saveTask(taskToSave); onTaskSaved(); onClose(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر الحفظ. حاول مرة أخرى.'); }
+    finally { setSaving(false); }
   };
 
   const modalTitle = (
@@ -102,23 +121,38 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} maxWidth="max-w-lg">
+    <HomeWorkflowDialog open={isOpen} onClose={() => { if (!saving) onClose(); }} title={initialTask ? "تعديل العنصر" : isShopping ? "إضافة مشتريات" : "إضافة مهمة"}><div className="home-legacy-dialog liquid-glass-card p-5 sm:p-6"><header className="home-panel-heading"><div>{modalTitle}</div><button type="button" className="home-secondary-button" disabled={saving} onClick={onClose}>إغلاق</button></header>{error && <p className="home-error" role="alert">{error}</p>}
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1.5 font-['Tajawal']">
-              عنوان المهمة / الغرض *
+              {isShopping ? 'اسم الصنف أو الغرض المطلوب *' : 'عنوان المهمة / الغرض *'}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: شراء منظفات ومستلزمات الحمام، تغيير ستارة الصالة..."
+              placeholder={isShopping ? 'مثال: حليب، بيض، أرز، مسحوق غسيل...' : 'مثال: تنظيف فلاتر التكييف، تغيير ستارة الصالة...'}
               required
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
             />
           </div>
+
+          {isShopping && (
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5 font-['Tajawal']">
+                الكمية أو العدد المطلوب (اختياري)
+              </label>
+              <input
+                type="text"
+                value={shoppingQty}
+                onChange={(e) => setShoppingQty(e.target.value)}
+                placeholder="مثال: ٢ كيلو، ٣ لتر، كرتونة، ٤ علب..."
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+              />
+            </div>
+          )}
 
           {/* Description */}
           <div>
@@ -226,7 +260,7 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
                 <Folder className="w-3.5 h-3.5 text-amber-400" />
                 <span>ربط بمشروع منزلي (اختياري)</span>
               </label>
-              <select
+              <HomeSelect
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
@@ -237,7 +271,7 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
                     {p.title}
                   </option>
                 ))}
-              </select>
+              </HomeSelect>
             </div>
           )}
 
@@ -305,13 +339,13 @@ export const HomeTaskModal: React.FC<HomeTaskModalProps> = ({
               إلغاء
             </button>
             <button
-              type="submit"
+              type="submit" disabled={saving}
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
             >
               {initialTask ? 'حفظ التعديلات' : 'إضافة المهمة'}
             </button>
           </div>
         </form>
-    </Modal>
+    </div></HomeWorkflowDialog>
   );
 };

@@ -26,6 +26,15 @@ export interface LifeProject {
   targetDate?: string; // YYYY-MM-DD
   createdAt: string;
   completedAt?: string;
+
+  // Work Project Hub Dev Context (Phase 2 - No secrets/tokens)
+  repositoryUrl?: string;
+  devUrl?: string;
+  apiUrl?: string;
+  branch?: string;
+  runCommand?: string;
+  requiresVpn?: boolean;
+  setupNotes?: string;
 }
 
 // Backward compatibility aliases
@@ -109,7 +118,7 @@ export const DEFAULT_TODAY_PREFERENCES: TodayPreferences = {
   },
   homeOptions: {
     routines: true,
-    nextActionsOnly: true,
+    nextActionsOnly: false,
   },
   plansOptions: {
     showActiveProgress: true,

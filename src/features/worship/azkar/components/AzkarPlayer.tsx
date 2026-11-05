@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../../db/workspaceScope';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Dhikr, AzkarCategoryKey } from '../../types';
@@ -47,7 +48,7 @@ export const AzkarPlayer: React.FC<Props> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('azkar_auto_advance') === 'true';
+      return workspaceStorage.getItem('azkar_auto_advance') === 'true';
     } catch {
       return false;
     }
@@ -56,21 +57,21 @@ export const AzkarPlayer: React.FC<Props> = ({
   const [settingsTab, setSettingsTab] = useState<'dhikr' | 'display'>('dhikr');
   const [continuousAutoScroll, setContinuousAutoScroll] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('azkar_continuous_autoscroll') !== 'false';
+      return workspaceStorage.getItem('azkar_continuous_autoscroll') !== 'false';
     } catch {
       return true;
     }
   });
   const [cycleMuawwidhat, setCycleMuawwidhat] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('azkar_cycle_muawwidhat') === 'true';
+      return workspaceStorage.getItem('azkar_cycle_muawwidhat') === 'true';
     } catch {
       return false;
     }
   });
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('azkar_focus_mode') === 'true';
+      return workspaceStorage.getItem('azkar_focus_mode') === 'true';
     } catch {
       return false;
     }
@@ -78,7 +79,7 @@ export const AzkarPlayer: React.FC<Props> = ({
   const [showTadabbur, setShowTadabbur] = useState(false);
   const [selectedCompanionDhikr, setSelectedCompanionDhikr] = useState<number | null>(() => {
     try {
-      const saved = localStorage.getItem('azkar_companion_dhikr');
+      const saved = workspaceStorage.getItem('azkar_companion_dhikr');
       return saved ? Number(saved) : null;
     } catch {
       return null;
@@ -114,7 +115,7 @@ export const AzkarPlayer: React.FC<Props> = ({
 
   const [tahlilCount, setTahlilCount] = useState<10 | 100>(() => {
     try {
-      const saved = localStorage.getItem('azkar_tahlil_count');
+      const saved = workspaceStorage.getItem('azkar_tahlil_count');
       return saved === '100' ? 100 : 10;
     } catch {
       return 10;
@@ -123,7 +124,7 @@ export const AzkarPlayer: React.FC<Props> = ({
 
   const [includeIstighfar, setIncludeIstighfar] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('azkar_include_istighfar') !== 'false';
+      return workspaceStorage.getItem('azkar_include_istighfar') !== 'false';
     } catch {
       return true;
     }
@@ -131,7 +132,7 @@ export const AzkarPlayer: React.FC<Props> = ({
 
   const [sessionTheme, setSessionTheme] = useState<DhikrThemeId>(() => {
     try {
-      const saved = localStorage.getItem('azkar_session_theme');
+      const saved = workspaceStorage.getItem('azkar_session_theme');
       if (saved && (saved === 'serenity' || saved === 'dawn' || saved === 'evening' || saved === 'solitude')) {
         return saved as DhikrThemeId;
       }
@@ -144,7 +145,7 @@ export const AzkarPlayer: React.FC<Props> = ({
   const handleSelectTheme = (themeId: DhikrThemeId) => {
     setSessionTheme(themeId);
     try {
-      localStorage.setItem('azkar_session_theme', themeId);
+      workspaceStorage.setItem('azkar_session_theme', themeId);
     } catch {}
   };
 
@@ -167,14 +168,14 @@ export const AzkarPlayer: React.FC<Props> = ({
   const handleToggleTahlilCount = (val: 10 | 100) => {
     setTahlilCount(val);
     try {
-      localStorage.setItem('azkar_tahlil_count', String(val));
+      workspaceStorage.setItem('azkar_tahlil_count', String(val));
     } catch {}
   };
 
   const handleToggleIncludeIstighfar = (val: boolean) => {
     setIncludeIstighfar(val);
     try {
-      localStorage.setItem('azkar_include_istighfar', String(val));
+      workspaceStorage.setItem('azkar_include_istighfar', String(val));
     } catch {}
   };
 
@@ -207,21 +208,21 @@ export const AzkarPlayer: React.FC<Props> = ({
   const handleToggleContinuousAutoScroll = (val: boolean) => {
     setContinuousAutoScroll(val);
     try {
-      localStorage.setItem('azkar_continuous_autoscroll', String(val));
+      workspaceStorage.setItem('azkar_continuous_autoscroll', String(val));
     } catch {}
   };
 
   const handleToggleAutoAdvance = (val: boolean) => {
     setAutoAdvance(val);
     try {
-      localStorage.setItem('azkar_auto_advance', String(val));
+      workspaceStorage.setItem('azkar_auto_advance', String(val));
     } catch {}
   };
 
   const handleToggleFocusMode = (val: boolean) => {
     setFocusMode(val);
     try {
-      localStorage.setItem('azkar_focus_mode', String(val));
+      workspaceStorage.setItem('azkar_focus_mode', String(val));
     } catch {}
   };
 
@@ -229,9 +230,9 @@ export const AzkarPlayer: React.FC<Props> = ({
     setSelectedCompanionDhikr(idx);
     try {
       if (idx !== null) {
-        localStorage.setItem('azkar_companion_dhikr', String(idx));
+        workspaceStorage.setItem('azkar_companion_dhikr', String(idx));
       } else {
-        localStorage.removeItem('azkar_companion_dhikr');
+        workspaceStorage.removeItem('azkar_companion_dhikr');
       }
     } catch {}
   };
@@ -386,7 +387,7 @@ export const AzkarPlayer: React.FC<Props> = ({
   const handleToggleCycleMuawwidhat = (val: boolean) => {
     setCycleMuawwidhat(val);
     try {
-      localStorage.setItem('azkar_cycle_muawwidhat', String(val));
+      workspaceStorage.setItem('azkar_cycle_muawwidhat', String(val));
     } catch {}
 
     // When activating alternating cycle, reset their counters and start fresh from Surah Al-Ikhlas

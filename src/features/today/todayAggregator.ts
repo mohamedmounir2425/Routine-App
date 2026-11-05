@@ -1,4 +1,7 @@
 import { db } from '../../db/database';
+import { getTaskTimeTag } from './todayScheduling';
+import { isSpaceTaskDue } from './spaceTaskService';
+import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 import { 
   TodayItem, 
   TodayAggregationResult, 
@@ -108,7 +111,10 @@ export async function aggregateTodayFeed(
   }
 ): Promise<TodayAggregationResult> {
   const targetDateStr = options?.customDateStr || getLocalDateString();
-  const prefs = options?.preferences || DEFAULT_TODAY_PREFERENCES;
+  const requested = options?.preferences || DEFAULT_TODAY_PREFERENCES;
+  const settings = await db.settings.get('current_settings');
+  const enabled = new Set(getEnabledSpaceConfigs(settings?.enabledSpaces).map(space => space.id));
+  const prefs = { ...requested, showWorship: requested.showWorship && enabled.has('worship'), showHealth: requested.showHealth && enabled.has('health'), showWork: requested.showWork && enabled.has('work'), showHome: requested.showHome && enabled.has('home'), showPlans: requested.showPlans && enabled.has('plans') };
   const isTargetToday = targetDateStr === getLocalDateString();
 
   const rawItems: TodayItem[] = [];
@@ -492,6 +498,7 @@ export async function aggregateTodayFeed(
 
     // Filter relevant for target date: recurring, due today, overdue, or unscheduled
     let relevantWorkTasks = workTasks.filter((t) => {
+      if (!isSpaceTaskDue(t, targetDateStr)) return false;
       if (t.isRecurring) return true;
       if (!t.dueDate) return true;
       return t.dueDate === targetDateStr || isPastDate(t.dueDate);
@@ -634,7 +641,7 @@ export async function aggregateTodayFeed(
           ? Array.isArray(t.recurringCompletionDates) && t.recurringCompletionDates.includes(targetDateStr)
           : t.isCompleted;
 
-        const timeTag: TodayItemTimeTag = isDoneToday ? 'completed' : (t.scheduledTime ? 'scheduled' : 'flexible');
+        const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
         const status = deriveItemStatus(isDoneToday, timeTag);
         const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, t.isRecurring ? 'home_routine' : 'home_task', t.scheduledTime);
 
@@ -712,23 +719,25 @@ export async function aggregateTodayFeed(
             continue;
           }
 
-          const timeTag: TodayItemTimeTag = t.isCompleted ? 'completed' : 'flexible';
-          const status = deriveItemStatus(t.isCompleted, timeTag);
-          const sortKey = computeTodaySortKey(timeTag, t.isCompleted, t.priority || 'medium', 'plan_action', t.scheduledTime);
+          const isDoneToday = t.isRecurring ? !!t.recurringCompletionDates?.includes(targetDateStr) : t.isCompleted;
+          const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
+          const status = deriveItemStatus(isDoneToday, timeTag);
+          const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority || 'medium', 'plan_action', t.scheduledTime);
 
           rawItems.push({
             id: `task_plan_${t.id}_${targetDateStr}`,
             sourceId: t.id,
             type: 'plan_action',
-            space: 'plans',
+            space: t.spaceId,
             title: t.title,
             subtitle: `خطة: ${plan.title}`,
             categoryLabel: plan.title,
-            estimatedMinutes: t.estimatedMinutes || 30,
+            scheduledTime: t.scheduledTime,
+            estimatedMinutes: t.estimatedMinutes,
             priority: t.priority || 'medium',
             timeTag,
             status,
-            isCompleted: t.isCompleted,
+            isCompleted: isDoneToday,
             actionType: 'toggle_task',
             actionPayload: { taskId: t.id, targetDateStr, planId: plan.id, planTitle: plan.title },
             sortKey,
@@ -743,7 +752,27 @@ export async function aggregateTodayFeed(
   // ==========================================
   // Ordering: NOW -> OVERDUE -> SCHEDULED -> HIGH PRIORITY -> FLEXIBLE -> PLAN ACTIONS -> COMPLETED
   // With chronological ordering preserved inside SCHEDULED.
-  const sortedItems = [...rawItems].sort((a, b) => a.sortKey - b.sortKey);
+  // Reconcile all five spaces using the same task calendar and avoid duplicate linked tasks.
+  const allTasks = await db.tasks.toArray();
+  const tasksById = new Map(allTasks.map(task => [task.id, task]));
+  const visible: Record<LifeSpaceId, boolean> = { worship: prefs.showWorship, health: prefs.showHealth, work: prefs.showWork, home: prefs.showHome, plans: prefs.showPlans };
+  const reconciled = rawItems.filter(item => visible[item.space] && (item.actionType !== 'toggle_task' || !tasksById.has(item.sourceId) || isSpaceTaskDue(tasksById.get(item.sourceId)!, targetDateStr)));
+  for (const task of allTasks) {
+    if (!visible[task.spaceId] || !isSpaceTaskDue(task, targetDateStr) || reconciled.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
+    if (task.spaceId === 'work' && prefs.workOptions?.top3Only) continue;
+    if (task.spaceId === 'home' && (task.isRecurring ? prefs.homeOptions?.routines === false : prefs.homeOptions?.nextActionsOnly)) continue;
+    if (task.spaceId === 'plans' && prefs.plansOptions?.showDailyActions === false) continue;
+    // Linked plan actions are handled above; this also supports standalone planning tasks.
+    if (task.spaceId === 'plans' && task.planId) continue;
+    const completed = task.isRecurring ? !!task.recurringCompletionDates?.includes(targetDateStr) : task.isCompleted;
+    const type: TodayItemType = task.spaceId === 'health' ? 'health_task' : task.spaceId === 'work' ? 'work_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : task.isRecurring ? 'home_routine' : 'home_task';
+    const timeTag = getTaskTimeTag(task, completed, targetDateStr);
+    reconciled.push({ id: `task_${task.spaceId}_${task.id}_${targetDateStr}`, sourceId: task.id, type, space: task.spaceId, title: task.title,
+      subtitle: task.description, scheduledTime: task.scheduledTime, estimatedMinutes: task.estimatedMinutes, priority: task.priority,
+      timeTag, status: deriveItemStatus(completed, timeTag), isCompleted: completed, actionType: 'toggle_task',
+      actionPayload: { taskId: task.id, targetDateStr }, sortKey: computeTodaySortKey(timeTag, completed, task.priority, type, task.scheduledTime) });
+  }
+  const sortedItems = reconciled.sort((a, b) => a.sortKey - b.sortKey);
 
   const rawSections: Array<{ id: TodaySectionId; title: string; items: TodayItem[] }> = [
     {
@@ -777,7 +806,7 @@ export async function aggregateTodayFeed(
       id: 'next_actions',
       title: '➡️ الخطوات التالية للمشاريع',
       items: sortedItems.filter(
-        (i) => !i.isCompleted && i.type === 'project_action' && i.timeTag === 'flexible'
+        (i) => !i.isCompleted && i.type === 'project_action' && i.priority !== 'high' && i.timeTag === 'flexible'
       ),
     },
     {
@@ -786,7 +815,7 @@ export async function aggregateTodayFeed(
       items: sortedItems.filter(
         (i) =>
           !i.isCompleted &&
-          (i.type === 'work_task' || i.type === 'home_task' || i.type === 'home_routine' || i.type === 'quran') &&
+          i.type !== 'project_action' && i.type !== 'plan_action' &&
           i.priority !== 'high' &&
           i.timeTag === 'flexible'
       ),

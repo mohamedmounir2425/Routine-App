@@ -1,4 +1,10 @@
-# React + TypeScript + Vite
+# LifeOS
+
+دليل المساحات وبنية البيانات الحالية وخطة الانتقال إلى .NET موجود في [توثيق البنية](docs/architecture/README.md). الدليل يميز التنفيذ المحلي عن Supabase الحالي والمميزات المقترحة.
+
+للتشغيل والتحقق وحدود المزامنة والنسخ الاحتياطي، راجع [ملاحظات التطوير](DEVELOPMENT_NOTES.md).
+
+## معلومات قالب React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

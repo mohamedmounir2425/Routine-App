@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../../../db/workspaceScope';
 export interface FocusSessionRecord {
   id: string;
   date: string; // ISO string
@@ -18,9 +19,10 @@ const STORAGE_KEY = 'life_focus_sessions';
 
 export function getFocusHistory(): FocusSessionRecord[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = workspaceStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((session): session is FocusSessionRecord => !!session && typeof session === 'object' && typeof session.id === 'string' && typeof session.date === 'string' && Number.isFinite(new Date(session.date).getTime()) && typeof session.minutes === 'number' && Number.isFinite(session.minutes) && session.minutes >= 0) : [];
   } catch {
     return [];
   }
@@ -67,7 +69,7 @@ export function recordCompletedFocusSession(
 
   history.push(newRecord);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    workspaceStorage.setItem(STORAGE_KEY, JSON.stringify(history));
     window.dispatchEvent(new CustomEvent('focus_session_completed', { detail: newRecord }));
   } catch (err) {
     console.error('Failed to save focus session:', err);

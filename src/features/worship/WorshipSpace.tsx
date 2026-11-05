@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { WorshipOverview } from './WorshipOverview';
+import { SpaceTasksView } from '../spaces/SpaceTasksView';
 import { AzkarHubView } from './azkar/AzkarHubView';
 import { TasbeehCounter } from './tasbeeh/TasbeehCounter';
 import { PrayerTracker } from './prayers/PrayerTracker';
@@ -12,6 +13,7 @@ export const WorshipSpace: React.FC = () => {
     <div className="w-full">
       <Routes>
         <Route index element={<WorshipOverview />} />
+        <Route path="tasks" element={<SpaceTasksView spaceId="worship" />} />
         <Route path="azkar" element={<AzkarHubView />} />
         <Route path="tasbeeh" element={<TasbeehCounter />} />
         <Route path="prayers" element={<PrayerTracker />} />

@@ -9,7 +9,7 @@ import {
   AlertCircle, 
   Sparkles
 } from 'lucide-react';
-import { SpaceShell } from '../../../components/layout/SpaceShell';
+import { HomeSection as SpaceShell } from '../HomeSection';
 import { LifeTask } from '../../../types';
 import { getTasksBySpace, toggleTaskCompletion, deleteTask, saveTask } from '../../../db/taskQueries';
 import { HomeMaintenanceModal, MaintenanceCategory } from './HomeMaintenanceModal';

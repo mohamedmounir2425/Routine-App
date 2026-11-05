@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
 import { SpaceContextBar } from './components/layout/SpaceContextBar';
@@ -10,10 +10,12 @@ import { ProgressStats } from './features/stats';
 import { SettingsView } from './features/settings';
 import { WorkoutPlayer } from './features/player';
 import { SpacesPage } from './features/spaces/SpacesPage';
+import { SpaceTasksView } from './features/spaces/SpaceTasksView';
 import { SpacesOnboardingModal } from './features/spaces/components/SpacesOnboardingModal';
 import { WorshipSpace } from './features/worship/WorshipSpace';
 import { WorkSpace } from './features/work/WorkSpace';
-import { HomeSpace } from './features/home/HomeSpace';
+import { lazy, Suspense } from 'react';
+const HomeSpace = lazy(() => import('./features/home/HomeSpace').then(module => ({default:module.HomeSpace})));
 import { PlansSpace } from './features/plans/PlansSpace';
 import { GlobalProgressSpace } from './features/progress/GlobalProgressSpace';
 import { AuthModal } from './components/auth/AuthModal';
@@ -22,8 +24,10 @@ import { useReminderScheduler } from './app/useReminderScheduler';
 import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigation';
 
 export function App() {
+  const isHomeSpace = useLocation().pathname.startsWith('/home');
   const {
     isLoading,
+    loadError,
     isTvMode,
     setIsTvMode,
     exercises,
@@ -81,6 +85,14 @@ export function App() {
     });
   };
 
+  if (loadError) {
+    return <div role="alert" className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center gap-4 p-8 text-center">
+      <h1 className="text-xl font-bold">تعذر فتح بياناتك / Unable to load your data</h1>
+      <p className="text-slate-400">{loadError}</p>
+      <button className="rounded-xl px-5 py-3 bg-emerald-400 text-slate-950 font-bold" onClick={() => void loadAppData()}>إعادة المحاولة / Retry</button>
+    </div>;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
@@ -96,7 +108,7 @@ export function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isTvMode ? 'tv-mode text-lg' : ''}`}>
+    <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isHomeSpace ? 'home-app' : ''} ${isTvMode ? 'tv-mode text-lg' : ''}`}>
       {/* Apple Liquid Glass Dynamic Ambient Fluid Mesh Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div 
@@ -215,12 +227,13 @@ export function App() {
             }
           />
           <Route path="/health/*" element={<Navigate to="/health" replace />} />
+          <Route path="/health/tasks" element={<SpaceTasksView spaceId="health" />} />
 
           {/* 💼 Work Space */}
           <Route path="/work/*" element={<WorkSpace />} />
 
           {/* 🏠 Home Space */}
-          <Route path="/home/*" element={<HomeSpace />} />
+          <Route path="/home/*" element={<Suspense fallback={<p role="status" className="p-6">جارٍ تحميل مساحة المنزل…</p>}><HomeSpace /></Suspense>} />
 
           {/* 🎯 Plans Space */}
           <Route path="/plans/*" element={<PlansSpace />} />

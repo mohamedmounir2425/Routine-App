@@ -1,10 +1,11 @@
+import { workspaceStorage } from '../../db/workspaceScope';
 import { TodayPreferences, DEFAULT_TODAY_PREFERENCES } from '../../types';
 
 const STORAGE_KEY = 'routine_today_preferences';
 
 export function getSavedTodayPreferences(): TodayPreferences {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = workspaceStorage.getItem(STORAGE_KEY);
     if (!saved) return DEFAULT_TODAY_PREFERENCES;
     const parsed = JSON.parse(saved);
     return {
@@ -34,7 +35,7 @@ export function getSavedTodayPreferences(): TodayPreferences {
 
 export function saveTodayPreferences(prefs: TodayPreferences): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    workspaceStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch (err) {
     console.error('Failed to save Today preferences:', err);
   }

@@ -30,7 +30,7 @@ export async function createSchedule(
     return entry;
   } catch (error) {
     console.error('Failed to create workout schedule:', error);
-    return entry;
+    throw error;
   }
 }
 

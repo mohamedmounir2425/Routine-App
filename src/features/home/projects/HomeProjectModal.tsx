@@ -1,3 +1,5 @@
+import { HomeSelect } from '../HomeSelect';
+import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Calendar, Folder } from 'lucide-react';
 import { HomeProject, ProjectStep } from '../../../types';
@@ -96,11 +98,12 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal'] no-scrollbar">
+    <HomeWorkflowDialog open={isOpen} onClose={onClose} title="مشروع منزلي">
+      <div className="home-legacy-dialog relative w-full max-w-lg max-h-[90vh] overflow-y-auto liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal'] no-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
           <button
+            aria-label="إغلاق النافذة"
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -151,16 +154,16 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
                 حالة المشروع
               </label>
-              <select
+              <HomeSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => setStatus(e.target.value as 'backlog' | 'in_progress' | 'waiting' | 'completed')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
               >
                 <option value="in_progress">قيد التنفيذ (نشط)</option>
                 <option value="backlog">قيد الانتظار (لاحقاً)</option>
                 <option value="waiting">معلق (بانتظار شيء)</option>
                 <option value="completed">مكتمل بالكامل</option>
-              </select>
+              </HomeSelect>
             </div>
 
             <div>
@@ -260,6 +263,6 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </HomeWorkflowDialog>
   );
 };

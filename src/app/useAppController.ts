@@ -1,4 +1,5 @@
 import { useState, useEffect, useTransition } from 'react';
+import { liveQuery } from 'dexie';
 import { useNavigate } from 'react-router-dom';
 import { 
   initializeDatabase, 
@@ -19,6 +20,7 @@ export function useAppController() {
   const navigate = useNavigate();
   const [, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isTvMode, setIsTvMode] = useState<boolean>(false);
 
   // Data states
@@ -52,6 +54,14 @@ export function useAppController() {
   // Theme hook
   const { theme, setTheme, handleToggleTheme, handleSetTheme } = useAppTheme(settings, setSettings);
 
+  useEffect(() => {
+    const subscription = liveQuery(() => db.settings.get('current_settings')).subscribe({
+      next: current => { if (current) { setSettings(current); if (current.theme) setTheme(current.theme); } },
+      error: error => console.error('Settings subscription failed:', error),
+    });
+    return () => subscription.unsubscribe();
+  }, [setTheme]);
+
   // Custom routines hook
   const {
     isRoutineBuilderOpen,
@@ -81,6 +91,7 @@ export function useAppController() {
 
   // Load and refresh all data
   const loadAppData = async () => {
+    setLoadError(null);
     try {
       await initializeDatabase();
 
@@ -120,6 +131,7 @@ export function useAppController() {
       }
     } catch (err) {
       console.error('Error loading app data:', err);
+      setLoadError('تعذر تحميل بيانات التطبيق. تأكد من السماح بالتخزين المحلي ثم أعد المحاولة.');
     } finally {
       setIsLoading(false);
     }
@@ -254,6 +266,7 @@ export function useAppController() {
 
   return {
     isLoading,
+    loadError,
     isTvMode,
     setIsTvMode,
     exercises,

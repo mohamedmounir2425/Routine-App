@@ -7,7 +7,7 @@ import {
   CheckCircle2, 
   Plus, 
   Flame, 
-  AlertCircle
+  AlertCircle, Pencil
 } from 'lucide-react';
 import { TodayItem } from '../todayTypes';
 import { getSpaceTheme } from '../../../theme/spaceTheme';
@@ -16,12 +16,14 @@ interface TodayItemCardProps {
   item: TodayItem;
   onExecuteAction: (item: TodayItem) => void;
   onAddQuranPage?: (amount: number) => void;
+  onEditTask?: (item: TodayItem) => void;
 }
 
 export const TodayItemCard: React.FC<TodayItemCardProps> = ({
   item,
   onExecuteAction,
   onAddQuranPage,
+  onEditTask,
 }) => {
   const space = getSpaceTheme(item.space);
 
@@ -248,6 +250,7 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
           </div>
         )}
       </div>
+      {item.actionType === 'toggle_task' && onEditTask && <div className="today-task-tools"><button type="button" onClick={() => onEditTask(item)} aria-label={`تعديل: ${item.title}`}><Pencil size={13} /> تعديل الموعد والتفاصيل</button></div>}
     </div>
   );
 };

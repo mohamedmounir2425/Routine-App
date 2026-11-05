@@ -18,6 +18,8 @@ interface TodaySectionListProps {
   sections: TodaySection[];
   onExecuteAction: (item: TodayItem) => void;
   onAddQuranPage?: (amount: number) => void;
+  onEditTask?: (item: TodayItem) => void;
+  expandCompleted?: boolean;
 }
 
 const SECTION_ICONS: Record<TodaySectionId, { icon: React.FC<{ className?: string }>; color: string; badgeBg: string }> = {
@@ -35,6 +37,8 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
   sections,
   onExecuteAction,
   onAddQuranPage,
+  onEditTask,
+  expandCompleted = false,
 }) => {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState<boolean>(false);
 
@@ -60,7 +64,7 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
               </div>
 
               {/* Collapsible toggle for Completed section */}
-              {isCompletedSection && (
+              {isCompletedSection && !expandCompleted && (
                 <button
                   onClick={() => setIsCompletedExpanded((prev) => !prev)}
                   className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-all"
@@ -72,7 +76,7 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
             </div>
 
             {/* Section Items */}
-            {(!isCompletedSection || isCompletedExpanded) && (
+            {(!isCompletedSection || isCompletedExpanded || expandCompleted) && (
               <div className="space-y-2.5">
                 {section.items.map((item) => (
                   <TodayItemCard
@@ -80,6 +84,7 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
                     item={item}
                     onExecuteAction={onExecuteAction}
                     onAddQuranPage={onAddQuranPage}
+                    onEditTask={onEditTask}
                   />
                 ))}
               </div>

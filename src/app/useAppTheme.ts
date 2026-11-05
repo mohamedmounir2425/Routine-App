@@ -1,3 +1,4 @@
+import { workspaceStorage } from '../db/workspaceScope';
 import { useState, useEffect } from 'react';
 import { db } from '../db';
 import { UserSettings } from '../types';
@@ -5,7 +6,7 @@ import { UserSettings } from '../types';
 export function useAppTheme(settings: UserSettings, setSettings: (s: UserSettings) => void) {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('movecare_theme');
+      const saved = workspaceStorage.getItem('movecare_theme');
       if (saved === 'light' || saved === 'dark') return saved;
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
         return 'light';
@@ -26,7 +27,7 @@ export function useAppTheme(settings: UserSettings, setSettings: (s: UserSetting
       root.classList.remove('light');
     }
 
-    localStorage.setItem('movecare_theme', theme);
+    workspaceStorage.setItem('movecare_theme', theme);
     const timer = setTimeout(() => root.classList.remove('theme-transition'), 450);
     return () => clearTimeout(timer);
   }, [theme]);

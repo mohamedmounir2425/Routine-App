@@ -10,6 +10,7 @@ import { AudioVoiceSettings } from './components/AudioVoiceSettings';
 import { DailyRemindersSettings } from './components/DailyRemindersSettings';
 import { AppearanceLanguageSettings } from './components/AppearanceLanguageSettings';
 import { BackupDataSettings } from './components/BackupDataSettings';
+import { SyncConflictsSettings } from './components/SyncConflictsSettings';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -147,6 +148,7 @@ export const SettingsView: React.FC<Props> = ({
 
       {/* Settings Grid */}
       <div className="space-y-6">
+        {(activeSection === 'all' || activeSection === 'data') && <SyncConflictsSettings />}
         {/* 1. Spaces Configuration */}
         {(activeSection === 'all' || activeSection === 'spaces') && (
           <SpacesSettings

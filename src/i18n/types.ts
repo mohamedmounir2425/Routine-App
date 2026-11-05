@@ -42,6 +42,10 @@ export interface TranslationDictionary {
   spaceNavFocus: string;
   spaceNavRoutines: string;
   spaceNavMaintenance: string;
+  spaceNavHome: string;
+  spaceNavKitchen: string;
+  spaceNavShopping: string;
+  spaceNavHomeManagement: string;
   spaceNavPlansList: string;
   spaceNavGoals: string;
   spaceNavActivePlans: string;
