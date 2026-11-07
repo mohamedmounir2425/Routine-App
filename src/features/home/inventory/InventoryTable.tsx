@@ -1,5 +1,10 @@
+import { HomeAntButton as Button } from '../components/HomeButton';
+import { InventoryActions, InventoryStatus } from './InventoryItemUI';
+import { formatInventoryQuantity, type InventorySort, type InventorySortDirection } from './inventoryPresentation';
+import { HomeButton } from '../components/HomeButton';
+import { Checkbox as HomeCheckbox } from 'antd';
 import { useRef, useState, useMemo } from 'react';
-import { Alert, AutoComplete, Button, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Alert, AutoComplete, Input, Select, Collapse, Table, Tooltip, Grid } from 'antd';
 import type { InputRef } from 'antd';
 import { Check, X, Pencil, Plus, Trash2, Calendar, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { emptyInventory, INVENTORY_LOCATIONS, numericInput, inventoryFlags, type InventoryItem } from './inventoryModel';
@@ -42,15 +47,13 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
   };
 
   if (!original) {
-    const formatted = item.quantity === null
-      ? (item.state === 'low' ? 'قليل' : item.state === 'available' ? 'موجود' : item.state === 'out' ? 'نفد' : 'غير معروف')
-      : `${item.approximate ? '≈ ' : ''}${item.quantity} ${item.unit}`.trim();
+    const formatted = formatInventoryQuantity(item);
 
     return (
       <Tooltip title="انقر لتعديل الكمية والوحدة سريعًا" mouseEnterDelay={0.5}>
-        <button
+        <HomeButton
           type="button"
-          className="inventory-cell-button"
+          className="inventory-cell-button inline-flex items-center gap-[7px] bg-transparent border border-solid border-transparent rounded-[7px] p-[4px_8px] text-home-text text-[13px] cursor-pointer [transition:all_.15s] hover:bg-home-raised hover:border-home-border"
           aria-label={`تعديل كمية ${item.name}`}
           onClick={() => {
             setOriginal(item);
@@ -60,15 +63,15 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
           }}
         >
           <span className="inventory-cell-val">{formatted}</span>
-          <Pencil size={12} className="inventory-cell-pencil" />
-        </button>
+          <Pencil size={12} className="inventory-cell-pencil opacity-[.4] text-home-muted [.inventory-cell-button:hover_&]:opacity-[1] [.inventory-cell-button:hover_&]:text-home-accent" />
+        </HomeButton>
       </Tooltip>
     );
   }
 
   return (
-    <div className="inventory-cell-editor" dir="rtl">
-      <div className="inventory-cell-inputs">
+    <div className="inventory-cell-editor flex flex-col gap-1 p-[2px_0]" dir="rtl">
+      <div className="inventory-cell-inputs flex items-center gap-[5px]">
         <Input
           autoFocus
           size="small"
@@ -77,7 +80,7 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
           value={value}
           disabled={busy}
           placeholder="الكمية"
-          className="inventory-inline-qty"
+          className="inventory-inline-qty !w-[75px] !text-[13px]"
           onChange={event => setValue(event.target.value)}
           onPressEnter={() => void save()}
           onKeyDown={event => {
@@ -90,7 +93,7 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
           value={unitVal}
           disabled={busy}
           placeholder="الوحدة"
-          className="inventory-inline-unit"
+          className="inventory-inline-unit !w-[65px] !text-[13px]"
           onChange={event => setUnitVal(event.target.value)}
           onPressEnter={() => void save()}
           onKeyDown={event => {
@@ -100,7 +103,7 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
         <Button
           size="small"
           type="primary"
-          className="inventory-cell-btn-save"
+          className="inventory-cell-btn-save !bg-home-button !text-home-button-text !border-home-button"
           loading={busy}
           icon={<Check size={13} />}
           onClick={() => void save()}
@@ -109,14 +112,14 @@ function QuantityCell({ item, onSaved }: { item: InventoryItem; onSaved: (text: 
         <Button
           size="small"
           type="text"
-          className="inventory-cell-btn-cancel"
+          className="inventory-cell-btn-cancel !text-home-muted"
           disabled={busy}
           icon={<X size={13} />}
           onClick={() => setOriginal(null)}
           aria-label="إلغاء"
         />
       </div>
-      {error && <span role="alert" className="home-error-inline">{error}</span>}
+      {error && <span role="alert" className="home-error-inline text-[11px] text-home-error-text">{error}</span>}
     </div>
   );
 }
@@ -125,13 +128,24 @@ export function InventoryTable({
   items,
   today,
   onOpen,
-  onSaved
+  onSaved, onShopping, onMarkOut, busy: actionBusy, sort, sortDirection, onSortChange
 }: {
   items: InventoryItem[];
   today: string;
   onOpen: (item: InventoryItem) => void;
+  onShopping: (item: InventoryItem) => void;
+  onMarkOut: (item: InventoryItem) => void;
+  busy?: boolean;
+  sort: InventorySort;
+  sortDirection: InventorySortDirection;
+  onSortChange: (sort: InventorySort, direction?: InventorySortDirection) => void;
   onSaved: (text: string) => void;
 }) {
+  const screens = Grid.useBreakpoint();
+  const sortable = (key: InventorySort) => ({
+    sorter: true,
+    sortOrder: sort === key ? (sortDirection === 'asc' ? 'ascend' as const : 'descend' as const) : null,
+  });
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
@@ -208,92 +222,41 @@ export function InventoryTable({
   };
 
   return (
-    <div className="inventory-table-workspace" dir="rtl">
+    <div className="inventory-table-workspace border border-solid border-home-border rounded-home-control overflow-hidden bg-home-panel shadow-none" dir="rtl">
       <Table<InventoryItem>
-        rowKey="id"
-        dataSource={items}
-        size="small"
-        pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: [20, 50, 100] }}
-        scroll={{ x: 760 }}
+        rowKey="id" dataSource={items} size="middle" className="pantry-data-table"
+        pagination={{ defaultPageSize: 12, showSizeChanger: true, pageSizeOptions: [12, 24, 48], hideOnSinglePage: true }}
+        scroll={screens.lg ? undefined : { x: 1060 }}
+        onChange={(_, __, sorter, extra) => {
+          if (extra.action !== 'sort') return;
+          const selected = Array.isArray(sorter) ? sorter[0] : sorter;
+          if (!selected.order) { onSortChange('attention', 'asc'); return; }
+          const key = selected.columnKey;
+          if (key === 'name' || key === 'quantity' || key === 'location' || key === 'expiry' || key === 'attention') onSortChange(key, selected.order === 'ascend' ? 'asc' : 'desc');
+        }}
+        rowClassName={item => inventoryFlags(item, today).expired ? 'pantry-expired-row' : ''}
         columns={[
-          {
-            title: 'الصنف',
-            key: 'name',
-            width: 220,
-            sorter: (a, b) => a.name.localeCompare(b.name, 'ar'),
-            render: (_, item) => (
-              <Button type="link" className="inventory-name-button" onClick={() => onOpen(item)}>
-                {item.name}
-              </Button>
-            )
-          },
-          {
-            title: 'الكمية',
-            key: 'quantity',
-            width: 200,
-            sorter: (a, b) => (a.quantity ?? -1) - (b.quantity ?? -1),
-            render: (_, item) => <QuantityCell item={item} onSaved={onSaved} />
-          },
-          {
-            title: 'المكان',
-            dataIndex: 'location',
-            width: 140,
-            sorter: (a, b) => a.location.localeCompare(b.location, 'ar'),
-            render: val => <span className="inventory-col-location">{val || 'غير محدد'}</span>
-          },
-          {
-            title: 'التصنيف',
-            dataIndex: 'category',
-            width: 140,
-            sorter: (a, b) => (a.category || '').localeCompare(b.category || '', 'ar'),
-            render: value => value ? <span className="inventory-col-category">{value}</span> : <span className="inventory-col-dash">—</span>
-          },
-          {
-            title: 'الصلاحية',
-            dataIndex: 'expiresOn',
-            width: 130,
-            sorter: (a, b) => (a.expiresOn || '9999').localeCompare(b.expiresOn || '9999'),
-            render: value => value || <span className="inventory-col-dash">غير محددة</span>
-          },
-          {
-            title: 'الحالة',
-            key: 'state',
-            width: 180,
-            sorter: (a, b) => {
-              const fa = inventoryFlags(a, today);
-              const fb = inventoryFlags(b, today);
-              return Number(fb.out) - Number(fa.out) || Number(fb.useFirst) - Number(fa.useFirst) || Number(fb.expired) - Number(fa.expired);
-            },
-            render: (_, item) => {
-              const flags = inventoryFlags(item, today);
-              return (
-                <Space wrap size={4}>
-                  {flags.out ? (
-                    <Tag color="default">نفد</Tag>
-                  ) : (
-                    <>
-                      {flags.low && <Tag color="warning">قليل</Tag>}
-                      {flags.expired ? (
-                        <Tag color="error">تجاوز الصلاحية</Tag>
-                      ) : (
-                        flags.expiring && <Tag color="warning">صلاحية قريبة</Tag>
-                      )}
-                      {flags.useFirst && <Tag color="gold">استخدم أولًا</Tag>}
-                      {!flags.low && !flags.expired && !flags.expiring && !flags.useFirst && (
-                        <Tag color={item.quantity === null && item.state === 'unknown' ? 'default' : 'success'}>{item.quantity === null && item.state === 'unknown' ? 'غير معروف' : 'متاح'}</Tag>
-                      )}
-                    </>
-                  )}
-                </Space>
-              );
-            }
-          }
+          { title: 'الصنف', key: 'name', ...sortable('name'), width: 215, fixed: screens.md && !screens.lg ? 'right' : undefined, render: (_, item) => <div className="min-w-0">
+            <Button type="text" className="pantry-table-name h-auto max-w-full whitespace-normal px-0 text-start font-bold text-home-text" onClick={() => onOpen(item)}>{item.name}</Button>
+            {item.category && <p className="m-0 text-xs text-home-muted">{item.category}</p>}
+          </div> },
+          { title: 'الموجود الآن', key: 'quantity', ...sortable('quantity'), width: 200, render: (_, item) => <QuantityCell item={item} onSaved={onSaved} /> },
+          { title: 'المكان', key: 'location', ...sortable('location'), width: 145, render: (_, item) => <div className="flex flex-col gap-1">
+            <span>{item.location || 'غير محدد'}</span>
+            <small className="text-home-muted">{item.lastCountedAt ? 'جرد ' + new Date(item.lastCountedAt).toLocaleDateString('ar-EG') : 'لم يُجرد بعد'}</small>
+          </div> },
+          { title: 'الصلاحية', key: 'expiry', ...sortable('expiry'), width: 135, render: (_, item) => item.expiresOn
+            ? <span className={inventoryFlags(item, today).expired ? 'text-home-error-text' : ''}>{new Date(item.expiresOn + 'T12:00:00').toLocaleDateString('ar-EG')}</span>
+            : <span className="text-home-muted">غير محددة</span> },
+          { title: 'الحالة', key: 'attention', ...sortable('attention'), width: 200, render: (_, item) => <InventoryStatus item={item} today={today} /> },
+          { title: 'الإجراءات', key: 'actions', width: 160, fixed: screens.md && !screens.lg ? 'left' : undefined, render: (_, item) =>
+            <InventoryActions inline item={item} onOpen={onOpen} onShopping={onShopping} onMarkOut={onMarkOut} busy={actionBusy} /> },
         ]}
       />
 
-      <div className="inventory-table-add-container">
+      <div className="inventory-table-add-container border-t border-solid border-t-home-border bg-home-raised"><Collapse ghost items={[{ key: 'quick-add', label: 'إضافة سريعة داخل الجدول', children: <>
         <form
-          className="inventory-inline-add"
+          className="inventory-inline-add flex flex-col gap-2.5 p-[14px_16px]"
           onSubmit={event => {
             event.preventDefault();
             void add();
@@ -305,8 +268,8 @@ export function InventoryTable({
             }
           }}
         >
-          <div className="inventory-inline-primary-row">
-            <label className="inventory-inline-field">
+          <div className="inventory-inline-primary-row grid grid-cols-[2fr_1fr_1fr_1.3fr_auto] gap-2.5 [align-items:end] max-[850.01px]:grid-cols-2 max-[850.01px]:gap-2 max-[600.01px]:grid-cols-1">
+            <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
               <span>الصنف *</span>
               <Input
                 ref={input}
@@ -319,7 +282,7 @@ export function InventoryTable({
               />
             </label>
 
-            <label className="inventory-inline-field">
+            <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
               <span>الكمية</span>
               <Input
                 value={quantity}
@@ -330,7 +293,7 @@ export function InventoryTable({
               />
             </label>
 
-            <label className="inventory-inline-field">
+            <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
               <span>الوحدة</span>
               <AutoComplete
                 value={unit}
@@ -344,7 +307,7 @@ export function InventoryTable({
               />
             </label>
 
-            <label className="inventory-inline-field">
+            <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
               <span>المكان</span>
               <Select
                 showSearch
@@ -360,7 +323,7 @@ export function InventoryTable({
               />
             </label>
 
-            <div className="inventory-inline-actions">
+            <div className="inventory-inline-actions flex items-center gap-1.5 max-[850.01px]:col-span-full max-[850.01px]:flex max-[850.01px]:justify-between">
               <Button type="primary" htmlType="submit" loading={busy} icon={<Plus size={16} />}>
                 حفظ
               </Button>
@@ -368,7 +331,7 @@ export function InventoryTable({
                 type="text"
                 size="small"
                 onClick={() => setShowDetailedAdd(!showDetailedAdd)}
-                className="inventory-toggle-details-btn"
+                className="inventory-toggle-details-btn !text-[12px] !text-home-accent !p-[4px_8px]"
               >
                 {showDetailedAdd ? 'إخفاء التفاصيل' : '+ تفاصيل (صلاحية/تصنيف)'}
               </Button>
@@ -376,8 +339,8 @@ export function InventoryTable({
           </div>
 
           {showDetailedAdd && (
-            <div className="inventory-inline-secondary-row">
-              <label className="inventory-inline-field">
+            <div className="inventory-inline-secondary-row flex items-center gap-3 flex-wrap pt-2.5 border-t border-dashed border-t-home-border">
+              <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
                 <span className="flex items-center gap-1"><TagIcon size={12} /> التصنيف</span>
                 <AutoComplete
                   value={category}
@@ -391,7 +354,7 @@ export function InventoryTable({
                 />
               </label>
 
-              <label className="inventory-inline-field">
+              <label className="inventory-inline-field flex flex-col gap-[5px] min-w-0 text-[12px] text-home-muted">
                 <span className="flex items-center gap-1"><Calendar size={12} /> الصلاحية</span>
                 <Input
                   type="date"
@@ -401,9 +364,9 @@ export function InventoryTable({
                 />
               </label>
 
-              <label className="inventory-inline-checkbox">
-                <input
-                  type="checkbox"
+              <label className="inventory-inline-checkbox flex items-center gap-1.5 text-[12px] text-home-text cursor-pointer pt-3.5">
+                <HomeCheckbox
+
                   checked={useFirst}
                   disabled={busy}
                   onChange={event => setUseFirst(event.target.checked)}
@@ -427,10 +390,11 @@ export function InventoryTable({
           )}
         </form>
 
-        {error && <Alert showIcon type="error" title={error} className="inventory-table-alert" />}
-        <p className="inventory-table-hint">
+        {error && <Alert showIcon type="error" title={error} className="inventory-table-alert m-[8px_16px]" />}
+        <p className="inventory-table-hint text-[11px] text-home-muted p-[8px_16px_12px] leading-[1.7] m-0">
           الكمية هي الموجود الآن. اضغط اسم الصنف للتفاصيل الكاملة أو أيقونة القلم لتعديل الكمية سريعًا. Esc لمسح الحقول.
         </p>
+      </> }]} />
       </div>
     </div>
   );

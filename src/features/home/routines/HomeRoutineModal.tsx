@@ -1,3 +1,6 @@
+import { HomePanel } from '../components/HomeLayouts';
+import { HomeButton } from '../components/HomeButton';
+import { HomeInput as HomeTextField, HomeTextArea } from '../components/HomeInputs';
 import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Clock, Sun, Moon } from 'lucide-react';
@@ -73,19 +76,19 @@ export const HomeRoutineModal: React.FC<HomeRoutineModalProps> = ({
 
   return (
     <HomeWorkflowDialog open={isOpen} onClose={onClose} title="روتين منزلي">
-      <div className="home-legacy-dialog relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal']">
+      <HomePanel className="home-form-surface relative max-w-lg p-6 sm:p-7 text-right [.home-modal-content>&]:overflow-y-auto w-full border-0 bg-home-panel font-home text-home-text shadow-none">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-          <button
+        <div className="flex items-center justify-between pb-4 border-b border-home-border mb-5">
+          <HomeButton icon={<X className="w-5 h-5" />}
             aria-label="إغلاق النافذة"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
-          </button>
+
+          </HomeButton>
           <div className="flex items-center gap-2">
             <span className="text-xl">✨</span>
-            <h2 className="text-lg font-black text-white">
+            <h2 className="text-lg font-black text-home-text">
               {initialRoutine ? 'تعديل الروتين المنزلي' : 'إضافة روتين منزلي جديد'}
             </h2>
           </div>
@@ -95,152 +98,152 @@ export const HomeRoutineModal: React.FC<HomeRoutineModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               عنوان الروتين المنزلي *
             </label>
-            <input
+            <HomeTextField
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="مثال: تهوية البيت، سقي النباتات، جرد الثلاجة..."
               required
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               تفاصيل أو إرشادات (اختياري)
             </label>
-            <textarea
+            <HomeTextArea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="أي تفاصيل خاصة بتنفيذ هذا الروتين..."
               rows={2}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full"
             />
           </div>
 
           {/* Period selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               فترة الروتين المفضلة
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <button
+              <HomeButton
                 type="button"
                 onClick={() => setTimeOfDay('morning')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   timeOfDay === 'morning'
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-amber-500/20 border-amber-500/40 text-home-accent'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <Sun className="w-3.5 h-3.5 text-home-accent" />
                 <span>صباحي</span>
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setTimeOfDay('evening')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   timeOfDay === 'evening'
                     ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5 text-indigo-400" />
                 <span>مسائي</span>
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setTimeOfDay('any')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   timeOfDay === 'any'
                     ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 <span>مرن</span>
-              </button>
+              </HomeButton>
             </div>
           </div>
 
           {/* Recurrence Rule */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               تكرار الروتين
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <button
+              <HomeButton
                 type="button"
                 onClick={() => setRecurrenceRule('daily')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   recurrenceRule === 'daily'
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-amber-500/20 border-amber-500/40 text-home-accent'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 يومياً
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setRecurrenceRule('weekdays')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   recurrenceRule === 'weekdays'
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-amber-500/20 border-amber-500/40 text-home-accent'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 أيام العمل
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setRecurrenceRule('weekly')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   recurrenceRule === 'weekly'
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-amber-500/20 border-amber-500/40 text-home-accent'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 أسبوعياً
-              </button>
+              </HomeButton>
             </div>
           </div>
 
           {/* Time input */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <label className="block text-xs font-bold text-home-text mb-1.5 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-home-accent" />
               <span>وقت التذكير المفضل (اختياري)</span>
             </label>
-            <input
+            <HomeTextField
               type="time"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
+              className="w-full"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/10">
-            <button
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-home-border">
+            <HomeButton
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-home-muted hover:text-home-text hover:bg-home-raised transition-colors cursor-pointer"
             >
               إلغاء
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton variant="primary"
               type="submit"
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+              className="shrink-0"
             >
               {initialRoutine ? 'حفظ التعديلات' : 'إضافة الروتين'}
-            </button>
+            </HomeButton>
           </div>
         </form>
-      </div>
+      </HomePanel>
     </HomeWorkflowDialog>
   );
 };

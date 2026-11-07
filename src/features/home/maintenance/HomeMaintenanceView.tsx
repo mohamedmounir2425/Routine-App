@@ -1,12 +1,14 @@
+import { HomePanel } from '../components/HomeLayouts';
+import { HomeButton } from '../components/HomeButton';
+import { HomeCompletion } from '../components/HomeCompletion';
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Wrench, 
-  Check, 
-  Trash2, 
-  Edit3, 
-  Calendar, 
-  AlertCircle, 
+import {
+  Plus,
+  Wrench,
+  Trash2,
+  Edit3,
+  Calendar,
+  AlertCircle,
   Sparkles
 } from 'lucide-react';
 import { HomeSection as SpaceShell } from '../HomeSection';
@@ -38,7 +40,7 @@ export const HomeMaintenanceView: React.FC = () => {
     try {
       const allTasks = await getTasksBySpace('home');
       // Filter maintenance related tasks
-      const maint = allTasks.filter((t) => 
+      const maint = allTasks.filter((t) =>
         t.title.includes('صيانة') ||
         t.title.includes('تكييف') ||
         t.title.includes('سباكة') ||
@@ -107,133 +109,133 @@ export const HomeMaintenanceView: React.FC = () => {
       title="صيانة وأعطال المنزل"
       subtitle="جدولة الفحص الدوري، صيانة الأجهزة والتكييف، وتفقد مرافق البيت الوقائية"
       badge={
-        <div className="px-3.5 py-1.5 rounded-xl liquid-glass-pill text-xs font-bold text-amber-400 flex items-center gap-1.5">
+        <div className="px-3.5 py-1.5 rounded-xl bg-home-raised border border-home-border text-xs font-bold text-home-accent flex items-center gap-1.5">
           <Wrench className="w-4 h-4" />
           <span>{pendingCount} بنود صيانة قيد المتابعة</span>
         </div>
       }
     >
-      <div className="space-y-6 text-right font-['Tajawal']">
+      <div className="space-y-6 text-right font-home">
         {/* Quick Maintenance Presets Carousel / Cards */}
-        <div className="liquid-glass-card rounded-3xl p-5 sm:p-6 border border-white/10 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-black text-white">
-            <Sparkles className="w-4 h-4 text-amber-400" />
+        <HomePanel className=" p-5 sm:p-6 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-black text-home-text">
+            <Sparkles className="w-4 h-4 text-home-accent" />
             <span>صيانات وقائية دورية مقترحة للبيت (إضافة سريعة بضغطة زر)</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {MAINTENANCE_PRESETS.map((p, idx) => (
-              <button
+              <HomeButton
                 key={idx}
                 onClick={() => handleQuickAddPreset(p)}
-                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-amber-500/30 text-right transition-all flex items-start gap-2.5 cursor-pointer select-none group"
+                className="p-3 rounded-2xl bg-home-raised hover:bg-home-selection border border-home-border hover:border-amber-500/30 text-right transition-all flex items-start gap-2.5 cursor-pointer select-none group"
               >
                 <span className="text-lg shrink-0 mt-0.5">{p.icon}</span>
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors line-clamp-2 leading-relaxed">
+                  <span className="text-xs font-bold text-home-text group-hover:text-home-accent transition-colors line-clamp-2 leading-relaxed">
                     {p.title}
                   </span>
-                  <span className="text-[10px] text-amber-400 font-bold block pt-1">
+                  <span className="text-[10px] text-home-accent font-bold block pt-1">
                     + جدولة الآن
                   </span>
                 </div>
-              </button>
+              </HomeButton>
             ))}
           </div>
-        </div>
+        </HomePanel>
 
         {/* Controls Header: Tabs + New Maintenance Button */}
-        <div className="liquid-glass-card rounded-3xl p-5 sm:p-6 border border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <HomePanel className=" p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-            <button
+            <HomeButton
               onClick={() => setActiveFilter('all')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'all'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               الكل ({tasks.length})
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveFilter('pending')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'pending'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               قيد المتابعة ({pendingCount})
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveFilter('ac')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'ac'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               ❄️ التكييف
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveFilter('plumbing')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'plumbing'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               🚰 السباكة
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveFilter('electrical')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'electrical'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               ⚡ الكهرباء
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveFilter('completed')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeFilter === 'completed'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               المنجزة ({tasks.filter((t) => t.isCompleted).length})
-            </button>
+            </HomeButton>
           </div>
 
-          <button
+          <HomeButton variant="primary"
             onClick={() => {
               setEditingTask(null);
               setIsModalOpen(true);
             }}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+            className="shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>صيانة جديدة</span>
-          </button>
-        </div>
+          </HomeButton>
+        </HomePanel>
 
         {/* Tasks List */}
         {isLoading ? (
-          <div className="text-center py-12 text-slate-400 text-xs">
+          <div className="text-center py-12 text-home-muted text-xs">
             جاري تحميل جدول صيانة المنزل...
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="liquid-glass-card rounded-3xl p-10 border border-white/5 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-xl text-amber-400">
+          <HomePanel className=" p-10 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-home-raised border border-home-border flex items-center justify-center mx-auto text-xl text-home-accent">
               <Wrench className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-white">لا توجد أعمال صيانة مسجلة في هذا التصنيف</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-sm font-bold text-home-text">لا توجد أعمال صيانة مسجلة في هذا التصنيف</h3>
+            <p className="text-xs text-home-muted max-w-sm mx-auto">
               اضغط على الصيانات الوقائية المقترحة بالأعلى أو أضف موعد صيانة جديد لحماية ممتلكات بيتك
             </p>
-          </div>
+          </HomePanel>
         ) : (
           <div className="space-y-3">
             {filteredTasks.map((task) => {
@@ -244,21 +246,12 @@ export const HomeMaintenanceView: React.FC = () => {
                   key={task.id}
                   className={`p-4 sm:p-5 rounded-2xl border transition-all flex items-start justify-between gap-4 ${
                     task.isCompleted
-                      ? 'bg-amber-950/15 border-amber-500/20 text-slate-400 opacity-75'
-                      : 'bg-white/5 border-white/10 hover:border-amber-500/30 text-white'
+                      ? 'bg-amber-950/15 border-amber-500/20 text-home-muted opacity-75'
+                      : 'bg-home-raised border-home-border hover:border-amber-500/30 text-home-text'
                   }`}
                 >
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <button
-                      onClick={() => handleToggle(task)}
-                      className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 cursor-pointer transition-all ${
-                        task.isCompleted
-                          ? 'bg-amber-400 border-amber-300 text-slate-950'
-                          : 'border-white/20 hover:border-amber-400'
-                      }`}
-                    >
-                      {task.isCompleted && <Check className="w-4 h-4 stroke-[3]" />}
-                    </button>
+                    <HomeCompletion checked={task.isCompleted} aria-label={'إتمام ' + task.title} onChange={() => void handleToggle(task)} />
 
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -274,16 +267,16 @@ export const HomeMaintenanceView: React.FC = () => {
                       </div>
 
                       {task.description && (
-                        <p className="text-[11px] text-slate-400 leading-normal line-clamp-2">
+                        <p className="text-[11px] text-home-muted leading-normal line-clamp-2">
                           {task.description}
                         </p>
                       )}
 
                       {task.dueDate && (
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-1">
+                        <div className="flex items-center gap-3 text-[10px] text-home-muted pt-1">
                           <span className={`flex items-center gap-1 ${isOverdue ? 'text-rose-400 font-bold' : ''}`}>
                             {isOverdue && <AlertCircle className="w-3 h-3 text-rose-400" />}
-                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <Calendar className="w-3 h-3 text-home-muted" />
                             <span>{task.dueDate === todayStr ? 'اليوم' : task.dueDate}</span>
                           </span>
                         </div>
@@ -292,23 +285,23 @@ export const HomeMaintenanceView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                    <button
+                    <HomeButton icon={<Edit3 className="w-3.5 h-3.5" />}
                       onClick={() => {
                         setEditingTask(task);
                         setIsModalOpen(true);
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
                       title="تعديل"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
+
+                    </HomeButton>
+                    <HomeButton icon={<Trash2 className="w-3.5 h-3.5" />}
                       onClick={() => handleDelete(task.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-home-muted hover:text-rose-400 hover:bg-home-selection transition-colors cursor-pointer"
                       title="حذف"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                    </HomeButton>
                   </div>
                 </div>
               );

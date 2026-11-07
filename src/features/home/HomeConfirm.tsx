@@ -1,4 +1,5 @@
-import { Button, Modal, Space, Typography } from 'antd';
+import { HomeAntButton as Button } from './components/HomeButton';
+import { Modal, Space, Typography } from 'antd';
 
 export function HomeConfirm({ open, title, description, confirmText, onConfirm, onCancel, busy = false }: {
   open: boolean; title: string; description: string; confirmText: string;

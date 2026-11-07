@@ -101,18 +101,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Brand */}
           <div 
             onClick={() => navigate('/today')}
-            className="home-brand flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group"
+            className="home-brand flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group max-[767.01px]:[.home-navbar_&]:gap-[7px]"
           >
-            <div className="home-brand-mark w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 p-0.5 shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform shrink-0 liquid-button">
+            <div className="home-brand-mark w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 p-0.5 shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform shrink-0 liquid-button max-[767.01px]:[.home-navbar_&]:w-8 max-[767.01px]:[.home-navbar_&]:h-8">
               <div className="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[14px] flex items-center justify-center">
                 <span className="text-lg sm:text-xl">🌟</span>
               </div>
             </div>
             <div>
-              <h1 className="home-brand-title text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5 font-['Tajawal']">
-                {t('appName')} <span className="text-[10px] sm:text-xs home-brand-badge px-2 py-0.5 rounded-full liquid-glass-pill text-emerald-400 font-bold">{t('appBadge')}</span>
+              <h1 className="home-brand-title text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5 font-['Tajawal'] max-[767.01px]:[.home-navbar_&]:text-[15px]">
+                {t('appName')} <span className="text-[10px] sm:text-xs home-brand-badge px-2 py-0.5 rounded-full liquid-glass-pill text-emerald-400 font-bold max-[767.01px]:[.home-navbar_&]:!hidden">{t('appBadge')}</span>
               </h1>
-              <p className="home-brand-slogan text-[10px] sm:text-[11px] text-slate-400 font-medium hidden xs:block">{t('appSlogan')}</p>
+              <p className="home-brand-slogan text-[10px] sm:text-[11px] text-slate-400 font-medium hidden xs:block max-[767.01px]:[.home-navbar_&]:!hidden">{t('appSlogan')}</p>
             </div>
           </div>
 
@@ -159,9 +159,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Quick Actions (Language, Streak, Theme, TV) */}
-          <div className="home-global-actions flex items-center gap-2">
+          <div className="home-global-actions flex items-center gap-2 max-[767.01px]:[.home-navbar_&]:gap-[5px]">
             {/* Language Switcher */}
-            <div className="home-header-extra"><LanguageToggle /></div>
+            <div className="home-header-extra max-[767.01px]:[.home-navbar_&]:!hidden"><LanguageToggle /></div>
 
             {/* Streak Counter */}
             <div 
@@ -171,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/progress'); }}
               aria-label={`سلسلة الالتزام الحالية: ${streakCount} أيام متتالية`}
               title={`سلسلة الالتزام الحالية: ${streakCount} أيام متتالية`}
-              className="home-header-extra flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill cursor-pointer transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              className="home-header-extra flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill cursor-pointer transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-500/50 max-[767.01px]:[.home-navbar_&]:!hidden"
             >
               <Flame className={`w-4 h-4 ${streakCount > 0 ? 'text-amber-400 fill-amber-400 animate-pulse' : 'text-slate-500'}`} />
               <span className="text-xs font-black text-amber-400">{streakCount}</span>
@@ -201,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onToggleTvMode}
               aria-label={isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'تشغيل وضع الشاشة الكبيرة'}
               title={isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'تشغيل وضع الشاشة الكبيرة (TV Mode)'}
-              className={`home-header-extra p-1.5 sm:p-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-sky-500/50 ${
+              className={`home-header-extra p-1.5 sm:p-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-sky-500/50 max-[767.01px]:[.home-navbar_&]:!hidden ${
                 isTvMode
                   ? 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/30'
                   : 'liquid-glass-pill text-slate-300 hover:text-white'
@@ -210,7 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Tv className="w-4 h-4" />
             </button>
 
-            {homeArea && <details className="home-header-menu md:hidden"><summary aria-label="المزيد من الإجراءات"><MoreHorizontal size={20} /></summary><div><LanguageToggle /><button type="button" onClick={onToggleTvMode}>{isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'وضع الشاشة الكبيرة'}</button><button type="button" onClick={() => navigate('/progress')}>التقدم وسلسلة الالتزام: {streakCount}</button></div></details>}
+            {homeArea && <details className="home-header-menu md:hidden relative [&_summary]:list-none [&_summary]:grid [&_summary]:place-items-center [&_summary]:w-10 [&_summary]:h-10 [&_summary]:cursor-pointer [&_summary::-webkit-details-marker]:hidden [&>div]:absolute [&>div]:end-0 [&>div]:top-11.5 [&>div]:w-55 [&>div]:p-3 [&>div]:bg-home-panel [&>div]:border [&>div]:border-solid [&>div]:border-home-border [&>div]:rounded-home-panel [&>div]:[box-shadow:0_8px_25px_#0002] [&>div]:flex [&>div]:flex-col [&>div]:gap-2 [&>div]:z-[60] [&_button]:min-h-11 [&_button]:text-home-text"><summary aria-label="المزيد من الإجراءات"><MoreHorizontal size={20} /></summary><div><LanguageToggle /><button type="button" onClick={onToggleTvMode}>{isTvMode ? 'إلغاء وضع الشاشة الكبيرة' : 'وضع الشاشة الكبيرة'}</button><button type="button" onClick={() => navigate('/progress')}>التقدم وسلسلة الالتزام: {streakCount}</button></div></details>}
             {/* Cloud Sync & User Profile */}
             <div className="relative">
               {user ? (

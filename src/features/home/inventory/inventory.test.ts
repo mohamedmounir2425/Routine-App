@@ -4,6 +4,7 @@ import { SYNC_ENTITIES, syncFingerprint } from '../../../db/syncEntities';
 import { emptyInventory, inventoryFlags, inventoryIdentity, numericInput, cleanInventory, validateInventoryRecord } from './inventoryModel';
 import { saveInventoryBatch, deleteInventory } from './inventoryRepository';
 import { inventoryRows, inventoryDraftsToCells, parseDelimited } from './inventoryImport';
+import { formatInventoryQuantity, inventoryNeedsAttention, matchesInventorySearch, sortInventory } from './inventoryPresentation';
 
 export async function runInventoryTests() {
   const results: Array<{ name: string; passed: boolean }> = [];
@@ -16,6 +17,16 @@ export async function runInventoryTests() {
     const [unknown] = await saveInventoryBatch([{ draft: { ...emptyInventory(), name: 'Cheese' }, mode: 'count' }], database, 'owner');
     check('Name-only audit preserves unknown quantity with a dated history entry', unknown.quantity === null && unknown.state === 'unknown' && unknown.history.length === 1 && !!unknown.lastCountedAt);
     const [milk] = await saveInventoryBatch([{ draft: { ...emptyInventory(), name: 'Milk', location: 'الثلاجة', quantity: 9, unit: 'كيس', packageSize: 0.5, packageUnit: 'كيلو', expiresOn: '2026-11-06' }, mode: 'count' }], database, 'owner');
+    const arabicItem = { ...milk, name: 'أَرُز', category: 'بقالة', notes: 'للأسبوع' };
+    check('Inventory search normalizes Arabic and respects the selected search field', matchesInventorySearch(arabicItem, 'ارز', 'name') && matchesInventorySearch(arabicItem, 'الثلاجة', 'location') && !matchesInventorySearch(arabicItem, 'الثلاجة', 'name') && matchesInventorySearch(arabicItem, 'للاسبوع', 'all'));
+    const outItem = { ...unknown, id: 'out-item', quantity: 0, state: 'out' as const };
+    check('Attention filter includes shortages and empty stock without flagging unknown quantity', inventoryNeedsAttention(inventoryFlags(outItem, '2026-11-01')) && inventoryNeedsAttention(inventoryFlags({ ...unknown, state: 'low' }, '2026-11-01')) && !inventoryNeedsAttention(inventoryFlags(unknown, '2026-11-01')));
+    const expiryItems = [unknown, milk];
+    check('Inventory expiry order puts recorded dates before unknown dates without mutating input', sortInventory(expiryItems, 'expiry', '2026-11-01')[0].id === milk.id && expiryItems[0].id === unknown.id);
+    check('Inventory attention order prioritizes expiry and recent order uses update time', sortInventory([outItem, milk], 'attention', '2026-11-01')[0].id === milk.id && sortInventory([{ ...milk, updatedAt: '2026-10-01T00:00:00Z' }, { ...unknown, updatedAt: '2026-11-01T00:00:00Z' }], 'recent', '2026-11-01')[0].id === unknown.id);
+    check('Inventory presentation keeps unknown quantity distinct from recorded zero', formatInventoryQuantity(unknown) === 'غير معروف' && formatInventoryQuantity(outItem) === '0' && formatInventoryQuantity({ ...milk, approximate: true }).startsWith('≈ '));
+    check('Inventory quantity sorting supports both directions and keeps unknown quantities last', sortInventory([unknown, milk, outItem], 'quantity', '2026-11-01').map(item => item.id).join() === [outItem, milk, unknown].map(item => item.id).join() && sortInventory([unknown, milk, outItem], 'quantity', '2026-11-01', 'desc').map(item => item.id).join() === [milk, outItem, unknown].map(item => item.id).join());
+    check('Descending expiry sorting keeps undated stock last and location sorting is reversible', sortInventory([unknown, milk], 'expiry', '2026-11-01', 'desc')[1].id === unknown.id && sortInventory([{ ...milk, location: 'A' }, { ...unknown, location: 'B' }], 'location', '2026-11-01', 'desc')[0].id === unknown.id);
     const [counted] = await saveInventoryBatch([{ original: milk, draft: { ...milk, quantity: 6 }, mode: 'count' }], database, 'owner');
     check('A recount replaces stock rather than adding to it and records a three-unit decrease', counted.quantity === 6 && counted.history[1].delta === -3 && counted.packageSize === 0.5);
     const [purchased] = await saveInventoryBatch([{ original: counted, draft: { ...counted, quantity: 2 }, mode: 'purchase' }], database, 'owner');

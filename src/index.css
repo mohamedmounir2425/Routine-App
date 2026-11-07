@@ -1,4 +1,6 @@
+@layer theme, base, antd, components, utilities;
 @import "tailwindcss";
+@import "./features/home/home.tokens.css";
 
 @theme {
   --font-tajawal: 'Tajawal', sans-serif;

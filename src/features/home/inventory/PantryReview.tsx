@@ -1,5 +1,6 @@
+import { HomeAntButton as Button } from '../components/HomeButton';
 import { useRef, useState } from 'react';
-import { Alert, Button, Checkbox, Input, Modal, Select } from 'antd';
+import { Alert, Checkbox, Input, Modal, Select } from 'antd';
 import { HomeConfirm } from '../HomeConfirm';
 import { numericInput, type InventoryItem } from './inventoryModel';
 import { saveInventoryBatch, type InventoryChange } from './inventoryRepository';
@@ -58,14 +59,14 @@ export function PantryReview({ items, initialPlace, onClose, onSaved }: Props) {
   return <>
     <Modal open centered title="جرد مكان" className="home-theme" onCancel={close} maskClosable={false}
       footer={<Button type="primary" loading={busy} disabled={!count} onClick={() => void save()}>حفظ الجرد ({count})</Button>}>
-      <div className="pantry-review">
+      <div className="pantry-review [&_p]:text-home-muted [&_small]:text-home-muted [&_small]:grid [&_small]:gap-1 [&_small]:text-[12px] grid gap-3 max-h-[65dvh] overflow-auto [&>label]:grid [&>label]:gap-1">
         <label>مكان الجرد<Select value={place} disabled={busy || count > 0} options={places.map(value => ({ value, label: value }))} onChange={setPlace} /></label>
         <p>علّم الصنف لو الكمية زي ما هي، أو اكتب الموجود دلوقتي. الحفظ للأصناف المحددة فقط.</p>
-        {rows.map(item => <div className="pantry-review-row" key={item.id}>
+        {rows.map(item => <div className="pantry-review-row grid grid-cols-[minmax(0,1fr)_minmax(95px,32%)] items-center gap-2.5 border-b border-solid border-b-home-border p-[8px_0]" key={item.id}>
           <Checkbox disabled={busy} checked={item.id in reviewed} onChange={event => mark(item.id, event.target.checked ? String(item.quantity ?? '') : undefined)}>
             <strong>{item.name}</strong><small>{item.expiresOn && 'صلاحية ' + item.expiresOn + ' · '}آخر كمية: {item.quantity ?? 'غير معروفة'} {item.unit}</small>
           </Checkbox>
-          <div className="pantry-count-input"><Input inputMode="decimal" aria-label={'الموجود الآن من ' + item.name} disabled={busy} placeholder="غير معروفة"
+          <div className="pantry-count-input grid gap-[5px]"><Input inputMode="decimal" aria-label={'الموجود الآن من ' + item.name} disabled={busy} placeholder="غير معروفة"
             value={reviewed[item.id] ?? String(item.quantity ?? '')} suffix={item.unit || undefined}
             onChange={event => mark(item.id, event.target.value)} />
             {!item.unit && item.id in reviewed && <Input aria-label={'وحدة ' + item.name} placeholder="الوحدة، مثل كيلو" value={units[item.id] ?? ''} disabled={busy} onChange={event => setUnits(previous => ({ ...previous, [item.id]: event.target.value }))} />}

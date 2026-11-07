@@ -1,3 +1,6 @@
+import { HomePanel } from '../components/HomeLayouts';
+import { HomeButton } from '../components/HomeButton';
+import { HomeInput as HomeTextField, HomeTextArea } from '../components/HomeInputs';
 import { HomeWorkflowDialog } from '../HomeWorkflowDialog';
 import React, { useState, useEffect } from 'react';
 import { X, Wrench, Calendar } from 'lucide-react';
@@ -98,19 +101,19 @@ export const HomeMaintenanceModal: React.FC<HomeMaintenanceModalProps> = ({
 
   return (
     <HomeWorkflowDialog open={isOpen} onClose={onClose} title="صيانة المنزل">
-      <div className="home-legacy-dialog relative w-full max-w-lg liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/10 shadow-2xl text-right font-['Tajawal']">
+      <HomePanel className="home-form-surface relative max-w-lg p-6 sm:p-7 text-right [.home-modal-content>&]:overflow-y-auto w-full border-0 bg-home-panel font-home text-home-text shadow-none">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-          <button
+        <div className="flex items-center justify-between pb-4 border-b border-home-border mb-5">
+          <HomeButton icon={<X className="w-5 h-5" />}
             aria-label="إغلاق النافذة"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
-          </button>
+
+          </HomeButton>
           <div className="flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-black text-white">
+            <Wrench className="w-5 h-5 text-home-accent" />
+            <h2 className="text-lg font-black text-home-text">
               {initialTask ? 'تعديل مهمة صيانة' : 'إضافة صيانة منزلية'}
             </h2>
           </div>
@@ -120,26 +123,26 @@ export const HomeMaintenanceModal: React.FC<HomeMaintenanceModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               تصنيف الصيانة
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(CATEGORY_LABELS) as MaintenanceCategory[]).map((catKey) => {
                 const item = CATEGORY_LABELS[catKey];
                 return (
-                  <button
+                  <HomeButton
                     key={catKey}
                     type="button"
                     onClick={() => setCategory(catKey)}
                     className={`py-2 px-2.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       category === catKey
-                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                        : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                        ? 'bg-amber-500/20 border-amber-500/40 text-home-accent'
+                        : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                     }`}
                   >
                     <span>{item.icon}</span>
                     <span>{item.label}</span>
-                  </button>
+                  </HomeButton>
                 );
               })}
             </div>
@@ -147,107 +150,107 @@ export const HomeMaintenanceModal: React.FC<HomeMaintenanceModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               موضوع الصيانة أو الإصلاح *
             </label>
-            <input
+            <HomeTextField
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="مثال: تنظيف فلاتر التكييف، فحص خراطيم الغسالة، فحص السخان..."
               required
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               ملاحظات أو مواصفات الفني (اختياري)
             </label>
-            <textarea
+            <HomeTextArea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="رقم الفني، قطع الغيار المطلوبة، أو ملاحظات الصيانة السابقة..."
               rows={2}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full"
             />
           </div>
 
           {/* Urgency / Priority */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-home-text mb-1.5">
               درجة العجلة / الأولوية
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <button
+              <HomeButton
                 type="button"
                 onClick={() => setPriority('high')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   priority === 'high'
                     ? 'bg-rose-500/20 border-rose-500/50 text-rose-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 🔴 عاجلة (تسريب أو عطل)
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setPriority('medium')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   priority === 'medium'
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-amber-500/20 border-amber-500/50 text-home-accent'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 🟡 وقائية / مجدولة
-              </button>
-              <button
+              </HomeButton>
+              <HomeButton
                 type="button"
                 onClick={() => setPriority('low')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   priority === 'low'
-                    ? 'bg-slate-500/20 border-slate-500/50 text-slate-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    ? 'bg-slate-500/20 border-slate-500/50 text-home-text'
+                    : 'bg-home-raised border-home-border text-home-muted hover:text-home-text'
                 }`}
               >
                 🟢 مرنة / فحص لاحق
-              </button>
+              </HomeButton>
             </div>
           </div>
 
           {/* Due date */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+            <label className="block text-xs font-bold text-home-text mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-home-accent" />
               <span>الموعد المحدد للصيانة</span>
             </label>
-            <input
+            <HomeTextField
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500/50"
+              className="w-full"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/10">
-            <button
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-home-border">
+            <HomeButton
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-home-muted hover:text-home-text hover:bg-home-raised transition-colors cursor-pointer"
             >
               إلغاء
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton variant="primary"
               type="submit"
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+              className="shrink-0"
             >
               {initialTask ? 'حفظ التعديلات' : 'تسجيل الصيانة'}
-            </button>
+            </HomeButton>
           </div>
         </form>
-      </div>
+      </HomePanel>
     </HomeWorkflowDialog>
   );
 };

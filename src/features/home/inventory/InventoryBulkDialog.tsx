@@ -1,6 +1,7 @@
+import { HomeAntButton as Button } from '../components/HomeButton';
 import { HomeConfirm } from '../HomeConfirm';
 import { useState } from 'react';
-import { Alert, AutoComplete, Button, Card, Checkbox, Collapse, Grid, Input, Modal, Segmented, Select, Space, Table, Typography } from 'antd';
+import { Alert, AutoComplete, Card, Checkbox, Collapse, Grid, Input, Modal, Segmented, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { ClipboardEvent } from 'react';
 import { Plus, X } from 'lucide-react';

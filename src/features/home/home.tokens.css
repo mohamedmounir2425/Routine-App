@@ -1,0 +1,80 @@
+/* Single household palette, shared by Tailwind and Ant Design (including portals).
+   Prefixed variables do not change the appearance of other spaces. */
+:root {
+  --home-bg: #211d19;
+  --home-panel: #2d2722;
+  --home-raised: #362e27;
+  --home-border: #514438;
+  --home-text: #f5eee5;
+  --home-muted: #c2b3a3;
+  --home-accent: #e3a27b;
+  --home-green: #b4c797;
+  --home-page: #191714;
+  --home-input: #25201b;
+  --home-selection: #443124;
+  --home-selection-text: #f0b58e;
+  --home-green-bg: #37412c;
+  --home-green-border: #84946a;
+  --home-green-text: #d5e4c0;
+  --home-button: #e3a27b;
+  --home-button-text: #291c13;
+  --home-button-hover: #efb994;
+  --home-error-bg: #452c26;
+  --home-error-text: #ffd0bd;
+  --home-radius-control: 12px;
+  --home-radius-panel: 14px;
+  --home-control-height: 44px;
+  --home-font-size: 16px;
+  --home-font-family: 'Tajawal', sans-serif;
+}
+
+html.light {
+  --home-bg: #faf6ee;
+  --home-panel: #fffdf8;
+  --home-raised: #f1e8da;
+  --home-border: #d7c8b6;
+  --home-text: #352a20;
+  --home-muted: #71604f;
+  --home-accent: #9a4e2d;
+  --home-green: #536c37;
+  --home-page: #f0e8dc;
+  --home-input: #f5efe5;
+  --home-selection: #f2dfce;
+  --home-selection-text: #834124;
+  --home-green-bg: #e9efdd;
+  --home-green-border: #9aaa80;
+  --home-green-text: #40592c;
+  --home-button: #a65332;
+  --home-button-text: #fffaf4;
+  --home-button-hover: #874024;
+  --home-error-bg: #fbe7df;
+  --home-error-text: #8b3424;
+}
+
+/* Tailwind 4 configuration. Values resolve at runtime for light/dark mode. */
+@theme inline {
+  --color-home-bg: var(--home-bg);
+  --color-home-panel: var(--home-panel);
+  --color-home-raised: var(--home-raised);
+  --color-home-border: var(--home-border);
+  --color-home-text: var(--home-text);
+  --color-home-muted: var(--home-muted);
+  --color-home-accent: var(--home-accent);
+  --color-home-green: var(--home-green);
+  --color-home-page: var(--home-page);
+  --color-home-input: var(--home-input);
+  --color-home-selection: var(--home-selection);
+  --color-home-selection-text: var(--home-selection-text);
+  --color-home-green-bg: var(--home-green-bg);
+  --color-home-green-border: var(--home-green-border);
+  --color-home-green-text: var(--home-green-text);
+  --color-home-button: var(--home-button);
+  --color-home-button-text: var(--home-button-text);
+  --color-home-button-hover: var(--home-button-hover);
+  --color-home-error-bg: var(--home-error-bg);
+  --color-home-error-text: var(--home-error-text);
+  --radius-home-control: var(--home-radius-control);
+  --radius-home-panel: var(--home-radius-panel);
+  --font-home: var(--home-font-family);
+  --spacing-home-control: var(--home-control-height);
+}

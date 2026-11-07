@@ -1,13 +1,15 @@
+import { HomePanel } from '../components/HomeLayouts';
+import { HomeButton } from '../components/HomeButton';
+import { HomeCompletion } from '../components/HomeCompletion';
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  ListChecks, 
-  Check, 
-  Trash2, 
-  Edit3, 
-  Clock, 
-  Sparkles, 
-  Sun, 
+import {
+  Plus,
+  ListChecks,
+  Trash2,
+  Edit3,
+  Clock,
+  Sparkles,
+  Sun,
   Moon,
   Download
 } from 'lucide-react';
@@ -112,124 +114,124 @@ export const HomeRoutinesView: React.FC = () => {
       title="روتينات وعادات المنزل"
       subtitle="الإيقاع اليومي للبيت المريح، من نسمات الصباح إلى هدوء الليل"
       badge={
-        <div className="px-3.5 py-1.5 rounded-xl liquid-glass-pill text-xs font-bold text-amber-400 flex items-center gap-1.5">
+        <div className="px-3.5 py-1.5 rounded-xl bg-home-raised border border-home-border text-xs font-bold text-home-accent flex items-center gap-1.5">
           <Sparkles className="w-4 h-4" />
           <span>{completedTodayCount} من {routines.length} أُنجزت اليوم</span>
         </div>
       }
     >
-      <div className="space-y-6 text-right font-['Tajawal']">
+      <div className="space-y-6 text-right font-home">
         {/* Progress Card */}
-        <div className="liquid-glass-card rounded-3xl p-5 sm:p-6 border border-amber-500/20 space-y-3">
+        <HomePanel className=" p-5 sm:p-6 border-amber-500/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ListChecks className="w-5 h-5 text-amber-400" />
-              <h2 className="text-sm font-black text-white">إنجاز روتينات اليوم</h2>
+              <ListChecks className="w-5 h-5 text-home-accent" />
+              <h2 className="text-sm font-black text-home-text">إنجاز روتينات اليوم</h2>
             </div>
-            <span className="text-xs font-black text-amber-300">{progressPct}% مكتمل</span>
+            <span className="text-xs font-black text-home-accent">{progressPct}% مكتمل</span>
           </div>
 
-          <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-home-raised overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500"
+              className="h-full bg-home-accent transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
           </div>
-        </div>
+        </HomePanel>
 
         {/* Controls Header: Tabs + New Routine Button */}
-        <div className="liquid-glass-card rounded-3xl p-5 sm:p-6 border border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <HomePanel className=" p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-            <button
+            <HomeButton
               onClick={() => setActiveTab('all')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === 'all'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               الكل ({routines.length})
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveTab('morning')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'morning'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
+              <Sun className="w-3.5 h-3.5 text-home-accent" />
               <span>الروتين الصباحي</span>
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveTab('evening')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'evening'
                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               <Moon className="w-3.5 h-3.5 text-indigo-400" />
               <span>الروتين المسائي</span>
-            </button>
-            <button
+            </HomeButton>
+            <HomeButton
               onClick={() => setActiveTab('weekly')}
               className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === 'weekly'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/5 text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-amber-500/20 text-home-accent border border-amber-500/40'
+                  : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
               الأسبوعي
-            </button>
+            </HomeButton>
           </div>
 
           <div className="flex items-center gap-2">
             {routines.length === 0 && (
-              <button
+              <HomeButton
                 onClick={handleSeedPresets}
-                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-white/10 transition-all cursor-pointer shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-home-selection hover:bg-white/15 text-home-text text-xs font-bold flex items-center gap-1.5 border border-home-border transition-all cursor-pointer shrink-0"
               >
-                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <Download className="w-3.5 h-3.5 text-home-accent" />
                 <span>استيراد الروتينات المقترحة</span>
-              </button>
+              </HomeButton>
             )}
 
-            <button
+            <HomeButton variant="primary"
               onClick={() => {
                 setEditingRoutine(null);
                 setIsModalOpen(true);
               }}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+              className="shrink-0"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>روتين جديد</span>
-            </button>
+            </HomeButton>
           </div>
-        </div>
+        </HomePanel>
 
         {/* Routines Grid / List */}
         {isLoading ? (
-          <div className="text-center py-12 text-slate-400 text-xs">
+          <div className="text-center py-12 text-home-muted text-xs">
             جاري تحميل روتينات المنزل...
           </div>
         ) : filteredRoutines.length === 0 ? (
-          <div className="liquid-glass-card rounded-3xl p-10 border border-white/5 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-xl text-amber-400">
+          <HomePanel className=" p-10 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-home-raised border border-home-border flex items-center justify-center mx-auto text-xl text-home-accent">
               <ListChecks className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-white">لا توجد روتينات منزلية مسجلة</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-sm font-bold text-home-text">لا توجد روتينات منزلية مسجلة</h3>
+            <p className="text-xs text-home-muted max-w-sm mx-auto">
               يمكنك استيراد الروتينات الأساسية (التهوية، الترتيب، سقي النباتات، المطبخ) بضغطة زر
             </p>
-            <button
+            <HomeButton
               onClick={handleSeedPresets}
-              className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold inline-flex items-center gap-2 transition-all cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-home-accent border border-amber-500/30 text-xs font-bold inline-flex items-center gap-2 transition-all cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>استيراد 6 روتينات أساسية للبيت</span>
-            </button>
-          </div>
+            </HomeButton>
+          </HomePanel>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {filteredRoutines.map((routine) => {
@@ -240,21 +242,12 @@ export const HomeRoutinesView: React.FC = () => {
                   key={routine.id}
                   className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 select-none ${
                     isDone
-                      ? 'bg-amber-950/15 border-amber-500/30 text-slate-300'
-                      : 'bg-white/5 border-white/10 hover:border-amber-500/30 text-white'
+                      ? 'bg-amber-950/15 border-amber-500/30 text-home-text'
+                      : 'bg-home-raised border-home-border hover:border-amber-500/30 text-home-text'
                   }`}
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <button
-                      onClick={() => handleToggle(routine)}
-                      className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 cursor-pointer transition-all ${
-                        isDone
-                          ? 'bg-amber-400 border-amber-300 text-slate-950'
-                          : 'border-white/20 hover:border-amber-400'
-                      }`}
-                    >
-                      {isDone && <Check className="w-4 h-4 stroke-[3]" />}
-                    </button>
+                    <HomeCompletion checked={isDone} aria-label={'إتمام ' + routine.title} onChange={() => void handleToggle(routine)} />
 
                     <div className="space-y-1 flex-1 min-w-0">
                       <span className={`text-xs font-bold leading-relaxed block ${isDone ? 'line-through opacity-70' : ''}`}>
@@ -262,18 +255,18 @@ export const HomeRoutinesView: React.FC = () => {
                       </span>
 
                       {routine.description && (
-                        <p className="text-[11px] text-slate-400 leading-normal line-clamp-1">
+                        <p className="text-[11px] text-home-muted leading-normal line-clamp-1">
                           {routine.description}
                         </p>
                       )}
 
-                      <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-400">
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 text-slate-300">
+                      <div className="flex items-center gap-2 pt-1 text-[10px] text-home-muted">
+                        <span className="px-2 py-0.5 rounded-md bg-home-raised text-home-text">
                           {routine.recurrenceRule === 'weekdays' ? 'أيام العمل' : routine.recurrenceRule === 'weekly' ? 'أسبوعي' : 'يومي'}
                         </span>
 
                         {routine.scheduledTime && (
-                          <span className="flex items-center gap-1 text-amber-300/80">
+                          <span className="flex items-center gap-1 text-home-accent/80">
                             <Clock className="w-3 h-3" />
                             <span>{routine.scheduledTime}</span>
                           </span>
@@ -283,23 +276,23 @@ export const HomeRoutinesView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                    <button
+                    <HomeButton icon={<Edit3 className="w-3.5 h-3.5" />}
                       onClick={() => {
                         setEditingRoutine(routine);
                         setIsModalOpen(true);
                       }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
                       title="تعديل الروتين"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
+
+                    </HomeButton>
+                    <HomeButton icon={<Trash2 className="w-3.5 h-3.5" />}
                       onClick={() => handleDelete(routine.id)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-home-muted hover:text-rose-400 hover:bg-home-selection transition-colors cursor-pointer"
                       title="حذف الروتين"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                    </HomeButton>
                   </div>
                 </div>
               );
