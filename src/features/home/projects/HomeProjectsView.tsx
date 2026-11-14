@@ -8,30 +8,42 @@ import {
   Trash2,
   Edit3,
   Calendar,
+  CalendarPlus,
   ChevronDown,
   ChevronUp,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
 import { HomeSection as SpaceShell } from '../HomeSection';
-import { HomeProject } from '../../../types';
+import { DayPlan, HomeProject } from '../../../types';
 import { getHomeProjects, deleteProject, completeProjectStep } from '../../../db/projectQueries';
+import {
+  getDayPlan,
+  addItemToDayPlan,
+  removeItemFromDayPlan,
+  isItemSelectedForDay,
+  buildProjectStepRefKey,
+} from '../../../db/dayPlanQueries';
+import { getLocalDateString } from '../../../utils/dateUtils';
 import { HomeProjectModal } from './HomeProjectModal';
 
 type StatusFilter = 'all' | 'in_progress' | 'backlog' | 'completed';
 
 export const HomeProjectsView: React.FC = () => {
   const [projects, setProjects] = useState<HomeProject[]>([]);
+  const [dayPlan, setDayPlan] = useState<DayPlan | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<StatusFilter>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<HomeProject | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+  const today = getLocalDateString();
 
   const loadProjects = async () => {
     setIsLoading(true);
     try {
-      const list = await getHomeProjects();
+      const [list, plan] = await Promise.all([getHomeProjects(), getDayPlan(today)]);
       setProjects(list);
+      setDayPlan(plan);
     } catch (err) {
       console.error('Failed to load home projects:', err);
     } finally {
@@ -40,8 +52,8 @@ export const HomeProjectsView: React.FC = () => {
   };
 
   useEffect(() => {
-    loadProjects();
-  }, []);
+    void loadProjects();
+  }, [today]);
 
   const toggleExpand = (id: string) => {
     setExpandedProjects((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -50,6 +62,7 @@ export const HomeProjectsView: React.FC = () => {
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
       if (activeTab === 'all') return true;
+      if (activeTab === 'backlog') return p.status === 'backlog' || p.status === 'waiting';
       return p.status === activeTab;
     });
   }, [projects, activeTab]);
@@ -57,6 +70,22 @@ export const HomeProjectsView: React.FC = () => {
   const handleCompleteNextAction = async (projectId: string, stepId: string) => {
     await completeProjectStep(projectId, stepId);
     await loadProjects();
+  };
+
+  const handleToggleStepForToday = async (projectId: string, stepId: string) => {
+    const refKey = buildProjectStepRefKey(projectId, stepId);
+    const selected = isItemSelectedForDay(dayPlan, refKey);
+    if (selected) {
+      await removeItemFromDayPlan(today, refKey);
+    } else {
+      await addItemToDayPlan(today, {
+        refKey,
+        sourceType: 'project_step',
+        projectId,
+        stepId,
+      });
+    }
+    setDayPlan(await getDayPlan(today));
   };
 
   const handleDelete = async (id: string) => {
@@ -77,13 +106,13 @@ export const HomeProjectsView: React.FC = () => {
       case 'backlog':
         return (
           <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-home-accent border border-amber-500/30 text-[10px] font-bold">
-            قيد الانتظار
+            لاحقًا / مؤجل
           </span>
         );
       case 'waiting':
         return (
           <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
-            معلق
+            معلق / انتظار
           </span>
         );
       case 'completed':
@@ -139,7 +168,7 @@ export const HomeProjectsView: React.FC = () => {
                   : 'bg-home-raised text-home-muted hover:text-home-text border border-transparent'
               }`}
             >
-              قيد الانتظار ({projects.filter((p) => p.status === 'backlog').length})
+              لاحقًا / للمراجعة ({projects.filter((p) => p.status === 'backlog' || p.status === 'waiting').length})
             </HomeButton>
             <HomeButton
               onClick={() => setActiveTab('completed')}
@@ -187,6 +216,9 @@ export const HomeProjectsView: React.FC = () => {
               const completedSteps = project.steps?.filter((s) => s.isCompleted).length || 0;
               const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
               const isExpanded = !!expandedProjects[project.id];
+              const nextActionSelected = project.nextActionId
+                ? isItemSelectedForDay(dayPlan, buildProjectStepRefKey(project.id, project.nextActionId))
+                : false;
 
               return (
                 <HomePanel
@@ -209,7 +241,13 @@ export const HomeProjectsView: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
+                      {project.reviewDate && (
+                        <span className="text-[10px] text-amber-300 bg-home-raised px-2.5 py-1 rounded-lg flex items-center gap-1 border border-home-border">
+                          <Calendar className="w-3 h-3 text-home-accent" />
+                          <span>مراجعة: {project.reviewDate}</span>
+                        </span>
+                      )}
                       {project.targetDate && (
                         <span className="text-[10px] text-home-muted bg-home-raised px-2.5 py-1 rounded-lg flex items-center gap-1 border border-home-border">
                           <Calendar className="w-3 h-3 text-home-accent" />
@@ -224,21 +262,19 @@ export const HomeProjectsView: React.FC = () => {
                         className="p-1.5 rounded-lg text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
                         title="تعديل المشروع"
                       >
-
                       </HomeButton>
                       <HomeButton icon={<Trash2 className="w-3.5 h-3.5" />}
                         onClick={() => handleDelete(project.id)}
                         className="p-1.5 rounded-lg text-home-muted hover:text-rose-400 hover:bg-home-selection transition-colors cursor-pointer"
                         title="حذف المشروع"
                       >
-
                       </HomeButton>
                     </div>
                   </div>
 
                   {/* Next Action Callout Card (GTD Next Physical Step) */}
-                  {project.nextActionTitle && project.nextActionId && project.status !== 'completed' && (
-                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3">
+                  {project.nextActionTitle && project.nextActionId && project.status === 'in_progress' && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-home-accent text-[10px] font-black shrink-0">
                           الخطوة التالية (Next Action)
@@ -248,13 +284,27 @@ export const HomeProjectsView: React.FC = () => {
                         </span>
                       </div>
 
-                      <HomeButton
-                        onClick={() => handleCompleteNextAction(project.id, project.nextActionId!)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer shrink-0"
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>إنجاز الخطوة</span>
-                      </HomeButton>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <HomeButton
+                          type="button"
+                          onClick={() => void handleToggleStepForToday(project.id, project.nextActionId!)}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                            nextActionSelected
+                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                              : 'bg-home-raised border-home-border text-home-text hover:border-home-accent'
+                          }`}
+                        >
+                          {nextActionSelected ? <Check className="w-3 h-3" /> : <CalendarPlus className="w-3 h-3" />}
+                          <span>{nextActionSelected ? 'مختارة لليوم ✓' : '+ أضف ليومي'}</span>
+                        </HomeButton>
+                        <HomeButton
+                          onClick={() => handleCompleteNextAction(project.id, project.nextActionId!)}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>إنجاز الخطوة</span>
+                        </HomeButton>
+                      </div>
                     </div>
                   )}
 
@@ -282,39 +332,60 @@ export const HomeProjectsView: React.FC = () => {
                   {/* Collapsible Steps Checklist */}
                   {isExpanded && (
                     <div className="pt-2 space-y-2 border-t border-home-border">
-                      {project.steps?.map((step, idx) => (
-                        <div
-                          key={step.id}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
-                            step.isCompleted
-                              ? 'bg-amber-950/15 border-amber-500/20 text-home-muted'
-                              : 'bg-home-raised border-home-border text-home-text'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-5 h-5 rounded-md bg-home-selection text-home-text text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-                            <span className={`font-medium ${step.isCompleted ? 'line-through opacity-70' : ''}`}>
-                              {step.title}
-                            </span>
-                          </div>
+                      {project.steps?.map((step, idx) => {
+                        const stepSelected = isItemSelectedForDay(
+                          dayPlan,
+                          buildProjectStepRefKey(project.id, step.id)
+                        );
+                        return (
+                          <div
+                            key={step.id}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                              step.isCompleted
+                                ? 'bg-amber-950/15 border-amber-500/20 text-home-muted'
+                                : 'bg-home-raised border-home-border text-home-text'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-5 h-5 rounded-md bg-home-selection text-home-text text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className={`font-medium ${step.isCompleted ? 'line-through opacity-70' : ''}`}>
+                                {step.title}
+                              </span>
+                            </div>
 
-                          {step.isCompleted ? (
-                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 shrink-0">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                              <span>تمت</span>
-                            </span>
-                          ) : (
-                            <HomeButton
-                              onClick={() => handleCompleteNextAction(project.id, step.id)}
-                              className="px-2.5 py-1 rounded-lg bg-home-selection hover:bg-amber-500/20 text-home-text hover:text-home-accent text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                            >
-                              تعليم كمنجز
-                            </HomeButton>
-                          )}
-                        </div>
-                      ))}
+                            {step.isCompleted ? (
+                              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                                <span>تمت</span>
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {project.status === 'in_progress' && (
+                                  <HomeButton
+                                    type="button"
+                                    onClick={() => void handleToggleStepForToday(project.id, step.id)}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                      stepSelected
+                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                                        : 'bg-home-selection border-home-border text-home-text hover:text-home-accent'
+                                    }`}
+                                  >
+                                    {stepSelected ? 'مختارة لليوم ✓' : '+ أضف ليومي'}
+                                  </HomeButton>
+                                )}
+                                <HomeButton
+                                  onClick={() => handleCompleteNextAction(project.id, step.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-home-selection hover:bg-amber-500/20 text-home-text hover:text-home-accent text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                                >
+                                  تعليم كمنجز
+                                </HomeButton>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </HomePanel>

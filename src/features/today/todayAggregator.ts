@@ -157,7 +157,7 @@ export async function aggregateTodayFeed(
   const selectedItems = dayPlan?.selectedItems || [];
   const selectedByRefKey = new Map<string, DayPlanSelectedItem>(selectedItems.map((item) => [item.refKey, item]));
   const selectedTaskMap = new Map<string, DayPlanSelectedItem>();
-  const selectedStepsByProject = new Map<string, DayPlanSelectedItem[]>();
+  const selectedStepsByProject = new Map<string, Array<Extract<DayPlanSelectedItem, { sourceType: 'project_step' }>>>();
 
   for (const item of selectedItems) {
     if (item.sourceType === 'task' || item.sourceType === 'routine_occurrence') {

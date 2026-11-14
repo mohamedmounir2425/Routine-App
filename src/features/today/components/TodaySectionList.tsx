@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Zap, 
-  AlertCircle, 
-  Clock, 
-  Flame, 
-  CheckCircle2, 
-  Target, 
-  FolderGit2, 
+import {
+  Zap,
+  AlertCircle,
+  Clock,
+  Flame,
+  CheckCircle2,
+  Target,
+  FolderGit2,
   CheckSquare,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Pin,
 } from 'lucide-react';
 import { TodaySection, TodayItem, TodaySectionId } from '../todayTypes';
 import { TodayItemCard } from './TodayItemCard';
@@ -19,6 +20,7 @@ interface TodaySectionListProps {
   onExecuteAction: (item: TodayItem) => void;
   onAddQuranPage?: (amount: number) => void;
   onEditTask?: (item: TodayItem) => void;
+  onRemoveFromDay?: (item: TodayItem) => void;
   expandCompleted?: boolean;
 }
 
@@ -26,6 +28,7 @@ const SECTION_ICONS: Record<TodaySectionId, { icon: React.FC<{ className?: strin
   now: { icon: Zap, color: 'text-emerald-400', badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25' },
   overdue: { icon: AlertCircle, color: 'text-rose-400', badgeBg: 'bg-rose-500/15 text-rose-300 border-rose-500/25' },
   scheduled: { icon: Clock, color: 'text-cyan-400', badgeBg: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/25' },
+  selected: { icon: Pin, color: 'text-indigo-400', badgeBg: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25' },
   high_priority: { icon: Flame, color: 'text-amber-400', badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/25' },
   next_actions: { icon: FolderGit2, color: 'text-blue-400', badgeBg: 'bg-blue-500/15 text-blue-300 border-blue-500/25' },
   tasks: { icon: CheckSquare, color: 'text-slate-300', badgeBg: 'bg-white/10 text-slate-300 border-white/15' },
@@ -38,6 +41,7 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
   onExecuteAction,
   onAddQuranPage,
   onEditTask,
+  onRemoveFromDay,
   expandCompleted = false,
 }) => {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState<boolean>(false);
@@ -85,6 +89,7 @@ export const TodaySectionList: React.FC<TodaySectionListProps> = ({
                     onExecuteAction={onExecuteAction}
                     onAddQuranPage={onAddQuranPage}
                     onEditTask={onEditTask}
+                    onRemoveFromDay={onRemoveFromDay}
                   />
                 ))}
               </div>

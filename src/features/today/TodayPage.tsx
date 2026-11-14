@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { liveQuery } from 'dexie';
-import { ArrowUpRight, Plus, RefreshCw, Search } from 'lucide-react';
+import { ArrowUpRight, CalendarPlus, Plus, RefreshCw, Search, Sparkles } from 'lucide-react';
 import { aggregateTodayFeed } from './todayAggregator';
 import { TodayAggregationResult, TodayItem } from './todayTypes';
 import { executeToggleTask, executeTogglePrayer, executeCompleteProjectAction, executeAddQuranPage } from './todayActions';
@@ -10,9 +10,16 @@ import { TodayHeader } from './components/TodayHeader';
 import { TodaySectionList } from './components/TodaySectionList';
 import { TodayDecisionPanel } from './components/TodayDecisionPanel';
 import { DayPlanningDialog } from './components/DayPlanningDialog';
+import { TodaySpacePickerModal } from './components/TodaySpacePickerModal';
 import { loadTodayInsights, TodayInsights } from './todayInsights';
 import { decideToday } from './todayDecisionEngine';
-import { deferTaskUntilTomorrow } from './todayPlanningService';
+import {
+  deferTaskUntilTomorrow,
+  addItemToDayPlan,
+  removeItemFromDayPlan,
+  buildTaskRefKey,
+  buildProjectStepRefKey,
+} from './todayPlanningService';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { startTaskFocus, pauseActiveFocus, completeTaskWithFocus, captureAndStartInterruption, getPersistedActiveFocusState } from '../work/public';
 import { TodayQuickAddModal } from './components/TodayQuickAddModal';
@@ -33,6 +40,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
   const [data, setData] = useState<TodayAggregationResult | null>(null);
   const [insights, setInsights] = useState<TodayInsights | null>(null);
   const [isDayPlanningOpen, setIsDayPlanningOpen] = useState(false);
+  const [isSpacePickerOpen, setIsSpacePickerOpen] = useState(false);
   const [sessionMinutes, setSessionMinutes] = useState<number>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -130,6 +138,30 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
     }
   });
 
+  const handleRemoveFromDay = (item: TodayItem) => perform(async () => {
+    const todayStr = getLocalDateString();
+    const refKey = item.refKey || buildTaskRefKey(item.sourceId);
+    await removeItemFromDayPlan(todayStr, refKey);
+  });
+
+  const handleSelectSuggestion = (item: TodayItem) => perform(async () => {
+    const todayStr = getLocalDateString();
+    if (item.actionType === 'complete_project_step' && item.actionPayload?.projectId && item.actionPayload?.stepId) {
+      await addItemToDayPlan(todayStr, {
+        refKey: item.refKey || buildProjectStepRefKey(item.actionPayload.projectId, item.actionPayload.stepId),
+        sourceType: 'project_step',
+        projectId: item.actionPayload.projectId,
+        stepId: item.actionPayload.stepId,
+      });
+    } else {
+      await addItemToDayPlan(todayStr, {
+        refKey: item.refKey || buildTaskRefKey(item.sourceId),
+        sourceType: 'task',
+        taskId: item.sourceId,
+      });
+    }
+  });
+
   const editTask = async (item: TodayItem) => {
     try {
       const task = await db.tasks.get(item.sourceId);
@@ -145,6 +177,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
     && (!query.trim() || `${item.title} ${item.subtitle || ''} ${item.categoryLabel || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
     && (status === 'all' || (status === 'pending' && !item.isCompleted) || (status === 'completed' && item.isCompleted) || (status === 'priority' && item.priority === 'high' && !item.isCompleted));
   const sections = (data?.sections || []).map(section => ({ ...section, items: section.items.filter(matching), badgeCount: section.items.filter(matching).length })).filter(section => section.items.length);
+  const suggestions = (data?.suggestions || []).filter(item => selectedSpace === 'all' || item.space === selectedSpace);
   const decision = decideToday(data?.items || [], insights?.tasks || [], insights?.dayPlan, new Date(), sessionMinutes);
   const remainingMinutes = (data?.items || []).filter(item => !item.isCompleted).reduce((sum, item) => sum + (item.estimatedMinutes || 0), 0);
   const spaceNames = { worship: ar ? 'العبادة' : 'Worship', health: ar ? 'الصحة' : 'Health', work: ar ? 'العمل' : 'Work', home: ar ? 'المنزل' : 'Home', plans: ar ? 'الخطط' : 'Plans' };
@@ -168,7 +201,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
         } finally { actionLock.current = false; setBusy(false); }
       }} />}
     <section aria-label={ar ? 'مساحات حياتك' : 'Your spaces'}>
-      <div className="today-section-heading"><h2>{ar ? 'مساحات حياتك' : 'Your life spaces'}</h2><div className="flex gap-2 flex-wrap"><button className="today-secondary" onClick={() => setIsSpaceManagementOpen(true)}>{ar ? 'إدارة المساحات' : 'Manage spaces'}</button><button className="today-secondary" onClick={() => setSelectedSpace('all')} aria-pressed={selectedSpace === 'all'}>{ar ? 'كل المساحات' : 'All spaces'}</button></div></div>
+      <div className="today-section-heading"><h2>{ar ? 'مساحات حياتك' : 'Your life spaces'}</h2><div className="flex gap-2 flex-wrap"><button className="today-secondary" onClick={() => setIsSpacePickerOpen(true)}><CalendarPlus size={14} />{ar ? 'اختيار من المساحات' : 'Pick from spaces'}</button><button className="today-secondary" onClick={() => setIsSpaceManagementOpen(true)}>{ar ? 'إدارة المساحات' : 'Manage spaces'}</button><button className="today-secondary" onClick={() => setSelectedSpace('all')} aria-pressed={selectedSpace === 'all'}>{ar ? 'كل المساحات' : 'All spaces'}</button></div></div>
       <div className="today-space-grid">{LIFE_SPACES_CONFIG.filter(space => !insights || insights.enabledSpaces.includes(space.id)).map(space => {
         const count = data?.spaceBreakdown[space.id] || { total:0, completed:0 };
         return <button key={space.id} className="today-space-card" aria-pressed={selectedSpace === space.id} onClick={() => setSelectedSpace(selectedSpace === space.id ? 'all' : space.id)}>
@@ -179,7 +212,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
     </section>
     <div className="today-workspace">
       <section className="today-agenda" aria-busy={busy || isLoading}>
-        <div className="today-section-heading"><h2>{spaceConfig ? spaceNames[spaceConfig.id] : (ar ? 'جدول يومك' : 'Your daily agenda')}</h2><button className="today-secondary" onClick={() => void loadFeed()} aria-label={ar ? 'تحديث اليوم' : 'Refresh Today'}><RefreshCw size={14} /></button></div>
+        <div className="today-section-heading"><h2>{spaceConfig ? spaceNames[spaceConfig.id] : (ar ? 'جدول يومك' : 'Your daily agenda')}</h2><div className="flex items-center gap-2"><button className="today-secondary" onClick={() => setIsSpacePickerOpen(true)}><CalendarPlus size={14} />{ar ? 'اختيار من المساحات' : 'Pick from spaces'}</button><button className="today-secondary" onClick={() => void loadFeed()} aria-label={ar ? 'تحديث اليوم' : 'Refresh Today'}><RefreshCw size={14} /></button></div></div>
         <div className="today-toolbar">
           <label className="today-search"><Search size={16} /><input aria-label={ar ? 'البحث في اليوم' : 'Search your day'} placeholder={ar ? 'ابحث في مهامك وخططك...' : 'Search tasks and plans…'} value={query} onChange={e => setQuery(e.target.value)} /></label>
           <select aria-label={ar ? 'حالة البنود' : 'Item status'} value={status} onChange={e => setStatus(e.target.value)}>
@@ -187,13 +220,48 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
           </select>
         </div>
         {isLoading && !data ? <div className="today-empty" role="status">{ar ? 'جاري تجهيز يومك...' : 'Preparing your day…'}</div> : sections.length ? <>
-          <fieldset disabled={busy} className="min-w-0"><TodaySectionList sections={sections} expandCompleted={status === 'completed'} onExecuteAction={handleExecuteAction} onAddQuranPage={amount => void perform(() => { executeAddQuranPage(amount); })} onEditTask={editTask} /></fieldset>
-        </> : <div className="today-empty"><h3>{ar ? 'مساحة لخطوتك القادمة' : 'Room for your next step'}</h3><p>{ar ? 'لا توجد بنود تطابق هذا العرض. أضف مهمة أو عدّل الفلاتر وتفضيلات اليوم.' : 'No items match this view. Add a task or adjust your filters and Today preferences.'}</p><button className="today-primary mt-4" onClick={addTask}><Plus size={16} />{ar ? 'إضافة مهمة' : 'Add a task'}</button></div>}
+          <fieldset disabled={busy} className="min-w-0"><TodaySectionList sections={sections} expandCompleted={status === 'completed'} onExecuteAction={handleExecuteAction} onAddQuranPage={amount => void perform(() => { executeAddQuranPage(amount); })} onEditTask={editTask} onRemoveFromDay={handleRemoveFromDay} /></fieldset>
+        </> : <div className="today-empty"><h3>{ar ? 'مساحة لخطوتك القادمة' : 'Room for your next step'}</h3><p>{ar ? 'لا توجد بنود تطابق هذا العرض. اختر مهمة جاهزة من المساحات أو أضف مهمة جديدة.' : 'No items match this view. Pick a ready task from your spaces or add a new task.'}</p><div className="flex items-center justify-center gap-2 mt-4 flex-wrap"><button className="today-secondary" onClick={() => setIsSpacePickerOpen(true)}><CalendarPlus size={16} />{ar ? 'اختيار من المساحات' : 'Pick from spaces'}</button><button className="today-primary" onClick={addTask}><Plus size={16} />{ar ? 'إضافة مهمة' : 'Add a task'}</button></div></div>}
       </section>
       <aside className="today-sidebar">
+        {suggestions.length > 0 && (
+          <div className="today-panel space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-sm font-bold text-amber-300">
+                <Sparkles size={15} />
+                <span>{ar ? 'مقترحات مناسبة لليوم' : 'Ready suggestions'}</span>
+              </h3>
+              <span className="text-[11px] text-slate-400">{suggestions.length}/3</span>
+            </div>
+            <p className="today-muted text-xs">
+              {ar ? 'مهام جاهزة في مساحاتك بدون موعد ثابت، اختر منها ما يناسب وقتك:' : 'Ready unscheduled items you can pull into today:'}
+            </p>
+            <div className="space-y-2">
+              {suggestions.map((sug) => (
+                <div key={sug.id} className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-white truncate">{sug.title}</div>
+                    <div className="text-[11px] text-slate-400 truncate">
+                      {spaceNames[sug.space]} · {sug.suggestionReason || sug.subtitle}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleSelectSuggestion(sug)}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/35 text-indigo-200 text-[11px] font-bold shrink-0 cursor-pointer"
+                  >
+                    {ar ? '+ أضف ليومي' : '+ Add'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="today-panel"><h3>{ar ? 'إدارة المساحة' : 'Manage your space'}</h3><p className="today-muted">{ar ? 'اختر مساحة لعرض أدواتها، أو انتقل مباشرة لما تحتاجه.' : 'Select a space for its tools, or jump directly to what you need.'}</p>
           <div className="today-tool-list">{spaceConfig ? spaceConfig.navigation.map(item => <Link key={item.id} to={item.path}>{t(item.labelKey as Parameters<typeof t>[0])}<ArrowUpRight size={14} /></Link>) : LIFE_SPACES_CONFIG.map(space => <Link key={space.id} to={space.route}><span>{space.icon} {spaceNames[space.id]}</span><ArrowUpRight size={14} /></Link>)}</div>
-          <button className="today-primary w-full mt-4" onClick={addTask}><Plus size={15} />{ar ? 'إضافة مهمة' : 'Add a task'}</button>
+          <button className="today-secondary w-full mt-4" onClick={() => setIsSpacePickerOpen(true)}><CalendarPlus size={15} />{ar ? 'اختيار من المساحات' : 'Pick from spaces'}</button>
+          <button className="today-primary w-full mt-2" onClick={addTask}><Plus size={15} />{ar ? 'إضافة مهمة' : 'Add a task'}</button>
           {selectedSpace === 'health' && <button className="today-secondary w-full mt-2" onClick={() => setIsWorkoutScheduleOpen(true)}>{ar ? 'جدولة تمرين' : 'Schedule a workout'}</button>}
         </div>
         <div className="today-panel"><h3>{ar ? 'نظرة على اليوم' : 'Day at a glance'}</h3><p className="today-muted">{ar ? `${(data?.totalCount || 0) - (data?.completedCount || 0)} بنود متبقية` : `${(data?.totalCount || 0) - (data?.completedCount || 0)} items remaining`}</p><p className="today-muted">{ar ? `${remainingMinutes} دقيقة مقدّرة للبنود ذات المدة` : `${remainingMinutes} estimated minutes for timed items`}</p><Link className="today-secondary mt-3" to="/progress">{ar ? 'عرض التقدم' : 'View progress'}<ArrowUpRight size={14} /></Link></div>
@@ -210,6 +278,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
     {isPreferencesOpen && <TodayPreferencesModal isOpen onClose={() => setIsPreferencesOpen(false)} currentPreferences={preferences} onSavePreferences={setPreferences} />}
     {isWorkoutScheduleOpen && <TodayWorkoutModal onClose={() => setIsWorkoutScheduleOpen(false)} onSaved={() => void loadFeed()} />}
     {isDayPlanningOpen && insights && <DayPlanningDialog plan={insights.dayPlan} tasks={insights.tasks} ar={ar} onClose={() => setIsDayPlanningOpen(false)} onSaved={() => void loadFeed()} />}
+    {isSpacePickerOpen && <TodaySpacePickerModal enabledSpaces={insights?.enabledSpaces || LIFE_SPACES_CONFIG.map(space => space.id)} ar={ar} onClose={() => setIsSpacePickerOpen(false)} onChanged={() => void loadFeed()} />}
     {isSpaceManagementOpen && <SpaceManagementDialog enabledSpaces={insights?.enabledSpaces || LIFE_SPACES_CONFIG.map(space => space.id)} onClose={() => setIsSpaceManagementOpen(false)} onSaved={prefs => { setPreferences(prefs); setSelectedSpace('all'); }} />}
   </div>;
 }

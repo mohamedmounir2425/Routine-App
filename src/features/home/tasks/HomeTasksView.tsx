@@ -3,10 +3,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InputRef } from 'antd';
 import { HomeCompletion } from '../components/HomeCompletion';
 import { liveQuery } from 'dexie';
-import { Plus, Pencil, Trash2, ShoppingBasket, ListChecks, CheckCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, ShoppingBasket, ListChecks, CheckCheck, CalendarPlus, Check } from 'lucide-react';
 import { db } from '../../../db/database';
-import type { LifeTask, HomeProject } from '../../../types';
+import type { LifeTask, HomeProject, DayPlan } from '../../../types';
 import { saveTask, deleteTask, toggleTaskCompletion } from '../../../db/taskQueries';
+import {
+  getDayPlan,
+  addItemToDayPlan,
+  removeItemFromDayPlan,
+  isItemSelectedForDay,
+  buildTaskRefKey,
+} from '../../../db/dayPlanQueries';
 import { getLocalDateString } from '../../../utils/dateUtils';
 import { HomeTaskModal } from './HomeTaskModal';
 import { isShoppingTask, isMaintenanceTask, isHomeTaskDone } from '../homeTasks';
@@ -22,11 +29,14 @@ export function parseShoppingTitle(rawTitle: string) {
   return { name: clean, quantity: '' };
 }
 
+type HomeTaskFilter = 'pending' | 'quick' | 'later' | 'completed' | 'all';
+
 export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
   const [tasks, setTasks] = useState<LifeTask[]>([]);
   const [projects, setProjects] = useState<HomeProject[]>([]);
+  const [dayPlan, setDayPlan] = useState<DayPlan | undefined>(undefined);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'pending' | 'all' | 'completed'>('pending');
+  const [filter, setFilter] = useState<HomeTaskFilter>('pending');
   const [quick, setQuick] = useState('');
   const [quickQty, setQuickQty] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,11 +51,13 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
   useEffect(() => {
     const subscription = liveQuery(async () => ({
       tasks: await db.tasks.where('spaceId').equals('home').toArray(),
-      projects: (await db.projects.toArray()).filter(project => !project.spaceId || project.spaceId === 'home')
+      projects: (await db.projects.toArray()).filter(project => !project.spaceId || project.spaceId === 'home'),
+      dayPlan: await getDayPlan(today),
     })).subscribe({
       next: data => {
         setTasks(data.tasks);
         setProjects(data.projects);
+        setDayPlan(data.dayPlan);
         setLoading(false);
       },
       error: () => {
@@ -54,7 +66,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [today]);
 
   const scoped = useMemo(
     () =>
@@ -64,11 +76,32 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
     [tasks, shopping]
   );
 
+  const matchesTaskFilter = (task: LifeTask, targetFilter: HomeTaskFilter) => {
+    const done = isHomeTaskDone(task, today);
+    if (shopping) {
+      if (targetFilter === 'all') return true;
+      if (targetFilter === 'completed') return done;
+      return !done;
+    }
+    const isDeferred = Boolean(
+      task.isSomeday ||
+      task.status === 'WAITING' ||
+      (task.availableFrom && task.availableFrom > today)
+    );
+    const isReviewDue = Boolean(task.reviewDate && task.reviewDate <= today);
+    if (targetFilter === 'all') return true;
+    if (targetFilter === 'completed') return done;
+    if (targetFilter === 'later') return !done && (isDeferred || isReviewDue);
+    if (targetFilter === 'quick') return !done && !isDeferred && Boolean(task.estimatedMinutes && task.estimatedMinutes <= 15);
+    // 'pending' -> ready tasks
+    return !done && !isDeferred;
+  };
+
   const visible = scoped
     .filter(
       task =>
         (!query.trim() || (task.title + ' ' + (task.description ?? '')).toLowerCase().includes(query.trim().toLowerCase())) &&
-        (filter === 'all' || isHomeTaskDone(task, today) === (filter === 'completed'))
+        matchesTaskFilter(task, filter)
     )
     .sort(
       (a, b) =>
@@ -152,6 +185,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
         title: finalTitle,
         priority: 'medium',
         isCompleted: false,
+        taskCategory: shopping ? undefined : 'general',
         createdAt: new Date().toISOString()
       });
       setQuick('');
@@ -161,13 +195,43 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
     });
   };
 
+  const toggleSelectForToday = async (task: LifeTask) => {
+    const refKey = buildTaskRefKey(task.id);
+    const selected = isItemSelectedForDay(dayPlan, refKey);
+    await action(async () => {
+      if (selected) {
+        await removeItemFromDayPlan(today, refKey);
+      } else {
+        await addItemToDayPlan(today, {
+          refKey,
+          sourceType: 'task',
+          taskId: task.id,
+        });
+      }
+    });
+  };
+
+  const filterItems: Array<{ key: HomeTaskFilter; label: string }> = shopping
+    ? [
+        { key: 'pending', label: 'لم تُشترَ' },
+        { key: 'completed', label: 'تم الشراء' },
+        { key: 'all', label: 'الكل' },
+      ]
+    : [
+        { key: 'pending', label: 'جاهز للتنفيذ' },
+        { key: 'quick', label: 'سريعة ≤ ١٥ د' },
+        { key: 'later', label: 'لاحقًا / للمراجعة' },
+        { key: 'completed', label: 'المكتملة' },
+        { key: 'all', label: 'الكل' },
+      ];
+
   return (
     <HomeSection
       title={shopping ? 'قائمة المشتريات' : 'المهام المنزلية'}
       subtitle={
         shopping
           ? 'احتياجات واضحة قبل التسوق، مع تحديد الكمية لتسهيل الشراء وتفادي النسيان.'
-          : 'تابع الأعمال المنزلية، وحدد المواعيد والأولويات عند الحاجة.'
+          : 'سجّل أعمال البيت الجاهزة أو المؤجلة، واختر منها ما يناسب يومك دون ازدحام صفحة اليوم.'
       }
     >
       {shopping && totalCount > 0 && (
@@ -221,7 +285,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
             value={quick}
             maxLength={200}
             onChange={event => setQuick(event.target.value)}
-            placeholder={shopping ? 'أضف احتياجًا (مثل: حليب، جبن، منظف)… (/)' : 'أضف مهمة منزلية… (/)'}
+            placeholder={shopping ? 'أضف احتياجًا (مثل: حليب، جبن، منظف)… (/)' : 'أضف مهمة منزلية جاهزة بالاسم فقط… (/)'}
           />
         </div>
         {shopping && (
@@ -264,13 +328,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
       </div>
 
       <div className="home-list-filters flex gap-2 mb-4 overflow-x-auto p-0.5 [&_button]:flex [&_button]:items-center [&_button]:gap-1.5 [&_button]:whitespace-nowrap [&_button]:min-h-9.5 [&_button]:p-[7px_14px] [&_button]:rounded-[10px] [&_button]:border [&_button]:border-solid [&_button]:border-home-border [&_button]:text-home-muted [&_button]:bg-transparent [&_button]:text-[12.5px] [&_button]:font-semibold [&_button[aria-pressed='true']]:text-home-green-text [&_button[aria-pressed='true']]:bg-home-green-bg [&_button[aria-pressed='true']]:border-home-green-border [&_button[aria-pressed='true']]:font-bold [&_span]:text-[11.5px] [&_span]:opacity-[.9] max-[600.01px]:[&_button]:p-[8px_11px] max-[600.01px]:[&_button]:text-[12px] max-[600.01px]:[&_button]:gap-1.5 max-[700.01px]:[.inventory-library_&]:overflow-x-auto max-[700.01px]:[.inventory-library_&]:flex-nowrap" aria-label="حالة العناصر">
-        {(
-          [
-            { key: 'pending', label: shopping ? 'لم تُشترَ' : 'قيد التنفيذ' },
-            { key: 'completed', label: shopping ? 'تم الشراء' : 'المكتملة' },
-            { key: 'all', label: 'الكل' }
-          ] as const
-        ).map(item => (
+        {filterItems.map(item => (
           <HomeButton
             type="button"
             key={item.key}
@@ -279,7 +337,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
           >
             {item.label}{' '}
             <span>
-              {scoped.filter(task => item.key === 'all' || isHomeTaskDone(task, today) === (item.key === 'completed')).length}
+              {scoped.filter(task => matchesTaskFilter(task, item.key)).length}
             </span>
           </HomeButton>
         ))}
@@ -300,7 +358,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
               : filter === 'pending'
               ? shopping
                 ? 'كل احتياجاتك مسجلة وتحت السيطرة'
-                : 'لا توجد مهام معلقة'
+                : 'لا توجد مهام جاهزة معلقة'
               : 'لا توجد عناصر في هذا التصنيف'}
           </h3>
           <p>{query ? 'جرّب كلمة أخرى أو غيّر الفلتر.' : 'استخدم خانة الإضافة أعلاه لتسجيل عنصر جديد.'}</p>
@@ -310,6 +368,7 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
           {visible.map(task => {
             const done = isHomeTaskDone(task, today);
             const parsed = shopping ? parseShoppingTitle(task.title) : { name: task.title, quantity: '' };
+            const selectedForToday = !shopping && isItemSelectedForDay(dayPlan, buildTaskRefKey(task.id));
 
             return (
               <li key={task.id} className={done ? 'is-complete' : ''}>
@@ -327,14 +386,36 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
                         {parsed.quantity}
                       </span>
                     )}
+                    {!shopping && !done && (
+                      <HomeButton
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void toggleSelectForToday(task)}
+                        className={`ms-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11.5px] font-bold border border-solid cursor-pointer transition-all ${
+                          selectedForToday
+                            ? 'bg-home-green-bg border-home-green-border text-home-green-text'
+                            : 'bg-home-raised border-home-border text-home-text hover:border-home-accent'
+                        }`}
+                      >
+                        {selectedForToday ? <Check size={13} /> : <CalendarPlus size={13} />}
+                        <span>{selectedForToday ? 'مختارة لليوم ✓' : '+ أضف ليومي'}</span>
+                      </HomeButton>
+                    )}
                   </div>
                   {task.description && <p>{task.description}</p>}
                   <div className="home-task-meta flex gap-[9px] flex-wrap text-home-muted text-[11px] mt-[7px]">
                     {task.priority === 'high' && <span className="home-priority text-home-accent">أولوية عالية</span>}
+                    {task.estimatedMinutes && <span>{task.estimatedMinutes} دقيقة</span>}
+                    {task.isSomeday && <span className="text-amber-300 font-bold">لاحقًا / مؤجلة</span>}
+                    {task.reviewDate && (
+                      <span>
+                        للمراجعة: {task.reviewDate === today ? 'اليوم' : task.reviewDate}
+                      </span>
+                    )}
                     {task.dueDate && (
                       <span>
-                        {task.dueDate === today ? 'اليوم' : task.dueDate}
-                        {task.dueDate < today && !done ? ' · متأخرة' : ''}
+                        {task.dueDate === today ? 'مخططة لليوم' : task.dueDate}
+                        {task.dueDate < today && !done && !task.isSomeday ? ' · متأخرة' : ''}
                       </span>
                     )}
                     {task.scheduledTime && <span>{task.scheduledTime}</span>}
@@ -370,7 +451,6 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
                       setModal(true);
                     }}
                   >
-
                   </HomeButton>
                   <HomeButton icon={<Trash2 size={16} />}
                     type="button"
@@ -378,7 +458,6 @@ export function HomeTasksView({ shopping = false }: { shopping?: boolean }) {
                     aria-label={'حذف ' + task.title}
                     onClick={() => setDeleting(task.id)}
                   >
-
                   </HomeButton>
                 </div>
               </li>

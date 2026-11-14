@@ -25,6 +25,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'backlog' | 'in_progress' | 'waiting' | 'completed'>('in_progress');
   const [targetDate, setTargetDate] = useState('');
+  const [reviewDate, setReviewDate] = useState('');
   const [steps, setSteps] = useState<Array<{ id: string; title: string; isCompleted: boolean; order: number }>>([]);
   const [newStepText, setNewStepText] = useState('');
 
@@ -34,12 +35,14 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
       setDescription(initialProject.description || '');
       setStatus(initialProject.status);
       setTargetDate(initialProject.targetDate || '');
+      setReviewDate(initialProject.reviewDate || '');
       setSteps(initialProject.steps || []);
     } else {
       setTitle('');
       setDescription('');
       setStatus('in_progress');
       setTargetDate('');
+      setReviewDate('');
       setSteps([
         { id: `step_${Date.now()}_1`, title: '', isCompleted: false, order: 1 },
       ]);
@@ -84,6 +87,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
         description: description.trim() || undefined,
         status,
         targetDate: targetDate || undefined,
+        reviewDate: reviewDate || undefined,
         steps: validSteps,
       });
     } else {
@@ -92,6 +96,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
         description: description.trim() || undefined,
         status,
         targetDate: targetDate || undefined,
+        reviewDate: reviewDate || undefined,
         steps: validSteps,
       });
     }
@@ -110,7 +115,6 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
             onClick={onClose}
             className="p-2 rounded-xl text-home-muted hover:text-home-text hover:bg-home-selection transition-colors cursor-pointer"
           >
-
           </HomeButton>
           <div className="flex items-center gap-2">
             <span className="text-xl">🏠</span>
@@ -131,7 +135,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: تجديد دهان غرفة المعيشة، ترتيب وتنظيم المخزن..."
+              placeholder="مثال: تجديد دهان غرفة المعيشة، تركيب شفاط المطبخ..."
               required
               className="w-full"
             />
@@ -152,7 +156,7 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
           </div>
 
           {/* Status & Target Date Grid */}
-          <HomeFieldGrid >
+          <HomeFieldGrid>
             <div>
               <label className="block text-xs font-bold text-home-text mb-1.5">
                 حالة المشروع
@@ -163,8 +167,8 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
                 className="w-full"
               >
                 <option value="in_progress">قيد التنفيذ (نشط)</option>
-                <option value="backlog">قيد الانتظار (لاحقاً)</option>
-                <option value="waiting">معلق (بانتظار شيء)</option>
+                <option value="backlog">لاحقًا / مؤجل (لا يدخل اليوم تلقائيًا)</option>
+                <option value="waiting">معلق (بانتظار طرف أو مورد)</option>
                 <option value="completed">مكتمل بالكامل</option>
               </HomeSelect>
             </div>
@@ -182,6 +186,19 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
               />
             </div>
           </HomeFieldGrid>
+
+          <div>
+            <label className="block text-xs font-bold text-home-text mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-home-accent" />
+              <span>تاريخ المراجعة الدورية (اختياري — مثالي للمشاريع المؤجلة)</span>
+            </label>
+            <HomeTextField
+              type="date"
+              value={reviewDate}
+              onChange={(e) => setReviewDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
 
           {/* Sequential Steps Builder */}
           <div className="space-y-2.5 pt-2">
@@ -215,7 +232,6 @@ export const HomeProjectModal: React.FC<HomeProjectModalProps> = ({
                       onClick={() => handleRemoveStep(idx)}
                       className="p-1.5 rounded-lg text-home-muted hover:text-rose-400 hover:bg-home-raised transition-colors cursor-pointer"
                     >
-
                     </HomeButton>
                   )}
                 </div>

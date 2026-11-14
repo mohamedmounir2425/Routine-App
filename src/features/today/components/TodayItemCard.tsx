@@ -1,13 +1,16 @@
 import React from 'react';
-import { 
-  Check, 
-  Clock, 
-  Play, 
-  BookOpen, 
-  CheckCircle2, 
-  Plus, 
-  Flame, 
-  AlertCircle, Pencil
+import {
+  Check,
+  Clock,
+  Play,
+  BookOpen,
+  CheckCircle2,
+  Plus,
+  Flame,
+  AlertCircle,
+  Pencil,
+  Pin,
+  XCircle,
 } from 'lucide-react';
 import { TodayItem } from '../todayTypes';
 import { getSpaceTheme } from '../../../theme/spaceTheme';
@@ -17,6 +20,7 @@ interface TodayItemCardProps {
   onExecuteAction: (item: TodayItem) => void;
   onAddQuranPage?: (amount: number) => void;
   onEditTask?: (item: TodayItem) => void;
+  onRemoveFromDay?: (item: TodayItem) => void;
 }
 
 export const TodayItemCard: React.FC<TodayItemCardProps> = ({
@@ -24,6 +28,7 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
   onExecuteAction,
   onAddQuranPage,
   onEditTask,
+  onRemoveFromDay,
 }) => {
   const space = getSpaceTheme(item.space);
 
@@ -141,11 +146,12 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
         <button
           type="button"
           onClick={() => onExecuteAction(item)}
+          disabled={item.isCompleted}
           aria-label={`إنجاز خطوة المشروع: ${item.title}`}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs cursor-pointer transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs cursor-pointer transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-60"
         >
           <Check className="w-3.5 h-3.5" />
-          <span>إنجاز الخطوة</span>
+          <span>{item.isCompleted ? 'تمت الخطوة ✓' : 'إنجاز الخطوة'}</span>
         </button>
       );
     }
@@ -189,6 +195,10 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
     );
   };
 
+  const showTaskTools =
+    (item.actionType === 'toggle_task' && Boolean(onEditTask)) ||
+    (Boolean(item.isSelectedForToday) && !item.isCompleted && Boolean(onRemoveFromDay));
+
   return (
     <div
       className={`liquid-glass-card rounded-2xl p-3.5 sm:p-4 border transition-all duration-200 ${
@@ -216,7 +226,20 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
                 <span>{space.label}</span>
               </span>
 
+              {item.isSelectedForToday && !item.isCompleted && (
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                  <Pin className="w-2.5 h-2.5" />
+                  مختار ليومي
+                </span>
+              )}
+
               {renderStatusBadge()}
+
+              {item.estimatedMinutes && !item.isCompleted && (
+                <span className="text-[10px] text-slate-400">
+                  {item.estimatedMinutes} د
+                </span>
+              )}
 
               {item.categoryLabel && (
                 <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
@@ -250,7 +273,24 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
           </div>
         )}
       </div>
-      {item.actionType === 'toggle_task' && onEditTask && <div className="today-task-tools"><button type="button" onClick={() => onEditTask(item)} aria-label={`تعديل: ${item.title}`}><Pencil size={13} /> تعديل الموعد والتفاصيل</button></div>}
+      {showTaskTools && (
+        <div className="today-task-tools flex items-center gap-3 flex-wrap">
+          {item.actionType === 'toggle_task' && onEditTask && (
+            <button type="button" onClick={() => onEditTask(item)} aria-label={`تعديل: ${item.title}`}>
+              <Pencil size={13} /> تعديل الموعد والتفاصيل
+            </button>
+          )}
+          {item.isSelectedForToday && !item.isCompleted && onRemoveFromDay && (
+            <button
+              type="button"
+              onClick={() => onRemoveFromDay(item)}
+              aria-label={`إزالة من يومي: ${item.title}`}
+            >
+              <XCircle size={13} /> إزالة من يومي
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
