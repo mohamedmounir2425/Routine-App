@@ -10,6 +10,8 @@ The household space uses Ant Design for controls and dialogs, with Tailwind 4 ut
 
 ## Shared components
 
+Cross-space primitives live in `src/shared/ui`; `DataTable` wraps Ant Table and is used by inventory, bulk entry and import preview. It inherits this space's Ant theme. Business columns, expiry rules and mutations remain in household code. New component styling stays in JSX; see [space module rules](../space-modules.md).
+
 - `HomeInput`, `HomeTextArea`, `HomeSearchInput`, `HomeSelect` and `HomeCompactSearch` use the configured Ant controls. Do not repeat color, border or focus utility sets at call sites.
 - `HomeButton` separates visual `variant` from HTML `type`, retaining submission and external `form` associations. Ant's underlying button receives `htmlType`.
 - `HomeAntButton` owns button sizing for both the household wrapper and controls using Ant's native API. At widths up to 600px, actions share a 33px minimum height, 11px text and 8px corners, matching the overview recipe action. Icon-only buttons are 33px square; longer text can wrap. Desktop sizing is preserved.

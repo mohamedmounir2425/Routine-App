@@ -4,7 +4,8 @@ import { formatInventoryQuantity, type InventorySort, type InventorySortDirectio
 import { HomeButton } from '../components/HomeButton';
 import { Checkbox as HomeCheckbox } from 'antd';
 import { useRef, useState, useMemo } from 'react';
-import { Alert, AutoComplete, Input, Select, Collapse, Table, Tooltip, Grid } from 'antd';
+import { Alert, AutoComplete, Input, Select, Collapse, Tooltip, Grid } from 'antd';
+import { DataTable } from '../../../shared/ui';
 import type { InputRef } from 'antd';
 import { Check, X, Pencil, Plus, Trash2, Calendar, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { emptyInventory, INVENTORY_LOCATIONS, numericInput, inventoryFlags, type InventoryItem } from './inventoryModel';
@@ -223,8 +224,8 @@ export function InventoryTable({
 
   return (
     <div className="inventory-table-workspace border border-solid border-home-border rounded-home-control overflow-hidden bg-home-panel shadow-none" dir="rtl">
-      <Table<InventoryItem>
-        rowKey="id" dataSource={items} size="middle" className="pantry-data-table"
+      <DataTable<InventoryItem>
+        rowKey="id" dataSource={items}
         pagination={{ defaultPageSize: 12, showSizeChanger: true, pageSizeOptions: [12, 24, 48], hideOnSinglePage: true }}
         scroll={screens.lg ? undefined : { x: 1060 }}
         onChange={(_, __, sorter, extra) => {
@@ -234,7 +235,7 @@ export function InventoryTable({
           const key = selected.columnKey;
           if (key === 'name' || key === 'quantity' || key === 'location' || key === 'expiry' || key === 'attention') onSortChange(key, selected.order === 'ascend' ? 'asc' : 'desc');
         }}
-        rowClassName={item => inventoryFlags(item, today).expired ? 'pantry-expired-row' : ''}
+        rowClassName={item => inventoryFlags(item, today).expired ? '[&>td]:bg-[var(--home-error-bg)] supports-[background:color-mix(in_oklab,red,red)]:[&>td]:bg-[color-mix(in_oklab,var(--home-error-bg)_25%,transparent)]' : ''}
         columns={[
           { title: 'الصنف', key: 'name', ...sortable('name'), width: 215, fixed: screens.md && !screens.lg ? 'right' : undefined, render: (_, item) => <div className="min-w-0">
             <Button type="text" className="pantry-table-name h-auto max-w-full whitespace-normal px-0 text-start font-bold text-home-text" onClick={() => onOpen(item)}>{item.name}</Button>

@@ -12,15 +12,9 @@
   text-align: start;
   overflow-wrap: anywhere;
 }
-.pantry-items .ant-tag, .pantry-data-table .ant-tag {
+.pantry-items .ant-tag {
   margin-inline-end: 0px;
   white-space: normal;
-}
-.pantry-expired-row .ant-table-cell {
-  background-color: var(--home-error-bg);
-  @supports (color: color-mix(in lab, red, red)) {
-    background-color: color-mix(in oklab, var(--home-error-bg) 25%, transparent);
-  }
 }
 .inventory-dialog-tabs .ant-tabs-nav {
   margin-bottom: calc(var(--spacing, 0.25rem) * 3) !important;
