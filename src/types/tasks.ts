@@ -72,13 +72,56 @@ export interface LifeTask {
   commitment?: 'must' | 'should' | 'could';
   goalImpact?: 'high' | 'medium' | 'low';
   dependsOnTaskIds?: string[];
+
+  // Stage 0 orthogonal scheduling, deferral & household scope attributes
+  availableFrom?: string; // YYYY-MM-DD
+  isSomeday?: boolean;
+  reviewDate?: string; // YYYY-MM-DD
+  taskCategory?: 'general' | 'maintenance';
+  householdId?: string;
+  visibility?: 'private' | 'household';
+  assignedUserId?: string;
 }
+
+export type DayPlanSourceType = 'task' | 'project_step' | 'routine_occurrence';
+
+export type DayPlanSelectedItem =
+  | {
+      /** Canonical key: `task:${taskId}` */
+      refKey: string;
+      sourceType: 'task';
+      taskId: string;
+      position: number;
+      isEssential?: boolean;
+      addedAt: string;
+    }
+  | {
+      /** Canonical key: `project_step:${projectId}:${stepId}` */
+      refKey: string;
+      sourceType: 'project_step';
+      projectId: string;
+      stepId: string;
+      position: number;
+      isEssential?: boolean;
+      addedAt: string;
+    }
+  | {
+      /** Canonical key: `routine_occurrence:${taskId}:${occurrenceDate}` */
+      refKey: string;
+      sourceType: 'routine_occurrence';
+      taskId: string;
+      occurrenceDate: string; // YYYY-MM-DD
+      position: number;
+      isEssential?: boolean;
+      addedAt: string;
+    };
 
 export interface DayPlan {
   date: string;
   availableMinutes: number;
   endTime: string;
   essentialTaskIds: string[];
+  selectedItems?: DayPlanSelectedItem[];
   updatedAt: string;
 }
 

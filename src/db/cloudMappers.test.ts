@@ -25,26 +25,38 @@ export async function runCloudMapperTests() {
     sourceType: 'plan', sourceId: 'goal', planId: 'goal', milestoneId: 'milestone', projectId: 'project',
     isRecurring: true, recurrenceRule: 'weekly', recurringCompletionDates: ['2026-10-25'],
     deadlineAt: '2026-11-01T18:00:00.000Z', commitment: 'must', goalImpact: 'high', dependsOnTaskIds: ['dependency'],
+    availableFrom: '2026-10-30', isSomeday: true, reviewDate: '2026-11-10', taskCategory: 'maintenance',
+    householdId: '11111111-1111-1111-1111-111111111111', visibility: 'household',
+    assignedUserId: '22222222-2222-2222-2222-222222222222',
   };
   const taskRow = taskToCloud('account-a', task);
   check('Task round trip preserves all planning, recurrence, focus and lineage fields', canonical(taskFromCloud(taskRow)) === canonical({ ...task, actualMinutes: 6 }));
   check('Cloud payload derives actual minutes from focus sessions rather than a stale cached total', taskRow.actual_minutes === 6);
-  const cleared = taskToCloud('account-a', { ...task, description: undefined, deadlineAt: undefined, planId: undefined, waitingContext: undefined, dependsOnTaskIds: [], focusSessions: [] });
+  const cleared = taskToCloud('account-a', { ...task, description: undefined, deadlineAt: undefined, planId: undefined, waitingContext: undefined, dependsOnTaskIds: [], focusSessions: [], availableFrom: undefined, isSomeday: undefined, reviewDate: undefined, taskCategory: undefined, householdId: undefined, visibility: undefined, assignedUserId: undefined });
   const clearedLocal = taskFromCloud(cleared, task);
-  check('Explicit nulls and empty arrays clear removed cloud fields on another device', cleared.description === null && cleared.deadline_at === null && clearedLocal.description === undefined && clearedLocal.deadlineAt === undefined && clearedLocal.planId === undefined && clearedLocal.waitingContext === undefined && clearedLocal.dependsOnTaskIds?.length === 0 && clearedLocal.focusSessions?.length === 0);
+  check('Explicit nulls and empty arrays clear removed cloud fields on another device', cleared.description === null && cleared.deadline_at === null && clearedLocal.description === undefined && clearedLocal.deadlineAt === undefined && clearedLocal.planId === undefined && clearedLocal.waitingContext === undefined && clearedLocal.dependsOnTaskIds?.length === 0 && clearedLocal.focusSessions?.length === 0 && clearedLocal.availableFrom === undefined && clearedLocal.isSomeday === undefined && clearedLocal.reviewDate === undefined && clearedLocal.taskCategory === undefined);
   const legacy = taskFromCloud({ id: task.id, title: 'Old client', space_id: 'work', is_completed: false, created_at: stamp, client_data_version: 0, deadline_at: null }, task);
-  check('Legacy rows do not erase newer local planning fields after additive schema migration', legacy.deadlineAt === task.deadlineAt && legacy.planId === task.planId && legacy.focusSessions?.length === 1);
+  check('Legacy rows do not erase newer local planning fields after additive schema migration', legacy.deadlineAt === task.deadlineAt && legacy.planId === task.planId && legacy.focusSessions?.length === 1 && legacy.isSomeday === true && legacy.reviewDate === task.reviewDate);
+  const v1Row = taskFromCloud({ ...taskRow, client_data_version: 1, available_from: null, is_someday: false, review_date: null, task_category: null }, task);
+  check('Version 1 cloud rows preserve local Stage 0 fields until client_data_version 2 is written', v1Row.availableFrom === task.availableFrom && v1Row.isSomeday === true && v1Row.reviewDate === task.reviewDate && v1Row.taskCategory === 'maintenance');
   const legacyCompleted = taskFromCloud({ id: task.id, title: task.title, space_id: 'work', is_completed: true, created_at: stamp }, task);
   check('Legacy completion remains consistent with the task status', legacyCompleted.status === 'DONE' && legacyCompleted.isCompleted);
   const legacyLinks = taskFromCloud({ id: task.id, title: task.title, space_id: 'work', is_completed: false, created_at: stamp, source_type: 'plan', plan_id: 'goal', recurring_completion_dates: ['2026-10-25'] });
   check('Partial legacy cloud rows retain lineage and recurrence history on a fresh device', legacyLinks.sourceType === 'plan' && legacyLinks.planId === 'goal' && legacyLinks.recurringCompletionDates?.[0] === '2026-10-25');
-  const project: HomeProject = { id: 'project', spaceId: 'work', title: 'Work project', description: 'Details', status: 'in_progress', steps: [{ id: 'step', title: 'Step', order: 0, isCompleted: false }], nextActionId: 'step', nextActionTitle: 'Step', targetDate: '2026-11-07', createdAt: stamp, repositoryUrl: 'https://example.com/repo', devUrl: 'https://example.com/dev', apiUrl: 'https://example.com/api', branch: 'main', runCommand: 'npm run dev', requiresVpn: true, setupNotes: 'Setup' };
+  const project: HomeProject = { id: 'project', spaceId: 'work', title: 'Work project', description: 'Details', status: 'in_progress', steps: [{ id: 'step', title: 'Step', order: 0, isCompleted: false }], nextActionId: 'step', nextActionTitle: 'Step', targetDate: '2026-11-07', reviewDate: '2026-11-15', visibility: 'private', createdAt: stamp, repositoryUrl: 'https://example.com/repo', devUrl: 'https://example.com/dev', apiUrl: 'https://example.com/api', branch: 'main', runCommand: 'npm run dev', requiresVpn: true, setupNotes: 'Setup' };
   check('Work projects round trip without turning into Home projects or losing development context', canonical(projectFromCloud(projectToCloud('account-a', project))) === canonical(project));
   check('Legacy projects without a space retain the Home compatibility rule', projectToCloud('account-a', { ...project, spaceId: undefined }).space_id === 'home');
   const routine: Routine = { id: 'custom-routine', name: 'Routine', description: 'Test', exerciseIds: ['exercise'], totalEstimatedMinutes: 10, level: 'gentle', tag: 'Custom', isCustom: true, isDefault: false, isMiniRescue: true, planSessionId: 'plan-session', weekNumber: 2, sessionCode: 'A', prescriptions: [{ exerciseId: 'exercise', sets: 2, reps: 8 }], customExerciseConfigs: { exercise: { reps: 8 } } };
   check('Custom routine round trip preserves prescriptions and plan session settings', canonical(routineFromCloud(routineToCloud('account-a', routine))) === canonical(routine));
-  const day: DayPlan = { date: '2026-11-01', availableMinutes: 90, endTime: '21:00', essentialTaskIds: [task.id], updatedAt: stamp };
-  check('Day plans round trip and have different cloud IDs for two users on the same date', canonical(dayPlanFromCloud(dayPlanToCloud('account-a', day))) === canonical(day) && dayPlanToCloud('account-a', day).id !== dayPlanToCloud('account-b', day).id);
+  const day: DayPlan = {
+    date: '2026-11-01', availableMinutes: 90, endTime: '21:00', essentialTaskIds: [task.id],
+    selectedItems: [
+      { refKey: `task:${task.id}`, sourceType: 'task', taskId: task.id, position: 0, isEssential: true, addedAt: stamp },
+      { refKey: 'project_step:project:step', sourceType: 'project_step', projectId: 'project', stepId: 'step', position: 1, addedAt: stamp },
+    ],
+    updatedAt: stamp,
+  };
+  check('Day plans round trip with selectedItems and have different cloud IDs for two users on the same date', canonical(dayPlanFromCloud(dayPlanToCloud('account-a', day))) === canonical(day) && dayPlanToCloud('account-a', day).id !== dayPlanToCloud('account-b', day).id);
 
   await db.transaction('rw', db.tables, async () => { for (const table of db.tables) await table.clear(); });
   await db.tasks.put(task); await db.projects.put(project); await db.routines.put(routine); await db.dayPlans.put(day);

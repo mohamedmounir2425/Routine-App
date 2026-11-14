@@ -24,6 +24,9 @@ export interface LifeProject {
   nextActionId?: string;
   nextActionTitle?: string;
   targetDate?: string; // YYYY-MM-DD
+  reviewDate?: string; // YYYY-MM-DD
+  householdId?: string;
+  visibility?: 'private' | 'household';
   createdAt: string;
   completedAt?: string;
 

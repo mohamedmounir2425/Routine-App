@@ -33,6 +33,25 @@ function validateRecord(key: string, record: unknown): asserts record is Record<
   if (!isObject(record)) throw new Error(`Invalid ${key} record`);
   if (key === 'dayPlans') {
     if (typeof record.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.date) || !Number.isFinite(record.availableMinutes) || Number(record.availableMinutes) < 0 || Number(record.availableMinutes) > 1440 || !Array.isArray(record.essentialTaskIds) || record.essentialTaskIds.some(id => typeof id !== 'string') || typeof record.endTime !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(record.endTime)) throw new Error('Invalid day plan');
+    if (record.selectedItems !== undefined) {
+      if (!Array.isArray(record.selectedItems)) throw new Error('Invalid day plan selectedItems');
+      const seenKeys = new Set<string>();
+      for (const item of record.selectedItems) {
+        if (!isObject(item) || typeof item.refKey !== 'string' || !item.refKey.trim() || seenKeys.has(item.refKey) || !Number.isFinite(item.position) || typeof item.addedAt !== 'string') {
+          throw new Error('Invalid day plan selected item');
+        }
+        seenKeys.add(item.refKey);
+        if (item.sourceType === 'task') {
+          if (typeof item.taskId !== 'string' || item.refKey !== `task:${item.taskId}`) throw new Error('Invalid task day plan ref');
+        } else if (item.sourceType === 'project_step') {
+          if (typeof item.projectId !== 'string' || typeof item.stepId !== 'string' || item.refKey !== `project_step:${item.projectId}:${item.stepId}`) throw new Error('Invalid project_step day plan ref');
+        } else if (item.sourceType === 'routine_occurrence') {
+          if (typeof item.taskId !== 'string' || typeof item.occurrenceDate !== 'string' || item.refKey !== `routine_occurrence:${item.taskId}:${item.occurrenceDate}`) throw new Error('Invalid routine_occurrence day plan ref');
+        } else {
+          throw new Error('Invalid day plan sourceType');
+        }
+      }
+    }
   } else if (key === 'schedule') {
     if (!Number.isInteger(record.dayOfWeek) || Number(record.dayOfWeek) < 0 || Number(record.dayOfWeek) > 6) throw new Error('Invalid schedule day');
   } else if (typeof record.id !== 'string' || !record.id.trim()) throw new Error(`Missing ${key} ID`);
@@ -48,9 +67,18 @@ function validateRecord(key: string, record: unknown): asserts record is Record<
     if (record.deadlineAt !== undefined && (typeof record.deadlineAt !== 'string' || !Number.isFinite(new Date(record.deadlineAt).getTime()))) throw new Error('Invalid task deadline');
     if (record.commitment !== undefined && !['must', 'should', 'could'].includes(String(record.commitment))) throw new Error('Invalid commitment');
     if (record.dependsOnTaskIds !== undefined && (!Array.isArray(record.dependsOnTaskIds) || record.dependsOnTaskIds.some(id => typeof id !== 'string'))) throw new Error('Invalid task dependencies');
+    if (record.availableFrom !== undefined && (typeof record.availableFrom !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.availableFrom))) throw new Error('Invalid task availableFrom');
+    if (record.reviewDate !== undefined && (typeof record.reviewDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.reviewDate))) throw new Error('Invalid task reviewDate');
+    if (record.isSomeday !== undefined && typeof record.isSomeday !== 'boolean') throw new Error('Invalid task isSomeday');
+    if (record.taskCategory !== undefined && !['general', 'maintenance'].includes(String(record.taskCategory))) throw new Error('Invalid taskCategory');
+    if (record.visibility !== undefined && !['private', 'household'].includes(String(record.visibility))) throw new Error('Invalid task visibility');
   }
   if (key === 'projects' || key === 'plans' || key === 'planMilestones') requireString('title');
-  if (key === 'projects' && !Array.isArray(record.steps)) throw new Error('Invalid project steps');
+  if (key === 'projects') {
+    if (!Array.isArray(record.steps)) throw new Error('Invalid project steps');
+    if (record.reviewDate !== undefined && (typeof record.reviewDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.reviewDate))) throw new Error('Invalid project reviewDate');
+    if (record.visibility !== undefined && !['private', 'household'].includes(String(record.visibility))) throw new Error('Invalid project visibility');
+  }
   if (key === 'logs') { requireString('completedAt'); requireString('routineId'); }
   if (key === 'settings' && record.id !== 'current_settings') throw new Error('Invalid settings ID');
 }

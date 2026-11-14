@@ -17,7 +17,11 @@ export function taskToCloud(userId: string, task: LifeTask) {
     waiting_context: task.waitingContext ?? null, interruption_context: task.interruptionContext ?? null,
     deadline_at: task.deadlineAt ?? null, commitment: task.commitment ?? null,
     goal_impact: task.goalImpact ?? null, depends_on_task_ids: task.dependsOnTaskIds ?? [],
-    created_at: task.createdAt, updated_at: task.updatedAt ?? task.createdAt, client_data_version: 1,
+    available_from: task.availableFrom ?? null, is_someday: task.isSomeday ?? false,
+    review_date: task.reviewDate ?? null, task_category: task.taskCategory ?? null,
+    household_id: task.householdId ?? null, visibility: task.visibility ?? 'private',
+    assigned_user_id: task.assignedUserId ?? null,
+    created_at: task.createdAt, updated_at: task.updatedAt ?? task.createdAt, client_data_version: 2,
   };
 }
 
@@ -35,7 +39,8 @@ export function taskFromCloud(row: CloudTask, local?: LifeTask): LifeTask {
     recurrenceRule: row.recurrence_rule ?? undefined, createdAt: row.created_at,
   };
   // Newly added NULL columns on old rows are not evidence that local metadata was removed.
-  if ((row.client_data_version ?? 0) < 1) {
+  const version = row.client_data_version ?? 0;
+  if (version < 1) {
     base.status = row.is_completed ? 'DONE' : local?.status === 'DONE' ? 'TODO' : local?.status ?? 'TODO';
     // Older clients already write some lineage fields, even without the version marker.
     base.sourceType = row.source_type ?? local?.sourceType;
@@ -46,7 +51,7 @@ export function taskFromCloud(row: CloudTask, local?: LifeTask): LifeTask {
     base.recurringCompletionDates = row.recurring_completion_dates ?? local?.recurringCompletionDates;
     return base;
   }
-  return {
+  const v1: LifeTask = {
     ...base, status: row.status ?? (row.is_completed ? 'DONE' : 'TODO'),
     sourceType: row.source_type ?? undefined, sourceId: row.source_id ?? undefined,
     projectId: row.project_id ?? undefined, planId: row.plan_id ?? undefined, milestoneId: row.milestone_id ?? undefined,
@@ -57,6 +62,19 @@ export function taskFromCloud(row: CloudTask, local?: LifeTask): LifeTask {
     goalImpact: row.goal_impact ?? undefined, dependsOnTaskIds: row.depends_on_task_ids ?? [],
     updatedAt: row.updated_at ?? undefined,
   };
+  if (version < 2) {
+    return v1;
+  }
+  return {
+    ...v1,
+    availableFrom: row.available_from ?? undefined,
+    isSomeday: row.is_someday ? true : undefined,
+    reviewDate: row.review_date ?? undefined,
+    taskCategory: row.task_category ?? undefined,
+    householdId: row.household_id ?? undefined,
+    visibility: row.visibility && row.visibility !== 'private' ? row.visibility : local?.visibility ? row.visibility ?? undefined : undefined,
+    assignedUserId: row.assigned_user_id ?? undefined,
+  };
 }
 
 export function projectToCloud(userId: string, project: HomeProject) {
@@ -64,18 +82,22 @@ export function projectToCloud(userId: string, project: HomeProject) {
     id: project.id, user_id: userId, space_id: project.spaceId ?? 'home', title: project.title,
     description: project.description ?? null, status: project.status, steps: project.steps,
     next_action_id: project.nextActionId ?? null, next_action_title: project.nextActionTitle ?? null,
-    target_date: project.targetDate ?? null, created_at: project.createdAt, completed_at: project.completedAt ?? null,
+    target_date: project.targetDate ?? null, review_date: project.reviewDate ?? null,
+    household_id: project.householdId ?? null, visibility: project.visibility ?? 'private',
+    created_at: project.createdAt, completed_at: project.completedAt ?? null,
     repository_url: project.repositoryUrl ?? null, dev_url: project.devUrl ?? null, api_url: project.apiUrl ?? null,
     branch: project.branch ?? null, run_command: project.runCommand ?? null,
     requires_vpn: project.requiresVpn ?? false, setup_notes: project.setupNotes ?? null,
   };
 }
 
-export function projectFromCloud(row: ReturnType<typeof projectToCloud>): HomeProject {
+export function projectFromCloud(row: Partial<ReturnType<typeof projectToCloud>> & { id: string; title: string; status: HomeProject['status']; created_at: string }): HomeProject {
   return {
     id: row.id, spaceId: row.space_id ?? 'home', title: row.title, description: row.description ?? undefined,
     status: row.status, steps: row.steps ?? [], nextActionId: row.next_action_id ?? undefined,
     nextActionTitle: row.next_action_title ?? undefined, targetDate: row.target_date ?? undefined,
+    reviewDate: row.review_date ?? undefined, householdId: row.household_id ?? undefined,
+    visibility: row.visibility ?? (row.review_date !== undefined || row.household_id !== undefined ? 'private' : undefined),
     createdAt: row.created_at, completedAt: row.completed_at ?? undefined,
     repositoryUrl: row.repository_url ?? undefined, devUrl: row.dev_url ?? undefined, apiUrl: row.api_url ?? undefined,
     branch: row.branch ?? undefined, runCommand: row.run_command ?? undefined,
@@ -106,16 +128,30 @@ export function routineFromCloud(row: ReturnType<typeof routineToCloud>): Routin
 }
 
 export function dayPlanToCloud(userId: string, plan: DayPlan) {
+  const seen = new Set<string>();
+  const selected = (plan.selectedItems ?? []).filter(item => {
+    if (!item || typeof item.refKey !== 'string' || seen.has(item.refKey)) return false;
+    seen.add(item.refKey);
+    return true;
+  }).map((item, idx) => ({ ...item, position: idx }));
   return {
     id: `${userId}_date_${plan.date}`, user_id: userId, date: plan.date,
     available_minutes: plan.availableMinutes, end_time: plan.endTime,
-    essential_task_ids: [...new Set(plan.essentialTaskIds)], updated_at: plan.updatedAt,
+    essential_task_ids: [...new Set(plan.essentialTaskIds)],
+    selected_items: selected,
+    updated_at: plan.updatedAt,
   };
 }
 
-export function dayPlanFromCloud(row: ReturnType<typeof dayPlanToCloud>): DayPlan {
-  return { date: row.date, availableMinutes: row.available_minutes, endTime: row.end_time,
-    essentialTaskIds: row.essential_task_ids ?? [], updatedAt: row.updated_at };
+export function dayPlanFromCloud(row: Partial<ReturnType<typeof dayPlanToCloud>> & { date: string; available_minutes: number; end_time: string; updated_at: string }): DayPlan {
+  const plan: DayPlan = {
+    date: row.date, availableMinutes: row.available_minutes, endTime: row.end_time,
+    essentialTaskIds: row.essential_task_ids ?? [], updatedAt: row.updated_at,
+  };
+  if (Array.isArray(row.selected_items) && row.selected_items.length > 0) {
+    plan.selectedItems = row.selected_items;
+  }
+  return plan;
 }
 
 export function settingsToCloud(userId: string, settings: UserSettings) {
