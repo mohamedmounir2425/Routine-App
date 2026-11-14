@@ -6,7 +6,7 @@ import { ArrowUpRight, Check, Clock3, Flag, Pause, Play, Sparkles, Target, Trian
 import { decideToday, decisionExplanation, DayDecision } from '../todayDecisionEngine';
 import { TodayInsights } from '../todayInsights';
 import { TodayItem } from '../todayTypes';
-import { ActiveFocusState } from '../../work/focus/focusEngine';
+import { ActiveFocusState } from '../../work/public';
 import { PlanningDialog } from '../../../components/common/PlanningDialog';
 import { getLocalDateString, parseLocalDate } from '../../../utils/dateUtils';
 

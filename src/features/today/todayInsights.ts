@@ -2,7 +2,7 @@ import { db } from '../../db/database';
 import { calculatePlanProgress } from '../../db/goalPlanQueries';
 import { addDaysToLocalDate, getLocalDateString } from '../../utils/dateUtils';
 import { getDailyPrayersState, getQuranDailyStatus } from '../../db/worshipQueries';
-import { getFocusHistory } from '../work/focus/focusService';
+import { getFocusHistory } from '../work/public';
 import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
 
 export async function loadTodayInsights(date = getLocalDateString()) {

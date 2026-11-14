@@ -1,9 +1,9 @@
 import { db, type RoutineDatabase } from './database';
 import { CURRENT_WORKSPACE, workspaceStorage } from './workspaceScope';
-import { transitionPauseFocus, type ActiveFocusState } from '../features/work/focus/focusEngine';
+import { transitionPauseFocus, type ActiveFocusState } from '../features/work/public';
 import { taskToCloud } from './cloudMappers';
 import { queueMutation } from './syncQueue';
-import type { FocusSessionRecord } from '../features/work/focus/focusService';
+import type { FocusSessionRecord } from '../features/work/public';
 
 const ACTIVE_KEY = 'routine_active_focus_state';
 

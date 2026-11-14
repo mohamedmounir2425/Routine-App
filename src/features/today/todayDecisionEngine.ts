@@ -1,7 +1,7 @@
 import { DayPlan, LifeTask } from '../../types';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { TodayItem } from './todayTypes';
-import { isSpaceTaskDue } from './taskCalendar';
+import { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
 
 export type DecisionReason = 'deadline_risk' | 'deadline_today' | 'prayer_window' | 'chosen' | 'must' | 'current' | 'goal' | 'priority' | 'flexible';
 export interface DayDecision {

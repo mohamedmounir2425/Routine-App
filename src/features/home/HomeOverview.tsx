@@ -27,7 +27,7 @@ import { toggleTaskCompletion, saveTask } from '../../db/taskQueries';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { isHomeTaskDone, isShoppingTask } from './homeTasks';
 import { MEAL_TYPES, safeMediaUrl, normalizeFoodText, type Recipe } from './recipes/recipeModel';
-import { isSpaceTaskDue } from '../today/taskCalendar';
+import { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
 import { inventoryFlags, type InventoryItem } from './inventory/inventoryModel';
 import { parseShoppingTitle } from './tasks/HomeTasksView';
 import { toggleRecipeFavorite } from './recipes/recipeRepository';

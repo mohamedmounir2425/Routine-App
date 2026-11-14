@@ -14,15 +14,15 @@ import {
   getTodayDayOfWeek, 
   parseLocalDate 
 } from '../../utils/dateUtils';
-import { aggregateTodayFeed } from '../today/todayAggregator';
+import { aggregateTodayFeed } from '../today/public';
 import { getPlans, calculatePlanProgress } from '../../db/goalPlanQueries';
 import { 
   getDailyPrayersState, 
   getQuranDailyStatus 
 } from '../../db/worshipQueries';
-import { getTodayTasbeehCount } from '../worship/tasbeeh/tasbeehQueries';
-import { calcWorshipDailyProgress } from '../worship/progress/worshipProgressCalc';
-import { getFocusHistory } from '../work/focus/focusService';
+import { getTodayTasbeehCount } from '../worship/public';
+import { calcWorshipDailyProgress } from '../worship/public';
+import { getFocusHistory } from '../work/public';
 
 const ARABIC_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 

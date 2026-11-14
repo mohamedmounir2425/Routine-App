@@ -22,7 +22,7 @@ import {
   PlanMilestone,
   WorkoutScheduleEntry
 } from '../types';
-import { AzkarLog } from '../features/worship/types';
+import { AzkarLog } from '../features/worship/public';
 
 export interface SyncResult {
   success: boolean;

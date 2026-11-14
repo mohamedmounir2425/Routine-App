@@ -1,6 +1,6 @@
 import { workspaceStorage } from './workspaceScope';
 import { db } from './database';
-import { AzkarCategoryKey, AzkarLog } from '../features/worship/types';
+import { AzkarCategoryKey, AzkarLog } from '../features/worship/public';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { syncSingleAzkarLog } from './syncEngine';
 

@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "tunnel": ".\\cloudflared.exe tunnel --url http://localhost:5173",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "test": "node scripts/run-tests.mjs",
+    "build": "node scripts/check-boundaries.mjs && tsc -b && vite build",
+    "lint": "node scripts/check-boundaries.mjs && eslint .",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "test": "node scripts/check-boundaries.mjs && node scripts/test-boundaries.mjs && node scripts/run-tests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

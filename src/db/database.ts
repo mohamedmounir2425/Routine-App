@@ -1,7 +1,7 @@
 import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
-import type { Recipe } from '../features/home/recipes/recipeModel';
-import type { InventoryItem } from '../features/home/inventory/inventoryModel';
+import type { Recipe } from '../features/home/public';
+import type { InventoryItem } from '../features/home/public';
 import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import { 
@@ -16,7 +16,7 @@ import {
   PlanMilestone,
   WorkoutScheduleEntry 
 } from '../types';
-import { AzkarLog } from '../features/worship/types';
+import { AzkarLog } from '../features/worship/public';
 import { DayPlan } from '../types/tasks';
 import { 
   INITIAL_EXERCISES, 

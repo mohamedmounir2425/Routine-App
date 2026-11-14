@@ -5,7 +5,7 @@ import { LifeTask, LifeSpaceId } from '../../types';
 import { parseLocalDate } from '../../utils/dateUtils';
 import { DEFAULT_TODAY_PREFERENCES, TodayPreferences, UserSettings } from '../../types';
 import { saveTodayPreferences } from './todayPreferencesService';
-export { isSpaceTaskDue } from './taskCalendar';
+export { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
 
 export function settingsForVisibleTask(settings: UserSettings, task: LifeTask): UserSettings {
   const prefs: TodayPreferences = { ...DEFAULT_TODAY_PREFERENCES, ...settings.todayPreferences };

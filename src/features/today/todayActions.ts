@@ -1,6 +1,6 @@
 import { db } from '../../db/database';
 import { LifeTask, HomeProject, WorkoutLog } from '../../types';
-import { AzkarCategoryKey, AzkarLog } from '../worship/types';
+import { AzkarCategoryKey, AzkarLog } from '../worship/public';
 import { toggleTaskCompletion } from '../../db/taskQueries';
 import { completeProjectStep } from '../../db/projectQueries';
 import { 

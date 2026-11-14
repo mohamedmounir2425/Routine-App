@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PlansOverview } from './PlansOverview';
-import { SpaceTasksView } from '../spaces/SpaceTasksView';
+import { SpaceTasksView } from '../spaces/ui';
 import { PlansListView } from './list/PlansListView';
 import { PlansGoalsView } from './goals/PlansGoalsView';
 import { PlansProgressView } from './progress/PlansProgressView';

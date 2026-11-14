@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PlanningDialog } from '../../../components/common/PlanningDialog';
 import { LIFE_SPACES_CONFIG } from '../../../config/spacesConfig';
 import { LifeSpaceId, TodayPreferences } from '../../../types';
-import { saveEnabledSpaces } from '../../today/spaceTaskService';
+import { saveEnabledSpaces } from '../../today/public';
 import { useTranslation } from '../../../i18n';
 
 export function SpaceManagementDialog({ enabledSpaces, onClose, onSaved }: { enabledSpaces: LifeSpaceId[]; onClose: () => void; onSaved: (prefs: TodayPreferences) => void }) {

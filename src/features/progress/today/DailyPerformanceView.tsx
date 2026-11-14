@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProgressNavTabs } from '../components/ProgressNavTabs';
-import { aggregateTodayFeed } from '../../today/todayAggregator';
-import { TodayAggregationResult } from '../../today/todayTypes';
+import { aggregateTodayFeed } from '../../today/public';
+import { TodayAggregationResult } from '../../today/public';
 
 export const DailyPerformanceView: React.FC = () => {
   const navigate = useNavigate();

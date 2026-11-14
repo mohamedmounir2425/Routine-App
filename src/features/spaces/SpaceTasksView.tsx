@@ -7,13 +7,13 @@ import { LifeSpaceId, LifeTask } from '../../types';
 import { LIFE_SPACES_CONFIG } from '../../config/spacesConfig';
 import { useTranslation } from '../../i18n';
 import { SpaceShell } from '../../components/layout/SpaceShell';
-import { TodayQuickAddModal } from '../today/components/TodayQuickAddModal';
-import { TodayItemCard } from '../today/components/TodayItemCard';
-import { TodayItem } from '../today/todayTypes';
-import { executeToggleTask } from '../today/todayActions';
+import { TodayQuickAddModal } from '../today/ui';
+import { TodayItemCard } from '../today/ui';
+import { TodayItem } from '../today/public';
+import { executeToggleTask } from '../today/public';
 import { getLocalDateString } from '../../utils/dateUtils';
-import { getTaskTimeTag } from '../today/todayScheduling';
-import '../today/today.css';
+import { getTaskTimeTag } from '../today/public';
+
 
 /** Shared task workspace for spaces that previously had no standalone task screen. */
 export function SpaceTasksView({ spaceId }: { spaceId: LifeSpaceId }) {

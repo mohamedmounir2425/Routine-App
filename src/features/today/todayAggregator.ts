@@ -28,7 +28,7 @@ import {
   getSavedLocation, 
   getNextPrayerInfo, 
   PrayerTimesResult 
-} from '../worship/prayers/prayerTimesEngine';
+} from '../worship/public';
 import { 
   isAzkarCategoryCompletedToday, 
   getDailyPrayersState, 

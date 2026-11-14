@@ -4,7 +4,7 @@ import { syncSingleDayPlan } from '../../db/syncEngine';
 import { DayPlan } from '../../types';
 import { addDaysToLocalDate, getLocalDateString, parseLocalDate } from '../../utils/dateUtils';
 import { saveTask } from '../../db/taskQueries';
-import { pauseActiveFocus, getPersistedActiveFocusState } from '../work/focus/focusEngine';
+import { pauseActiveFocus, getPersistedActiveFocusState } from '../work/public';
 
 export async function saveDayPlan(plan: DayPlan) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.date) || getLocalDateString(parseLocalDate(plan.date)) !== plan.date) throw new Error('Invalid day plan date');

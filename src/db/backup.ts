@@ -1,8 +1,8 @@
 import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './workspaceScope';
 import { db } from './database';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
-import { validateRecipeRecord } from '../features/home/recipes/recipeModel';
-import { validateInventoryRecord } from '../features/home/inventory/inventoryModel';
+import { validateRecipeRecord } from '../features/home/public';
+import { validateInventoryRecord } from '../features/home/public';
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
 export const BACKUP_TABLES = {

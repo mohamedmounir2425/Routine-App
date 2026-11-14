@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { WorshipOverview } from './WorshipOverview';
-import { SpaceTasksView } from '../spaces/SpaceTasksView';
+import { SpaceTasksView } from '../spaces/ui';
 import { AzkarHubView } from './azkar/AzkarHubView';
 import { TasbeehCounter } from './tasbeeh/TasbeehCounter';
 import { PrayerTracker } from './prayers/PrayerTracker';
