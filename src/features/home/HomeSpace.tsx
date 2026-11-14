@@ -11,6 +11,7 @@ import './home.css';
 
 const RecipeLibrary = lazy(() => import('./recipes/RecipeLibrary').then(module => ({ default: module.RecipeLibrary })));
 const InventoryLibrary = lazy(() => import('./inventory/InventoryLibrary').then(module => ({ default: module.InventoryLibrary })));
+const ShoppingView = lazy(() => import('./shopping/ShoppingView').then(module => ({ default: module.ShoppingView })));
 const management = [
   { to: '/home/tasks', label: 'المهام' }, { to: '/home/routines', label: 'الروتين المنزلي' },
   { to: '/home/maintenance', label: 'الصيانة' }, { to: '/home/projects', label: 'مشاريع المنزل' },
@@ -49,7 +50,7 @@ export function HomeSpace() {
         <Routes>
           <Route index element={<HomeOverview />} />
           <Route path="tasks" element={<HomeTasksView />} />
-          <Route path="shopping" element={<HomeTasksView key="shopping" shopping />} />
+          <Route path="shopping" element={<Suspense fallback={<p role="status" className="p-6 text-center text-home-muted">جارٍ تحميل قائمة المشتريات…</p>}><ShoppingView /></Suspense>} />
           <Route path="projects" element={<HomeProjectsView />} />
           <Route path="routines" element={<HomeRoutinesView />} />
           <Route path="maintenance" element={<HomeMaintenanceView />} />

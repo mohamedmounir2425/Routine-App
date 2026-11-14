@@ -8,11 +8,18 @@ import { liveQuery } from 'dexie';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Archive, ClipboardList, Ellipsis, ArrowDownUp, Plus, ShoppingBasket, LayoutGrid, List, Table2, X } from 'lucide-react';
 import { db } from '../../../db/database';
-import { saveTask } from '../../../db/taskQueries';
 import { getLocalDateString } from '../../../utils/dateUtils';
-import { normalizeFoodText } from '../recipes/recipeModel';
 import { inventoryFlags, type InventoryItem } from './inventoryModel';
 import { saveInventoryBatch } from './inventoryRepository';
+import {
+  deriveShoppingState,
+  emptyShoppingDraft,
+  normalizeShoppingKey,
+} from '../shopping/shoppingModel';
+import {
+  addShortagesFromInventoryToShopping,
+  saveShoppingItem,
+} from '../shopping/shoppingRepository';
 import { InventoryDialog } from './InventoryDialog';
 import { InventoryBulkDialog } from './InventoryBulkDialog';
 import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
@@ -157,19 +164,36 @@ export function InventoryLibrary() {
 
   const shopping = (item: InventoryItem) =>
     run(async () => {
-      const title = '🛒 ' + item.name;
-      const currentTasks = await db.tasks.where('spaceId').equals('home').toArray();
-      const exists = currentTasks.some(
-        task => !task.isCompleted && normalizeFoodText(task.title) === normalizeFoodText(title)
+      const activeShopping = (await db.shoppingItems.toArray()).filter(
+        row => !row.archivedAt && deriveShoppingState(row) !== 'stocked'
+      );
+      const exists = activeShopping.some(
+        row =>
+          row.sourceInventoryItemId === item.id ||
+          normalizeShoppingKey(row.title) === normalizeShoppingKey(item.name)
       );
       if (!exists) {
-        await saveTask({
-          id: crypto.randomUUID(),
-          spaceId: 'home',
-          title,
-          isCompleted: false,
-          priority: 'medium',
-          createdAt: new Date().toISOString()
+        let quantityNeeded: number | null = null;
+        if (item.lowThreshold !== null && item.lowThreshold > 0) {
+          const currentQty = item.quantity ?? 0;
+          const deficit = Math.round((item.lowThreshold - currentQty) * 1000) / 1000;
+          quantityNeeded = deficit > 0 ? deficit : item.lowThreshold;
+        }
+        await saveShoppingItem({
+          ...emptyShoppingDraft(),
+          title: item.name,
+          category: item.category || 'pantry',
+          storeContext: 'supermarket',
+          quantityNeeded,
+          unit: item.unit || '',
+          quantityText:
+            quantityNeeded === null && item.packageSize && item.packageUnit
+              ? `عبوة ${item.packageSize} ${item.packageUnit}`
+              : '',
+          priority: item.state === 'out' || item.quantity === 0 ? 'high' : 'medium',
+          sourceType: 'inventory_low',
+          sourceInventoryItemId: item.id,
+          notes: `من الخزين (${item.location})`,
         });
       }
       setMessage(exists ? 'الصنف موجود بالفعل في المشتريات.' : `أُضيف «${item.name}» إلى قائمة المشتريات.`);
@@ -195,25 +219,7 @@ export function InventoryLibrary() {
         setMessage('لا توجد أصناف ناقصة أو منتهية حاليًا.');
         return;
       }
-      const currentTasks = await db.tasks.where('spaceId').equals('home').toArray();
-      const known = new Set(currentTasks.filter(task => !task.isCompleted).map(task => normalizeFoodText(task.title)));
-      let added = 0;
-      for (const item of shortages) {
-        const title = '🛒 ' + item.name;
-        const key = normalizeFoodText(title);
-        if (!known.has(key)) {
-          await saveTask({
-            id: crypto.randomUUID(),
-            spaceId: 'home',
-            title,
-            isCompleted: false,
-            priority: 'medium',
-            createdAt: new Date().toISOString()
-          });
-          known.add(key);
-          added++;
-        }
-      }
+      const { added } = await addShortagesFromInventoryToShopping(shortages, today);
       setMessage(
         added > 0
           ? `تمت إضافة ${added} أصناف ناقصة إلى قائمة المشتريات بنجاح.`

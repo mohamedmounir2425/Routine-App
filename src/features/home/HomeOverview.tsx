@@ -23,19 +23,32 @@ import {
 } from 'lucide-react';
 import { db } from '../../db/database';
 import type { LifeTask } from '../../types';
-import { toggleTaskCompletion, saveTask } from '../../db/taskQueries';
+import { toggleTaskCompletion } from '../../db/taskQueries';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { isHomeTaskDone, isShoppingTask } from './homeTasks';
-import { MEAL_TYPES, safeMediaUrl, normalizeFoodText, type Recipe } from './recipes/recipeModel';
+import { MEAL_TYPES, safeMediaUrl, type Recipe } from './recipes/recipeModel';
 import { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
 import { inventoryFlags, type InventoryItem } from './inventory/inventoryModel';
-import { parseShoppingTitle } from './tasks/HomeTasksView';
 import { toggleRecipeFavorite } from './recipes/recipeRepository';
 import { HomeCompactSearch } from './components/HomeInputs';
+import {
+  deriveShoppingState,
+  emptyShoppingDraft,
+  formatShoppingQuantityBadge,
+  parseShoppingTitle as parseStandaloneShoppingTitle,
+  type ShoppingItem,
+} from './shopping/shoppingModel';
+import {
+  addRecipeIngredientsToShopping,
+  migrateLegacyShoppingTasks,
+  saveShoppingItem,
+  toggleShoppingItemBought,
+} from './shopping/shoppingRepository';
 
 export function HomeOverview() {
   const { message: antMessage } = App.useApp();
   const [tasks, setTasks] = useState<LifeTask[]>([]);
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,13 +136,20 @@ export function HomeOverview() {
   }, [PIN_KEY]);
 
   useEffect(() => {
+    void migrateLegacyShoppingTasks();
     const subscription = liveQuery(async () => ({
       tasks: await db.tasks.where('spaceId').equals('home').toArray(),
+      shoppingItems: await db.shoppingItems.toArray(),
       recipes: await db.recipes.toArray(),
       inventory: await db.inventoryItems.toArray()
     })).subscribe({
       next: data => {
         setTasks(data.tasks);
+        setShoppingItems(
+          data.shoppingItems
+            .filter(item => !item.archivedAt)
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        );
         setRecipes(data.recipes);
         setInventory(data.inventory);
         setLoading(false);
@@ -142,20 +162,25 @@ export function HomeOverview() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Filter tasks
-  const allShoppingTasks = useMemo(
-    () => tasks.filter(task => isShoppingTask(task)),
-    [tasks]
-  );
+  // Filter shopping items
+  const allShoppingTasks = shoppingItems;
 
   const pendingShopping = useMemo(
-    () => allShoppingTasks.filter(task => !isHomeTaskDone(task, today)),
-    [allShoppingTasks, today]
+    () =>
+      allShoppingTasks.filter(item => {
+        const state = deriveShoppingState(item);
+        return state === 'needed' || state === 'partially_bought';
+      }),
+    [allShoppingTasks]
   );
 
   const completedShopping = useMemo(
-    () => allShoppingTasks.filter(task => isHomeTaskDone(task, today)),
-    [allShoppingTasks, today]
+    () =>
+      allShoppingTasks.filter(item => {
+        const state = deriveShoppingState(item);
+        return state === 'bought_pending_stock' || state === 'stocked';
+      }),
+    [allShoppingTasks]
   );
 
   // Backward compatibility: shopping = pendingShopping
@@ -242,12 +267,23 @@ export function HomeOverview() {
   const toggleTask = async (task: LifeTask) => {
     if (busy) return;
     setBusy(task.id);
-    const wasDone = isHomeTaskDone(task, today);
     try {
       await toggleTaskCompletion(task.id, today);
-      if (isShoppingTask(task)) {
-        antMessage.success(wasDone ? 'أُعيد الغرض إلى قائمة النواقص 🛒' : 'تم شطب الغرض من المشتريات ✅');
-      }
+    } catch {
+      antMessage.error('تعذر حفظ التغيير. حاول مرة أخرى.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const toggleShopItem = async (item: ShoppingItem) => {
+    if (busy) return;
+    setBusy(item.id);
+    try {
+      const updated = await toggleShoppingItemBought(item.id);
+      antMessage.success(
+        updated.isBought ? 'تم شطب الغرض من المشتريات ✅' : 'أُعيد الغرض إلى قائمة النواقص 🛒'
+      );
     } catch {
       antMessage.error('تعذر حفظ التغيير. حاول مرة أخرى.');
     } finally {
@@ -259,16 +295,15 @@ export function HomeOverview() {
     if (busy) return;
     setBusy('quick_shop');
     try {
-      await saveTask({
-        id: crypto.randomUUID(),
-        spaceId: 'home',
-        title: `🛒 ${text.replace(/^🛒\s*/, '')}`,
-        isCompleted: false,
-        priority: 'medium',
-        createdAt: new Date().toISOString()
+      const parsed = parseStandaloneShoppingTitle(text);
+      await saveShoppingItem({
+        ...emptyShoppingDraft(),
+        title: parsed.title,
+        quantityText: parsed.quantityText,
+        sourceType: 'manual',
       });
       setShoppingDraft('');
-      antMessage.success(`أُضيف «${text}» إلى المشتريات 🛒`);
+      antMessage.success(`أُضيف «${parsed.title}» إلى المشتريات 🛒`);
     } catch {
       antMessage.error('تعذر إضافة الغرض للمشتريات.');
     } finally {
@@ -318,25 +353,7 @@ export function HomeOverview() {
     }
     setBusy('ingredients');
     try {
-      const currentTasks = await db.tasks.where('spaceId').equals('home').toArray();
-      let added = 0;
-      for (const ing of recipe.ingredients) {
-        const title = `🛒 ${ing.name}${ing.quantity ? ` · ${ing.quantity}` : ''}`;
-        const exists = currentTasks.some(
-          t => !t.isCompleted && normalizeFoodText(t.title).includes(normalizeFoodText(ing.name))
-        );
-        if (!exists) {
-          await saveTask({
-            id: crypto.randomUUID(),
-            spaceId: 'home',
-            title,
-            isCompleted: false,
-            priority: 'medium',
-            createdAt: new Date().toISOString()
-          });
-          added++;
-        }
-      }
+      const { added } = await addRecipeIngredientsToShopping(recipe);
       if (added > 0) {
         antMessage.success(`تم نقل ${added} مقادير من «${recipe.title}» إلى المشتريات بنجاح 🛒`);
       } else {
@@ -700,25 +717,26 @@ export function HomeOverview() {
                 onScroll={updateShoppingScroll}
                 className="home-short-list-scrollable list-none p-0 m-0 max-h-[225px] overflow-y-auto ![scrollbar-width:none] ![-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:!hidden"
               >
-                {displayedShopping.map(task => {
-                  const parsed = parseShoppingTitle(task.title);
-                  const isDone = isHomeTaskDone(task, today);
+                {displayedShopping.map(item => {
+                  const qtyBadge = formatShoppingQuantityBadge(item);
+                  const state = deriveShoppingState(item);
+                  const isDone = item.isBought || state === 'stocked';
                   return (
                     <li
-                      key={task.id}
+                      key={item.id}
                       className={`home-short-list-item flex items-center p-[8px_2px] border-b border-solid border-b-home-border [transition:opacity_.15s_ease] [&:last-child]:[border-bottom:0] ${isDone ? 'is-task-done' : ''}`}
                     >
                       <HomeCompletion
                         checked={isDone}
-                        aria-label={isDone ? `إلغاء شراء ${parsed.name}` : `شراء ${parsed.name}`}
+                        aria-label={isDone ? `إلغاء شراء ${item.title}` : `شراء ${item.title}`}
                         disabled={!!busy}
-                        onChange={() => void toggleTask(task)}
+                        onChange={() => void toggleShopItem(item)}
                         title={isDone ? 'انقر لإلغاء الشطب' : 'انقر للشطب عند الشراء'}
                       />
                       <div className="home-short-list-item-content flex items-center justify-between gap-2 flex-1 min-w-0">
-                        <span className="home-short-item-title [.home-short-list-item.is-task-done_&]:line-through [.home-short-list-item.is-task-done_&]:opacity-[0.55] [.home-short-list-item.is-task-done_&]:text-home-muted text-[13px] font-semibold text-home-text overflow-hidden text-ellipsis whitespace-nowrap">{parsed.name}</span>
-                        {parsed.quantity && (
-                          <span className="home-shopping-qty-badge ms-auto shrink-0 text-[11px] font-bold p-[2px_8px] rounded-[6px] bg-home-raised border border-solid border-home-border text-home-accent">{parsed.quantity}</span>
+                        <span className="home-short-item-title [.home-short-list-item.is-task-done_&]:line-through [.home-short-list-item.is-task-done_&]:opacity-[0.55] [.home-short-list-item.is-task-done_&]:text-home-muted text-[13px] font-semibold text-home-text overflow-hidden text-ellipsis whitespace-nowrap">{item.title}</span>
+                        {qtyBadge && (
+                          <span className="home-shopping-qty-badge ms-auto shrink-0 text-[11px] font-bold p-[2px_8px] rounded-[6px] bg-home-raised border border-solid border-home-border text-home-accent">{qtyBadge}</span>
                         )}
                       </div>
                     </li>
