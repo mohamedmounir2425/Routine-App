@@ -1,90 +1,30 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
 import { SpaceContextBar } from './components/layout/SpaceContextBar';
-import { HomeDashboard } from './features/dashboard/HomeDashboard';
-import { TodayPage } from './features/today';
-import { ExerciseLibrary } from './features/exercises';
-import { PlannerPage, RoutineBuilderModal } from './features/planner';
-import { ProgressStats } from './features/stats';
-import { SettingsView } from './features/settings';
-import { WorkoutPlayer } from './features/player';
-import { SpacesPage } from './features/spaces/SpacesPage';
-import { SpaceTasksView } from './features/spaces/SpaceTasksView';
-import { SpacesOnboardingModal } from './features/spaces/components/SpacesOnboardingModal';
-import { WorshipSpace } from './features/worship/WorshipSpace';
-import { WorkSpace } from './features/work/WorkSpace';
-import { lazy, Suspense } from 'react';
-const HomeSpace = lazy(() => import('./features/home/HomeSpace').then(module => ({default:module.HomeSpace})));
-import { PlansSpace } from './features/plans/PlansSpace';
-import { GlobalProgressSpace } from './features/progress/GlobalProgressSpace';
 import { AuthModal } from './components/auth/AuthModal';
-import { LifeSpaceId } from './types/spaces';
-import { useReminderScheduler } from './app/useReminderScheduler';
+import { HealthProvider, useHealthIntegration } from './features/health/public';
+import { SpacesPage, SpacesOnboardingModal } from './features/spaces';
+import { SpaceBoundary } from './shared/ui/SpaceBoundary';
+import { UIProvider } from './shared/ui/UIProvider';
+import { useTranslation } from './i18n';
+import type { LifeSpaceId } from './types/spaces';
 import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigation';
 
+const HealthSpace = lazy(() => import('./features/health').then(module => ({ default: module.HealthSpace })));
+const HomeSpace = lazy(() => import('./features/home').then(module => ({ default: module.HomeSpace })));
+const WorkSpace = lazy(() => import('./features/work').then(module => ({ default: module.WorkSpace })));
+const WorshipSpace = lazy(() => import('./features/worship').then(module => ({ default: module.WorshipSpace })));
+const PlansSpace = lazy(() => import('./features/plans').then(module => ({ default: module.PlansSpace })));
+const GlobalProgressSpace = lazy(() => import('./features/progress').then(module => ({ default: module.GlobalProgressSpace })));
+const TodayPage = lazy(() => import('./features/today').then(module => ({ default: module.TodayPage })));
+const SettingsView = lazy(() => import('./features/settings').then(module => ({ default: module.SettingsView })));
+
 export function App() {
-  const isHomeSpace = useLocation().pathname.startsWith('/home');
-  const {
-    isLoading,
-    loadError,
-    isTvMode,
-    setIsTvMode,
-    exercises,
-    routines,
-    weeklySchedule,
-    workoutLogs,
-    settings,
-    todayRoutine,
-    isRestDay,
-    weeklyCompletion,
-    streakStats,
-    isRoutineBuilderOpen,
-    setIsRoutineBuilderOpen,
-    editingRoutine,
-    setEditingRoutine,
-    activeRoutine,
-    setActiveRoutine,
-    activeRoutineExercises,
-    setActiveRoutineExercises,
-    deferredPrompt,
-    theme,
-    handleToggleTheme,
-    handleSetTheme,
-    handleInstallPwa,
-    startRoutinePlayback,
-    handlePreviewSingleExercise,
-    handleFinishWorkout,
-    handleToggleFavorite,
-    handleAddExercise,
-    handleUpdateScheduleDay,
-    handleApplyPreset,
-    handleUpdateSettings,
-    handleSaveCustomRoutine,
-    handleDeleteCustomRoutine,
-    handleOpenCreateRoutine,
-    handleOpenEditRoutine,
-    loadAppData,
-    miniRescueRoutine,
-  } = useAppController();
-
-  // Background reminder scheduler (workout & desk breaks)
-  useReminderScheduler(settings, streakStats.hasWorkedOutToday);
-
-  // Contextual Left/Right Swipe Navigation (Root tabs & Nested Space tabs)
-  const isWorkoutActive = !!(activeRoutine && activeRoutineExercises.length > 0);
-  useContextualSwipeNavigation({
-    isWorkoutActive,
-  });
-
-  const handleCompleteOnboarding = (enabledSpaces: LifeSpaceId[]) => {
-    handleUpdateSettings({
-      ...settings,
-      enabledSpaces,
-      hasCompletedOnboarding: true,
-    });
-  };
-
+  const app = useAppController();
+  const { language } = useTranslation();
+  const { loadError, isLoading, loadAppData } = app;
   if (loadError) {
     return <div role="alert" className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center gap-4 p-8 text-center">
       <h1 className="text-xl font-bold">تعذر فتح بياناتك / Unable to load your data</h1>
@@ -101,11 +41,28 @@ export function App() {
             <span className="text-2xl animate-pulse">🧘‍♂️</span>
           </div>
         </div>
-        <h2 className="text-xl font-bold text-white font-['Tajawal']">جاري إعداد روتينك اليومي...</h2>
-        <p className="text-xs text-slate-400 mt-1">تجهيز التمارين وقاعدة البيانات المحلية</p>
+        <h2 className="text-xl font-bold text-white font-['Tajawal']">جارٍ تجهيز يومك…</h2>
+        <p className="text-xs text-slate-400 mt-1">لحظات وتكون مساحاتك جاهزة.</p>
       </div>
     );
   }
+
+
+  return <UIProvider mode={app.theme} language={language}>
+    <HealthProvider settings={app.settings} isTvMode={app.isTvMode}><AppContent app={app} /></HealthProvider>
+  </UIProvider>;
+}
+
+function AppContent({ app }: { app: ReturnType<typeof useAppController> }) {
+  const location = useLocation();
+  const isHomeSpace = location.pathname.startsWith('/home');
+  const { settings, isTvMode, setIsTvMode, theme, handleToggleTheme, handleSetTheme,
+    handleInstallPwa, deferredPrompt, handleUpdateSettings, loadAppData } = app;
+  const { currentStreak, todayRoutine, startRoutinePlayback, isWorkoutActive } = useHealthIntegration();
+  useContextualSwipeNavigation({ isWorkoutActive });
+  const handleCompleteOnboarding = (enabledSpaces: LifeSpaceId[]) => {
+    void handleUpdateSettings({ ...settings, enabledSpaces, hasCompletedOnboarding: true });
+  };
 
   return (
     <div className={`min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950 font-['Tajawal'] relative overflow-x-hidden ${isHomeSpace ? 'home-app' : ''} ${isTvMode ? 'tv-mode text-lg' : ''}`}>
@@ -139,7 +96,7 @@ export function App() {
 
       {/* Top Navbar */}
       <Navbar
-        streakCount={streakStats.currentStreak}
+        streakCount={currentStreak}
         isTvMode={isTvMode}
         onToggleTvMode={() => setIsTvMode(!isTvMode)}
         theme={theme}
@@ -151,7 +108,7 @@ export function App() {
 
       {/* Main Routed Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-28 md:pb-12 relative z-10">
-        <Routes>
+        <SpaceBoundary key={location.pathname.split('/')[1]}><Suspense fallback={<p role="status" className="p-6 text-center">جارٍ تحميل المساحة…</p>}><Routes>
           {/* Canonical Today Route */}
           <Route path="/" element={<Navigate to="/today" replace />} />
           <Route
@@ -165,7 +122,7 @@ export function App() {
             element={
               <SpacesPage
                 enabledSpaces={settings.enabledSpaces}
-                streakCount={streakStats.currentStreak}
+                streakCount={currentStreak}
                 todayRoutineName={todayRoutine?.name}
                 onStartRoutine={() => todayRoutine && startRoutinePlayback(todayRoutine)}
               />
@@ -175,65 +132,13 @@ export function App() {
           {/* 🕌 Worship Space */}
           <Route path="/worship/*" element={<WorshipSpace />} />
 
-          {/* 🏋️ Health Space */}
-          <Route
-            path="/health"
-            element={
-              <HomeDashboard
-                todayRoutine={todayRoutine}
-                isRestDay={isRestDay}
-                streakStats={streakStats}
-                miniRescueRoutine={miniRescueRoutine}
-                weeklyCompletion={weeklyCompletion}
-                exercises={exercises}
-                onStartRoutine={(r) => startRoutinePlayback(r)}
-              />
-            }
-          />
-          <Route
-            path="/health/exercises"
-            element={
-              <ExerciseLibrary
-                exercises={exercises}
-                onToggleFavorite={handleToggleFavorite}
-                onAddExercise={handleAddExercise}
-                onPreviewExerciseInPlayer={handlePreviewSingleExercise}
-              />
-            }
-          />
-          <Route
-            path="/health/plans"
-            element={
-              <PlannerPage
-                exercises={exercises}
-                weeklySchedule={weeklySchedule}
-                routines={routines}
-                onStartRoutine={(r) => startRoutinePlayback(r)}
-                onUpdateScheduleDay={handleUpdateScheduleDay}
-                onApplyPreset={handleApplyPreset}
-                onCreateCustomRoutine={handleOpenCreateRoutine}
-                onEditRoutine={handleOpenEditRoutine}
-                onDeleteRoutine={handleDeleteCustomRoutine}
-              />
-            }
-          />
-          <Route
-            path="/health/progress"
-            element={
-              <ProgressStats
-                streakStats={streakStats}
-                workoutLogs={workoutLogs}
-              />
-            }
-          />
-          <Route path="/health/*" element={<Navigate to="/health" replace />} />
-          <Route path="/health/tasks" element={<SpaceTasksView spaceId="health" />} />
+          <Route path="/health/*" element={<HealthSpace />} />
 
           {/* 💼 Work Space */}
           <Route path="/work/*" element={<WorkSpace />} />
 
           {/* 🏠 Home Space */}
-          <Route path="/home/*" element={<Suspense fallback={<p role="status" className="p-6">جارٍ تحميل مساحة المنزل…</p>}><HomeSpace /></Suspense>} />
+          <Route path="/home/*" element={<HomeSpace />} />
 
           {/* 🎯 Plans Space */}
           <Route path="/plans/*" element={<PlansSpace />} />
@@ -264,20 +169,8 @@ export function App() {
             }
           />
           <Route path="*" element={<Navigate to="/today" replace />} />
-        </Routes>
+        </Routes></Suspense></SpaceBoundary>
       </main>
-
-      {/* Routine Builder Modal */}
-      <RoutineBuilderModal
-        isOpen={isRoutineBuilderOpen}
-        onClose={() => {
-          setIsRoutineBuilderOpen(false);
-          setEditingRoutine(null);
-        }}
-        onSave={handleSaveCustomRoutine}
-        availableExercises={exercises}
-        initialRoutine={editingRoutine}
-      />
 
       {/* Spaces First-Launch Onboarding Modal */}
       <SpacesOnboardingModal
@@ -288,27 +181,6 @@ export function App() {
       {/* Cloud Authentication Modal */}
       <AuthModal />
 
-      {/* Active Workout Player Modal / Screen */}
-      {activeRoutine && activeRoutineExercises.length > 0 && (
-        <WorkoutPlayer
-          routine={activeRoutine}
-          exercises={activeRoutineExercises}
-          allAvailableExercises={exercises}
-          defaultRestSeconds={settings.defaultRestSeconds}
-          soundEnabled={settings.soundBeepsEnabled}
-          voiceCoachEnabled={settings.voiceCoachEnabled}
-          isTvModeInitial={isTvMode}
-          workoutVideoAutoplay={settings.workoutVideoAutoplay ?? true}
-          workoutVideoMuted={settings.workoutVideoMuted ?? true}
-          workoutVideoLoop={settings.workoutVideoLoop ?? true}
-          defaultViewMode={settings.workoutDefaultViewMode || 'video'}
-          onClose={() => {
-            setActiveRoutine(null);
-            setActiveRoutineExercises([]);
-          }}
-          onFinishWorkout={handleFinishWorkout}
-        />
-      )}
     </div>
   );
 }
