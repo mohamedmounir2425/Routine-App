@@ -1,8 +1,9 @@
 import { db, getUserSettings, syncSettingsInBackground } from '../../db/database';
 import { saveTask, syncTaskInBackground } from '../../db/taskQueries';
+import { addItemToDayPlan, buildRoutineOccurrenceRefKey, buildTaskRefKey } from '../../db/dayPlanQueries';
 import { LIFE_SPACES_CONFIG } from '../../config/spacesConfig';
-import { LifeTask, LifeSpaceId } from '../../types';
-import { parseLocalDate } from '../../utils/dateUtils';
+import { DayPlan, LifeTask, LifeSpaceId } from '../../types';
+import { getLocalDateString, parseLocalDate } from '../../utils/dateUtils';
 import { DEFAULT_TODAY_PREFERENCES, TodayPreferences, UserSettings } from '../../types';
 import { saveTodayPreferences } from './todayPreferencesService';
 export { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
@@ -16,6 +17,30 @@ export function settingsForVisibleTask(settings: UserSettings, task: LifeTask): 
   if (task.spaceId === 'plans') prefs.plansOptions = { ...prefs.plansOptions, showDailyActions: true };
   const enabled = settings.enabledSpaces || LIFE_SPACES_CONFIG.filter(space => space.defaultEnabled).map(space => space.id);
   return { ...settings, enabledSpaces: [...new Set([...enabled, task.spaceId])], todayPreferences: prefs };
+}
+
+export async function selectTaskForToday(
+  task: LifeTask | string,
+  date = getLocalDateString(),
+  options?: { isEssential?: boolean }
+): Promise<DayPlan> {
+  const resolved = typeof task === 'string' ? await db.tasks.get(task) : task;
+  if (!resolved) throw new Error('المهمة غير موجودة.');
+  if (resolved.isRecurring) {
+    return addItemToDayPlan(date, {
+      refKey: buildRoutineOccurrenceRefKey(resolved.id, date),
+      sourceType: 'routine_occurrence',
+      taskId: resolved.id,
+      occurrenceDate: date,
+      isEssential: options?.isEssential,
+    });
+  }
+  return addItemToDayPlan(date, {
+    refKey: buildTaskRefKey(resolved.id),
+    sourceType: 'task',
+    taskId: resolved.id,
+    isEssential: options?.isEssential,
+  });
 }
 
 export async function saveEnabledSpaces(ids: LifeSpaceId[]): Promise<TodayPreferences> {
@@ -34,7 +59,10 @@ export async function saveEnabledSpaces(ids: LifeSpaceId[]): Promise<TodayPrefer
   return prefs;
 }
 
-export async function saveSpaceTask(task: LifeTask, options?: { revealInToday?: boolean }): Promise<LifeTask> {
+export async function saveSpaceTask(
+  task: LifeTask,
+  options?: { revealInToday?: boolean; selectForToday?: boolean; targetDateStr?: string }
+): Promise<LifeTask> {
   if (!LIFE_SPACES_CONFIG.some(space => space.id === task.spaceId)) throw new Error('اختر مساحة صحيحة للمهمة.');
   if (!task.title.trim()) throw new Error('اكتب عنوان المهمة.');
   if (task.estimatedMinutes !== undefined && (!Number.isFinite(task.estimatedMinutes) || task.estimatedMinutes < 1 || task.estimatedMinutes > 1440)) throw new Error('المدة لازم تكون بين دقيقة و١٤٤٠ دقيقة.');
@@ -68,6 +96,9 @@ export async function saveSpaceTask(task: LifeTask, options?: { revealInToday?: 
   if (updatedSettings?.todayPreferences) {
     saveTodayPreferences(updatedSettings.todayPreferences);
     syncSettingsInBackground(updatedSettings);
+  }
+  if (options?.selectForToday) {
+    await selectTaskForToday(updated, options.targetDateStr || getLocalDateString());
   }
   return updated;
 }

@@ -2,6 +2,7 @@ import { DayPlan, LifeTask } from '../../types';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { TodayItem } from './todayTypes';
 import { isSpaceTaskDue } from '../../shared/tasks/taskCalendar';
+import { normalizeDayPlan } from '../../db/dayPlanQueries';
 
 export type DecisionReason = 'deadline_risk' | 'deadline_today' | 'prayer_window' | 'chosen' | 'must' | 'current' | 'goal' | 'priority' | 'flexible';
 export interface DayDecision {
@@ -21,20 +22,32 @@ export function decideToday(items: TodayItem[], tasks: LifeTask[], plan: DayPlan
   const today = getLocalDateString(now);
   const end = new Date(now); end.setHours(23, 59, 59, 999);
   const byId = new Map(tasks.map(task => [task.id, task]));
-  const picked = new Set(plan?.date === today ? plan.essentialTaskIds : []);
+  const normalizedPlan = plan?.date === today ? normalizeDayPlan(plan) : undefined;
+  const pickedTaskIds = new Set<string>(normalizedPlan ? normalizedPlan.essentialTaskIds : []);
+  const selectedRefKeys = new Set<string>();
+  if (normalizedPlan?.selectedItems) {
+    for (const sel of normalizedPlan.selectedItems) {
+      selectedRefKeys.add(sel.refKey);
+      if (sel.sourceType === 'task' || sel.sourceType === 'routine_occurrence') {
+        pickedTaskIds.add(sel.taskId);
+      }
+    }
+  }
   const sourceItems = [...items];
   // Presentation filters must never hide a hard deadline or a deliberately chosen outcome.
   for (const task of tasks) {
     if (sourceItems.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
     const deadline = task.deadlineAt ? new Date(task.deadlineAt) : undefined;
-    const critical = (deadline && deadline <= end) || picked.has(task.id) || (task.commitment === 'must' && isSpaceTaskDue(task, today));
+    const isDeferredOrUnavailable = Boolean(task.isSomeday || (task.availableFrom && task.availableFrom > today));
+    const critical = (deadline && deadline <= end) || pickedTaskIds.has(task.id) || (!isDeferredOrUnavailable && task.commitment === 'must' && isSpaceTaskDue(task, today));
     if (!critical) continue;
     const completed = task.isRecurring ? !!task.recurringCompletionDates?.includes(today) : task.isCompleted;
-    if (completed && !picked.has(task.id) && task.completedAt && getLocalDateString(new Date(task.completedAt)) !== today) continue;
-    sourceItems.push({ id: `essential_${task.id}_${today}`, sourceId: task.id, title: task.title, space: task.spaceId,
+    if (completed && !pickedTaskIds.has(task.id) && task.completedAt && getLocalDateString(new Date(task.completedAt)) !== today) continue;
+    sourceItems.push({ id: `essential_${task.id}_${today}`, sourceId: task.id, refKey: task.isRecurring ? `routine_occurrence:${task.id}:${today}` : `task:${task.id}`, title: task.title, space: task.spaceId,
       type: task.spaceId === 'work' ? 'work_task' : task.spaceId === 'health' ? 'health_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : 'home_task',
       scheduledTime: task.scheduledTime, estimatedMinutes: task.estimatedMinutes, priority: task.priority,
       timeTag: completed ? 'completed' : 'flexible', status: completed ? 'completed' : 'pending', isCompleted: completed,
+      isSelectedForToday: pickedTaskIds.has(task.id),
       actionType: 'toggle_task', sortKey: 0 });
   }
   const decisions: DayDecision[] = sourceItems.map(item => {
@@ -49,16 +62,17 @@ export function decideToday(items: TodayItem[], tasks: LifeTask[], plan: DayPlan
       const dependency = byId.get(id);
       return !dependency || (dependency.isRecurring ? !dependency.recurringCompletionDates?.includes(today) : !dependency.isCompleted);
     }).map(id => byId.get(id)?.title || 'مهمة مرتبطة غير متاحة');
-    const blocked = task?.status === 'WAITING' || blockers.length > 0;
-    const chosen = picked.has(item.sourceId);
-    const essential = deadlineToday || chosen || task?.commitment === 'must' || item.type === 'prayer';
+    const chosen = pickedTaskIds.has(item.sourceId) || (item.refKey ? selectedRefKeys.has(item.refKey) : false) || Boolean(item.isSelectedForToday);
+    const isDeferredOrUnavailable = Boolean(task?.isSomeday || (task?.availableFrom && task.availableFrom > today));
+    const blocked = task?.status === 'WAITING' || blockers.length > 0 || (isDeferredOrUnavailable && !chosen && !deadlineToday);
+    const essential = deadlineToday || chosen || (!isDeferredOrUnavailable && task?.commitment === 'must') || item.type === 'prayer';
     let reason: DecisionReason = 'flexible';
     let score = 100;
     if (deadlineRisk) { reason = 'deadline_risk'; score = 10000; }
     else if (item.type === 'prayer' && item.timeTag === 'now') { reason = 'prayer_window'; score = 9500; }
     else if (deadlineToday) { reason = 'deadline_today'; score = 9000; }
     else if (chosen) { reason = 'chosen'; score = 7500; }
-    else if (task?.commitment === 'must') { reason = 'must'; score = 7000; }
+    else if (!isDeferredOrUnavailable && task?.commitment === 'must') { reason = 'must'; score = 7000; }
     else if (item.timeTag === 'now') { reason = 'current'; score = 6000; }
     else if (task?.planId || task?.goalImpact === 'high' || item.type === 'plan_action') { reason = 'goal'; score = 4500; }
     else if (item.priority === 'high') { reason = 'priority'; score = 3000; }

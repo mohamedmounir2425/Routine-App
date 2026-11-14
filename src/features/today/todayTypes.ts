@@ -43,6 +43,7 @@ export type TodayActionType =
 export interface TodayItem {
   id: string; // Unique instance ID for today (e.g. 'prayer_dhuhr_2026-09-07')
   sourceId: string; // ID of the underlying entity (taskId, projectId, routineId, prayer name)
+  refKey?: string; // Canonical DayPlanSelectedItem key (e.g. 'task:123', 'project_step:p1:s1')
   type: TodayItemType;
   space: LifeSpaceId;
   title: string;
@@ -55,6 +56,10 @@ export interface TodayItem {
   status: TodayItemStatus;
   isCompleted: boolean;
   completedAt?: string;
+  isSelectedForToday?: boolean;
+  isEssentialForToday?: boolean;
+  selectionPosition?: number;
+  suggestionReason?: string;
   actionType: TodayActionType;
   actionPayload?: Record<string, any>;
   sortKey: number; // Deterministic sorting rank
@@ -64,6 +69,7 @@ export type TodaySectionId =
   | 'now'
   | 'overdue'
   | 'scheduled'
+  | 'selected'
   | 'high_priority'
   | 'next_actions'
   | 'tasks'
@@ -93,6 +99,7 @@ export interface TodayAggregationResult {
   dateStr: string; // YYYY-MM-DD
   items: TodayItem[];
   sections: TodaySection[];
+  suggestions?: TodayItem[];
   nextUp: TodayItem | null;
   totalCount: number;
   completedCount: number;

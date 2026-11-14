@@ -2,37 +2,46 @@ import { db } from '../../db/database';
 import { getTaskTimeTag } from './todayScheduling';
 import { isSpaceTaskDue } from './spaceTaskService';
 import { getEnabledSpaceConfigs } from '../../config/spacesConfig';
-import { 
-  TodayItem, 
-  TodayAggregationResult, 
-  TodaySection, 
+import {
+  TodayItem,
+  TodayAggregationResult,
+  TodaySection,
   TodaySectionId,
   TodayItemStatus,
   TodayItemTimeTag,
   TodayItemType,
-  ActivePlanSummary
+  ActivePlanSummary,
 } from './todayTypes';
-import { 
-  LifeSpaceId, 
-  TodayPreferences, 
+import {
+  LifeSpaceId,
+  TodayPreferences,
   DEFAULT_TODAY_PREFERENCES,
-  TaskPriority
+  TaskPriority,
+  LifeTask,
+  DayPlanSelectedItem,
 } from '../../types';
 import { getLocalDateString, getTodayDayOfWeek, isPastDate, parseLocalDate } from '../../utils/dateUtils';
 import { calculatePlanProgress, getPlanMilestones } from '../../db/goalPlanQueries';
 import { getActiveProjects } from '../../db/projectQueries';
 import { getSchedulesForDay } from '../../db/workoutScheduleQueries';
 import { getTodayPlanStatus } from '../../db/planQueries';
-import { 
-  calculatePrayerTimes, 
-  getSavedLocation, 
-  getNextPrayerInfo, 
-  PrayerTimesResult 
+import {
+  getDayPlan,
+  buildTaskRefKey,
+  buildProjectStepRefKey,
+  buildRoutineOccurrenceRefKey,
+} from '../../db/dayPlanQueries';
+import { isShoppingTask } from '../home/public';
+import {
+  calculatePrayerTimes,
+  getSavedLocation,
+  getNextPrayerInfo,
+  PrayerTimesResult,
 } from '../worship/public';
-import { 
-  isAzkarCategoryCompletedToday, 
-  getDailyPrayersState, 
-  getQuranDailyStatus 
+import {
+  isAzkarCategoryCompletedToday,
+  getDailyPrayersState,
+  getQuranDailyStatus,
 } from '../../db/worshipQueries';
 
 /**
@@ -49,17 +58,19 @@ function parseHHmmToMinutes(timeStr?: string): number {
  * 1. NOW            -> 10,000 + minutes
  * 2. OVERDUE        -> 20,000 + minutes
  * 3. SCHEDULED      -> 30,000 + minutes (Chronological by scheduledTime)
- * 4. HIGH PRIORITY  -> 40,000
- * 5. FLEXIBLE       -> 50,000
- * 6. PLAN ACTIONS   -> 60,000
- * 7. COMPLETED      -> 90,000 + minutes
+ * 4. SELECTED       -> 35,000 + position
+ * 5. HIGH PRIORITY  -> 40,000
+ * 6. FLEXIBLE       -> 50,000
+ * 7. PLAN ACTIONS   -> 60,000
+ * 8. COMPLETED      -> 90,000 + minutes
  */
 function computeTodaySortKey(
   timeTag: TodayItemTimeTag,
   isCompleted: boolean,
   priority?: TaskPriority,
   itemType?: TodayItemType,
-  scheduledTime?: string
+  scheduledTime?: string,
+  selectionPosition?: number
 ): number {
   const minutes = parseHHmmToMinutes(scheduledTime);
 
@@ -77,6 +88,10 @@ function computeTodaySortKey(
 
   if (timeTag === 'scheduled' || (scheduledTime && timeTag !== 'flexible')) {
     return 30000 + minutes;
+  }
+
+  if (selectionPosition !== undefined) {
+    return 35000 + selectionPosition;
   }
 
   if (priority === 'high') {
@@ -100,6 +115,20 @@ function deriveItemStatus(isCompleted: boolean, timeTag: TodayItemTimeTag): Toda
   return 'pending';
 }
 
+function hasHardDeadlineDueOrOverdue(task: LifeTask, targetDateStr: string): boolean {
+  if (!task.deadlineAt) return false;
+  const parsed = new Date(task.deadlineAt);
+  if (!Number.isFinite(parsed.getTime())) return false;
+  return getLocalDateString(parsed) <= targetDateStr;
+}
+
+function isWaitingFollowUpDue(task: LifeTask, targetDateStr: string): boolean {
+  return (
+    task.status === 'WAITING' &&
+    Boolean(task.waitingContext?.followUpDate && task.waitingContext.followUpDate <= targetDateStr)
+  );
+}
+
 /**
  * Pure/read aggregation engine that aggregates all life spaces into a normalized TodayItem feed.
  * Does NOT mutate database records and does NOT create a Dexie today table.
@@ -113,9 +142,54 @@ export async function aggregateTodayFeed(
   const targetDateStr = options?.customDateStr || getLocalDateString();
   const requested = options?.preferences || DEFAULT_TODAY_PREFERENCES;
   const settings = await db.settings.get('current_settings');
-  const enabled = new Set(getEnabledSpaceConfigs(settings?.enabledSpaces).map(space => space.id));
-  const prefs = { ...requested, showWorship: requested.showWorship && enabled.has('worship'), showHealth: requested.showHealth && enabled.has('health'), showWork: requested.showWork && enabled.has('work'), showHome: requested.showHome && enabled.has('home'), showPlans: requested.showPlans && enabled.has('plans') };
+  const enabled = new Set(getEnabledSpaceConfigs(settings?.enabledSpaces).map((space) => space.id));
+  const prefs = {
+    ...requested,
+    showWorship: requested.showWorship && enabled.has('worship'),
+    showHealth: requested.showHealth && enabled.has('health'),
+    showWork: requested.showWork && enabled.has('work'),
+    showHome: requested.showHome && enabled.has('home'),
+    showPlans: requested.showPlans && enabled.has('plans'),
+  };
   const isTargetToday = targetDateStr === getLocalDateString();
+
+  const dayPlan = await getDayPlan(targetDateStr);
+  const selectedItems = dayPlan?.selectedItems || [];
+  const selectedByRefKey = new Map<string, DayPlanSelectedItem>(selectedItems.map((item) => [item.refKey, item]));
+  const selectedTaskMap = new Map<string, DayPlanSelectedItem>();
+  const selectedStepsByProject = new Map<string, DayPlanSelectedItem[]>();
+
+  for (const item of selectedItems) {
+    if (item.sourceType === 'task' || item.sourceType === 'routine_occurrence') {
+      selectedTaskMap.set(item.taskId, item);
+    } else if (item.sourceType === 'project_step') {
+      const list = selectedStepsByProject.get(item.projectId) || [];
+      list.push(item);
+      selectedStepsByProject.set(item.projectId, list);
+    }
+  }
+
+  const isTaskEligibleForAutoToday = (task: LifeTask): boolean => {
+    if (selectedTaskMap.has(task.id)) return true;
+    if (hasHardDeadlineDueOrOverdue(task, targetDateStr)) return true;
+    if (isShoppingTask(task)) return false;
+    if (task.isSomeday === true) return false;
+    if (task.availableFrom && task.availableFrom > targetDateStr) return false;
+    if (task.status === 'WAITING') {
+      return isWaitingFollowUpDue(task, targetDateStr);
+    }
+    if (!isSpaceTaskDue(task, targetDateStr)) return false;
+    // Undated non-recurring Home tasks stay in Home Ready / Suggestions unless explicitly selected
+    if (task.spaceId === 'home' && !task.isRecurring && !task.dueDate && !task.deadlineAt) {
+      return false;
+    }
+    if (task.isRecurring) return true;
+    if (!task.dueDate) return true;
+    return task.dueDate === targetDateStr || isPastDate(task.dueDate);
+  };
+
+  const buildTaskRef = (task: LifeTask) =>
+    task.isRecurring ? buildRoutineOccurrenceRefKey(task.id, targetDateStr) : buildTaskRefKey(task.id);
 
   const rawItems: TodayItem[] = [];
 
@@ -161,13 +235,10 @@ export async function aggregateTodayFeed(
           timeTag = 'completed';
         } else if (isTargetToday) {
           if (nowMinutes >= pMinutes && nowMinutes < nextMinutes) {
-            // Currently within this prayer's active window
             timeTag = 'now';
           } else if (nextPrayerInfo.id === p.id && !nextPrayerInfo.isTomorrow && nextPrayerInfo.diffMinutes <= 20) {
-            // Approaching within 20 mins
             timeTag = 'now';
           } else if (nowMinutes >= nextMinutes) {
-            // Window has passed and not prayed
             timeTag = 'overdue';
           } else {
             timeTag = 'scheduled';
@@ -297,8 +368,8 @@ export async function aggregateTodayFeed(
         type: 'quran',
         space: 'worship',
         title: 'ورد القرآن الكريم اليومي',
-        subtitle: quran.isCompleted 
-          ? `تم إتمام الورد (${quran.pagesRead}/${quran.targetPages} صفحة) ✓` 
+        subtitle: quran.isCompleted
+          ? `تم إتمام الورد (${quran.pagesRead}/${quran.targetPages} صفحة) ✓`
           : `الهدف اليومي: ${quran.targetPages} صفحات (قرأت ${quran.pagesRead}) · الفاصل: ${quran.bookmarkSurah} ص ${quran.bookmarkPage}`,
         categoryLabel: `${quran.bookmarkSurah} · ص ${quran.bookmarkPage}`,
         estimatedMinutes: 15,
@@ -307,11 +378,11 @@ export async function aggregateTodayFeed(
         status: quranStatus,
         isCompleted: quran.isCompleted,
         actionType: 'open_quran',
-        actionPayload: { 
-          pagesRead: quran.pagesRead, 
+        actionPayload: {
+          pagesRead: quran.pagesRead,
           targetPages: quran.targetPages,
           bookmarkSurah: quran.bookmarkSurah,
-          bookmarkPage: quran.bookmarkPage 
+          bookmarkPage: quran.bookmarkPage,
         },
         sortKey: quranSortKey,
       });
@@ -319,11 +390,7 @@ export async function aggregateTodayFeed(
 
     // D. Worship Activities (LifeTask with spaceId === 'worship')
     const worshipTasks = await db.tasks.where('spaceId').equals('worship').toArray();
-    const relevantWorshipTasks = worshipTasks.filter((t) => {
-      if (t.isRecurring) return true;
-      if (!t.dueDate) return true;
-      return t.dueDate === targetDateStr || isPastDate(t.dueDate);
-    });
+    const relevantWorshipTasks = worshipTasks.filter((t) => isTaskEligibleForAutoToday(t));
 
     for (const t of relevantWorshipTasks) {
       const isDoneToday = t.isRecurring
@@ -352,12 +419,14 @@ export async function aggregateTodayFeed(
         timeTag = 'overdue';
       }
 
+      const sel = selectedTaskMap.get(t.id);
       const status = deriveItemStatus(isDoneToday, timeTag);
-      const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, 'dhikr', t.scheduledTime);
+      const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, 'dhikr', t.scheduledTime, sel?.position);
 
       rawItems.push({
         id: `task_worship_${t.id}_${targetDateStr}`,
         sourceId: t.id,
+        refKey: buildTaskRef(t),
         type: 'worship_task',
         space: 'worship',
         title: t.title,
@@ -368,6 +437,9 @@ export async function aggregateTodayFeed(
         timeTag,
         status,
         isCompleted: isDoneToday,
+        isSelectedForToday: Boolean(sel),
+        isEssentialForToday: Boolean(sel?.isEssential),
+        selectionPosition: sel?.position,
         actionType: 'toggle_task',
         actionPayload: { taskId: t.id, targetDateStr },
         sortKey,
@@ -496,22 +568,17 @@ export async function aggregateTodayFeed(
   if (prefs.showWork) {
     const workTasks = await db.tasks.where('spaceId').equals('work').toArray();
 
-    // Filter relevant for target date: recurring, due today, overdue, or unscheduled
-    let relevantWorkTasks = workTasks.filter((t) => {
-      if (!isSpaceTaskDue(t, targetDateStr)) return false;
-      if (t.isRecurring) return true;
-      if (!t.dueDate) return true;
-      return t.dueDate === targetDateStr || isPastDate(t.dueDate);
-    });
+    let relevantWorkTasks = workTasks.filter((t) => isTaskEligibleForAutoToday(t));
 
     if (prefs.workOptions?.top3Only) {
-      // Sort high priority first and take top 3
       relevantWorkTasks = relevantWorkTasks
         .sort((a, b) => {
+          const aSel = selectedTaskMap.has(a.id) || hasHardDeadlineDueOrOverdue(a, targetDateStr) ? 10 : 0;
+          const bSel = selectedTaskMap.has(b.id) || hasHardDeadlineDueOrOverdue(b, targetDateStr) ? 10 : 0;
           const priorityScore: Record<TaskPriority, number> = { high: 3, medium: 2, low: 1 };
-          return (priorityScore[b.priority] || 1) - (priorityScore[a.priority] || 1);
+          return bSel + (priorityScore[b.priority] || 1) - (aSel + (priorityScore[a.priority] || 1));
         })
-        .slice(0, 3);
+        .slice(0, Math.max(3, relevantWorkTasks.filter((t) => selectedTaskMap.has(t.id) || hasHardDeadlineDueOrOverdue(t, targetDateStr)).length));
     }
 
     const now = new Date();
@@ -544,37 +611,78 @@ export async function aggregateTodayFeed(
         timeTag = 'overdue';
       }
 
+      const sel = selectedTaskMap.get(t.id);
       const status = deriveItemStatus(isDoneToday, timeTag);
-      const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, 'work_task', t.scheduledTime);
+      const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, 'work_task', t.scheduledTime, sel?.position);
 
       rawItems.push({
         id: `task_work_${t.id}_${targetDateStr}`,
         sourceId: t.id,
+        refKey: buildTaskRef(t),
         type: 'work_task',
         space: 'work',
         title: t.title,
-        subtitle: t.description || 'مهمة عمل يومية',
+        subtitle:
+          t.status === 'WAITING' && t.waitingContext?.waitingOn
+            ? `متابعة مع: ${t.waitingContext.waitingOn}`
+            : t.description || 'مهمة عمل يومية',
         scheduledTime: t.scheduledTime,
         estimatedMinutes: t.estimatedMinutes,
         priority: t.priority,
         timeTag,
         status,
         isCompleted: isDoneToday,
+        isSelectedForToday: Boolean(sel),
+        isEssentialForToday: Boolean(sel?.isEssential),
+        selectionPosition: sel?.position,
         actionType: 'toggle_task',
         actionPayload: { taskId: t.id, targetDateStr },
         sortKey,
       });
     }
 
-    // Work Projects: Surface Next Action only
-    const activeWorkProjects = await getActiveProjects('work');
-    for (const proj of activeWorkProjects) {
-      if (proj.nextActionTitle && proj.nextActionId) {
+    // Work Projects: Surface explicitly selected steps or Next Action for in_progress projects only
+    const allWorkProjects = await db.projects.toArray();
+    const workProjects = allWorkProjects.filter((p) => (p.spaceId || 'home') === 'work');
+    for (const proj of workProjects) {
+      const selectedForProj = selectedStepsByProject.get(proj.id);
+      if (selectedForProj && selectedForProj.length > 0) {
+        for (const sel of selectedForProj) {
+          const step = (proj.steps || []).find((s) => s.id === sel.stepId);
+          if (!step) continue;
+          const isStepDone = Boolean(step.isCompleted);
+          const timeTag: TodayItemTimeTag = isStepDone ? 'completed' : 'flexible';
+          const status = deriveItemStatus(isStepDone, timeTag);
+          const sortKey = computeTodaySortKey(timeTag, isStepDone, 'high', 'work_task', undefined, sel.position);
+          rawItems.push({
+            id: `work_proj_${proj.id}_${step.id}`,
+            sourceId: proj.id,
+            refKey: sel.refKey,
+            type: 'project_action',
+            space: 'work',
+            title: step.title,
+            subtitle: `مشروع عمل: ${proj.title}`,
+            categoryLabel: proj.title,
+            priority: 'high',
+            timeTag,
+            status,
+            isCompleted: isStepDone,
+            completedAt: step.completedAt,
+            isSelectedForToday: true,
+            isEssentialForToday: Boolean(sel.isEssential),
+            selectionPosition: sel.position,
+            actionType: 'complete_project_step',
+            actionPayload: { projectId: proj.id, stepId: step.id },
+            sortKey,
+          });
+        }
+      } else if (proj.status === 'in_progress' && proj.nextActionTitle && proj.nextActionId) {
+        const refKey = buildProjectStepRefKey(proj.id, proj.nextActionId);
         const sortKey = computeTodaySortKey('flexible', false, 'high', 'work_task');
-
         rawItems.push({
           id: `work_proj_${proj.id}_${proj.nextActionId}`,
           sourceId: proj.id,
+          refKey,
           type: 'project_action',
           space: 'work',
           title: proj.nextActionTitle,
@@ -596,16 +704,49 @@ export async function aggregateTodayFeed(
   // 4. HOME SPACE AGGREGATION
   // ==========================================
   if (prefs.showHome) {
-    // A. Active Home Projects (Surfacing Next Action only)
-    const activeProjects = await getActiveProjects('home');
+    // A. Home Projects (Explicitly selected steps or Next Action for in_progress projects only)
+    const allHomeProjects = await db.projects.toArray();
+    const homeProjects = allHomeProjects.filter((p) => (p.spaceId || 'home') === 'home');
 
-    for (const proj of activeProjects) {
-      if (proj.nextActionTitle && proj.nextActionId) {
+    for (const proj of homeProjects) {
+      const selectedForProj = selectedStepsByProject.get(proj.id);
+      if (selectedForProj && selectedForProj.length > 0) {
+        for (const sel of selectedForProj) {
+          const step = (proj.steps || []).find((s) => s.id === sel.stepId);
+          if (!step) continue;
+          const isStepDone = Boolean(step.isCompleted);
+          const timeTag: TodayItemTimeTag = isStepDone ? 'completed' : 'flexible';
+          const status = deriveItemStatus(isStepDone, timeTag);
+          const sortKey = computeTodaySortKey(timeTag, isStepDone, 'medium', 'project_action', undefined, sel.position);
+          rawItems.push({
+            id: `project_${proj.id}_${step.id}`,
+            sourceId: proj.id,
+            refKey: sel.refKey,
+            type: 'project_action',
+            space: 'home',
+            title: step.title,
+            subtitle: `مشروع: ${proj.title}`,
+            categoryLabel: proj.title,
+            priority: 'medium',
+            timeTag,
+            status,
+            isCompleted: isStepDone,
+            completedAt: step.completedAt,
+            isSelectedForToday: true,
+            isEssentialForToday: Boolean(sel.isEssential),
+            selectionPosition: sel.position,
+            actionType: 'complete_project_step',
+            actionPayload: { projectId: proj.id, stepId: step.id },
+            sortKey,
+          });
+        }
+      } else if (proj.status === 'in_progress' && proj.nextActionTitle && proj.nextActionId) {
+        const refKey = buildProjectStepRefKey(proj.id, proj.nextActionId);
         const sortKey = computeTodaySortKey('flexible', false, 'medium', 'project_action');
-
         rawItems.push({
           id: `project_${proj.id}_${proj.nextActionId}`,
           sourceId: proj.id,
+          refKey,
           type: 'project_action',
           space: 'home',
           title: proj.nextActionTitle,
@@ -626,43 +767,57 @@ export async function aggregateTodayFeed(
     const showRoutines = prefs.homeOptions?.routines !== false;
     const showNormalHomeTasks = !prefs.homeOptions?.nextActionsOnly;
 
-    if (showRoutines || showNormalHomeTasks) {
-      const homeTasks = await db.tasks.where('spaceId').equals('home').toArray();
-      const relevantHome = homeTasks.filter((t) => {
+    const homeTasks = await db.tasks.where('spaceId').equals('home').toArray();
+    const relevantHome = homeTasks.filter((t) => {
+      const isSelectedOrHardDeadline = selectedTaskMap.has(t.id) || hasHardDeadlineDueOrOverdue(t, targetDateStr);
+      if (!isSelectedOrHardDeadline) {
         if (t.isRecurring && !showRoutines) return false;
         if (!t.isRecurring && !showNormalHomeTasks) return false;
-        if (t.isRecurring) return true;
-        if (!t.dueDate) return true;
-        return t.dueDate === targetDateStr || isPastDate(t.dueDate);
-      });
-
-      for (const t of relevantHome) {
-        const isDoneToday = t.isRecurring
-          ? Array.isArray(t.recurringCompletionDates) && t.recurringCompletionDates.includes(targetDateStr)
-          : t.isCompleted;
-
-        const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
-        const status = deriveItemStatus(isDoneToday, timeTag);
-        const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority, t.isRecurring ? 'home_routine' : 'home_task', t.scheduledTime);
-
-        rawItems.push({
-          id: `task_home_${t.id}_${targetDateStr}`,
-          sourceId: t.id,
-          type: t.isRecurring ? 'home_routine' : 'home_task',
-          space: 'home',
-          title: t.title,
-          subtitle: t.description || (t.isRecurring ? 'روتين منزلي متكرر' : 'مهمة منزلية'),
-          scheduledTime: t.scheduledTime,
-          estimatedMinutes: t.estimatedMinutes,
-          priority: t.priority,
-          timeTag,
-          status,
-          isCompleted: isDoneToday,
-          actionType: 'toggle_task',
-          actionPayload: { taskId: t.id, targetDateStr },
-          sortKey,
-        });
       }
+      return isTaskEligibleForAutoToday(t);
+    });
+
+    for (const t of relevantHome) {
+      const isDoneToday = t.isRecurring
+        ? Array.isArray(t.recurringCompletionDates) && t.recurringCompletionDates.includes(targetDateStr)
+        : t.isCompleted;
+
+      const sel = selectedTaskMap.get(t.id);
+      const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
+      const status = deriveItemStatus(isDoneToday, timeTag);
+      const sortKey = computeTodaySortKey(
+        timeTag,
+        isDoneToday,
+        t.priority,
+        t.isRecurring ? 'home_routine' : 'home_task',
+        t.scheduledTime,
+        sel?.position
+      );
+
+      rawItems.push({
+        id: `task_home_${t.id}_${targetDateStr}`,
+        sourceId: t.id,
+        refKey: buildTaskRef(t),
+        type: t.isRecurring ? 'home_routine' : 'home_task',
+        space: 'home',
+        title: t.title,
+        subtitle:
+          t.status === 'WAITING' && t.waitingContext?.waitingOn
+            ? `متابعة مع: ${t.waitingContext.waitingOn}`
+            : t.description || (t.isRecurring ? 'روتين منزلي متكرر' : 'مهمة منزلية'),
+        scheduledTime: t.scheduledTime,
+        estimatedMinutes: t.estimatedMinutes,
+        priority: t.priority,
+        timeTag,
+        status,
+        isCompleted: isDoneToday,
+        isSelectedForToday: Boolean(sel),
+        isEssentialForToday: Boolean(sel?.isEssential),
+        selectionPosition: sel?.position,
+        actionType: 'toggle_task',
+        actionPayload: { taskId: t.id, targetDateStr },
+        sortKey,
+      });
     }
   }
 
@@ -695,13 +850,9 @@ export async function aggregateTodayFeed(
 
       // B. Surface Today's Action items belonging to this plan
       if (prefs.plansOptions?.showDailyActions !== false) {
-        const relevantPlanTasks = planTasks.filter((t) => {
-          if (!t.dueDate) return true;
-          return t.dueDate === targetDateStr || isPastDate(t.dueDate);
-        });
+        const relevantPlanTasks = planTasks.filter((t) => isTaskEligibleForAutoToday(t));
 
         for (const t of relevantPlanTasks) {
-          // Deduplication: if already surfaced by its primary space, enrich with Plan context and do not duplicate
           const alreadySurfacedIndex = rawItems.findIndex((item) => item.sourceId === t.id);
           if (alreadySurfacedIndex !== -1) {
             rawItems[alreadySurfacedIndex] = {
@@ -719,14 +870,16 @@ export async function aggregateTodayFeed(
             continue;
           }
 
+          const sel = selectedTaskMap.get(t.id);
           const isDoneToday = t.isRecurring ? !!t.recurringCompletionDates?.includes(targetDateStr) : t.isCompleted;
           const timeTag = getTaskTimeTag(t, isDoneToday, targetDateStr);
           const status = deriveItemStatus(isDoneToday, timeTag);
-          const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority || 'medium', 'plan_action', t.scheduledTime);
+          const sortKey = computeTodaySortKey(timeTag, isDoneToday, t.priority || 'medium', 'plan_action', t.scheduledTime, sel?.position);
 
           rawItems.push({
             id: `task_plan_${t.id}_${targetDateStr}`,
             sourceId: t.id,
+            refKey: buildTaskRef(t),
             type: 'plan_action',
             space: t.spaceId,
             title: t.title,
@@ -738,6 +891,9 @@ export async function aggregateTodayFeed(
             timeTag,
             status,
             isCompleted: isDoneToday,
+            isSelectedForToday: Boolean(sel),
+            isEssentialForToday: Boolean(sel?.isEssential),
+            selectionPosition: sel?.position,
             actionType: 'toggle_task',
             actionPayload: { taskId: t.id, targetDateStr, planId: plan.id, planTitle: plan.title },
             sortKey,
@@ -750,29 +906,171 @@ export async function aggregateTodayFeed(
   // ==========================================
   // 6. DETERMINISTIC SORTING & SECTIONING
   // ==========================================
-  // Ordering: NOW -> OVERDUE -> SCHEDULED -> HIGH PRIORITY -> FLEXIBLE -> PLAN ACTIONS -> COMPLETED
-  // With chronological ordering preserved inside SCHEDULED.
-  // Reconcile all five spaces using the same task calendar and avoid duplicate linked tasks.
   const allTasks = await db.tasks.toArray();
-  const tasksById = new Map(allTasks.map(task => [task.id, task]));
-  const visible: Record<LifeSpaceId, boolean> = { worship: prefs.showWorship, health: prefs.showHealth, work: prefs.showWork, home: prefs.showHome, plans: prefs.showPlans };
-  const reconciled = rawItems.filter(item => visible[item.space] && (item.actionType !== 'toggle_task' || !tasksById.has(item.sourceId) || isSpaceTaskDue(tasksById.get(item.sourceId)!, targetDateStr)));
+  const tasksById = new Map(allTasks.map((task) => [task.id, task]));
+  const visible: Record<LifeSpaceId, boolean> = {
+    worship: prefs.showWorship,
+    health: prefs.showHealth,
+    work: prefs.showWork,
+    home: prefs.showHome,
+    plans: prefs.showPlans,
+  };
+
+  const reconciled = rawItems.filter(
+    (item) =>
+      visible[item.space] &&
+      (item.actionType !== 'toggle_task' ||
+        !tasksById.has(item.sourceId) ||
+        isTaskEligibleForAutoToday(tasksById.get(item.sourceId)!))
+  );
+
   for (const task of allTasks) {
-    if (!visible[task.spaceId] || !isSpaceTaskDue(task, targetDateStr) || reconciled.some(item => item.actionType === 'toggle_task' && item.sourceId === task.id)) continue;
-    if (task.spaceId === 'work' && prefs.workOptions?.top3Only) continue;
-    if (task.spaceId === 'home' && (task.isRecurring ? prefs.homeOptions?.routines === false : prefs.homeOptions?.nextActionsOnly)) continue;
-    if (task.spaceId === 'plans' && prefs.plansOptions?.showDailyActions === false) continue;
-    // Linked plan actions are handled above; this also supports standalone planning tasks.
-    if (task.spaceId === 'plans' && task.planId) continue;
+    if (
+      !visible[task.spaceId] ||
+      !isTaskEligibleForAutoToday(task) ||
+      reconciled.some((item) => item.actionType === 'toggle_task' && item.sourceId === task.id)
+    ) {
+      continue;
+    }
+    const isSelectedOrHardDeadline = selectedTaskMap.has(task.id) || hasHardDeadlineDueOrOverdue(task, targetDateStr);
+    if (!isSelectedOrHardDeadline) {
+      if (task.spaceId === 'work' && prefs.workOptions?.top3Only) continue;
+      if (task.spaceId === 'home' && (task.isRecurring ? prefs.homeOptions?.routines === false : prefs.homeOptions?.nextActionsOnly)) continue;
+      if (task.spaceId === 'plans' && prefs.plansOptions?.showDailyActions === false) continue;
+      if (task.spaceId === 'plans' && task.planId) continue;
+    }
+    const sel = selectedTaskMap.get(task.id);
     const completed = task.isRecurring ? !!task.recurringCompletionDates?.includes(targetDateStr) : task.isCompleted;
-    const type: TodayItemType = task.spaceId === 'health' ? 'health_task' : task.spaceId === 'work' ? 'work_task' : task.spaceId === 'worship' ? 'worship_task' : task.spaceId === 'plans' ? 'plan_action' : task.isRecurring ? 'home_routine' : 'home_task';
+    const type: TodayItemType =
+      task.spaceId === 'health'
+        ? 'health_task'
+        : task.spaceId === 'work'
+          ? 'work_task'
+          : task.spaceId === 'worship'
+            ? 'worship_task'
+            : task.spaceId === 'plans'
+              ? 'plan_action'
+              : task.isRecurring
+                ? 'home_routine'
+                : 'home_task';
     const timeTag = getTaskTimeTag(task, completed, targetDateStr);
-    reconciled.push({ id: `task_${task.spaceId}_${task.id}_${targetDateStr}`, sourceId: task.id, type, space: task.spaceId, title: task.title,
-      subtitle: task.description, scheduledTime: task.scheduledTime, estimatedMinutes: task.estimatedMinutes, priority: task.priority,
-      timeTag, status: deriveItemStatus(completed, timeTag), isCompleted: completed, actionType: 'toggle_task',
-      actionPayload: { taskId: task.id, targetDateStr }, sortKey: computeTodaySortKey(timeTag, completed, task.priority, type, task.scheduledTime) });
+    reconciled.push({
+      id: `task_${task.spaceId}_${task.id}_${targetDateStr}`,
+      sourceId: task.id,
+      refKey: buildTaskRef(task),
+      type,
+      space: task.spaceId,
+      title: task.title,
+      subtitle: task.description,
+      scheduledTime: task.scheduledTime,
+      estimatedMinutes: task.estimatedMinutes,
+      priority: task.priority,
+      timeTag,
+      status: deriveItemStatus(completed, timeTag),
+      isCompleted: completed,
+      isSelectedForToday: Boolean(sel),
+      isEssentialForToday: Boolean(sel?.isEssential),
+      selectionPosition: sel?.position,
+      actionType: 'toggle_task',
+      actionPayload: { taskId: task.id, targetDateStr },
+      sortKey: computeTodaySortKey(timeTag, completed, task.priority, type, task.scheduledTime, sel?.position),
+    });
   }
+
   const sortedItems = reconciled.sort((a, b) => a.sortKey - b.sortKey);
+
+  // ==========================================
+  // 7. READY SUGGESTIONS (MAX 3, NOT IN ITEMS)
+  // ==========================================
+  const surfacedTaskIds = new Set(
+    sortedItems.filter((item) => item.actionType === 'toggle_task').map((item) => item.sourceId)
+  );
+  const surfacedProjectIds = new Set(
+    sortedItems.filter((item) => item.actionType === 'complete_project_step').map((item) => item.sourceId)
+  );
+
+  const suggestionCandidates: TodayItem[] = [];
+  for (const task of allTasks) {
+    if (!visible[task.spaceId]) continue;
+    if (surfacedTaskIds.has(task.id) || selectedTaskMap.has(task.id)) continue;
+    if (task.isCompleted || task.isRecurring) continue;
+    if (isShoppingTask(task) || task.isSomeday === true || task.status === 'WAITING') continue;
+    if (task.availableFrom && task.availableFrom > targetDateStr) continue;
+    if (task.dueDate && task.dueDate > targetDateStr) continue;
+
+    const isQuick = Boolean(task.estimatedMinutes && task.estimatedMinutes <= 15);
+    const reason = isQuick
+      ? `مهمة سريعة (${task.estimatedMinutes} د)`
+      : task.priority === 'high'
+        ? 'أولوية عالية جاهزة للتنفيذ'
+        : 'مهمة جاهزة للتنفيذ';
+
+    const type: TodayItemType =
+      task.spaceId === 'health'
+        ? 'health_task'
+        : task.spaceId === 'work'
+          ? 'work_task'
+          : task.spaceId === 'worship'
+            ? 'worship_task'
+            : task.spaceId === 'plans'
+              ? 'plan_action'
+              : 'home_task';
+
+    suggestionCandidates.push({
+      id: `suggestion_task_${task.id}_${targetDateStr}`,
+      sourceId: task.id,
+      refKey: buildTaskRefKey(task.id),
+      type,
+      space: task.spaceId,
+      title: task.title,
+      subtitle: task.description || reason,
+      suggestionReason: reason,
+      estimatedMinutes: task.estimatedMinutes,
+      priority: task.priority,
+      timeTag: 'flexible',
+      status: 'pending',
+      isCompleted: false,
+      isSelectedForToday: false,
+      actionType: 'toggle_task',
+      actionPayload: { taskId: task.id, targetDateStr },
+      sortKey: (isQuick ? 100 : 200) + (task.priority === 'high' ? 0 : task.priority === 'medium' ? 10 : 20),
+    });
+  }
+
+  const activeProjectsForSuggestions = await getActiveProjects();
+  for (const proj of activeProjectsForSuggestions) {
+    const projSpace: LifeSpaceId = proj.spaceId || 'home';
+    if (!visible[projSpace]) continue;
+    if (proj.status !== 'in_progress') continue;
+    if (!proj.nextActionId || !proj.nextActionTitle) continue;
+    if (surfacedProjectIds.has(proj.id)) continue;
+    const refKey = buildProjectStepRefKey(proj.id, proj.nextActionId);
+    if (selectedByRefKey.has(refKey)) continue;
+
+    suggestionCandidates.push({
+      id: `suggestion_proj_${proj.id}_${proj.nextActionId}`,
+      sourceId: proj.id,
+      refKey,
+      type: 'project_action',
+      space: projSpace,
+      title: proj.nextActionTitle,
+      subtitle: `مشروع: ${proj.title}`,
+      categoryLabel: proj.title,
+      suggestionReason: `الخطوة التالية في مشروع: ${proj.title}`,
+      priority: 'medium',
+      timeTag: 'flexible',
+      status: 'pending',
+      isCompleted: false,
+      isSelectedForToday: false,
+      actionType: 'complete_project_step',
+      actionPayload: { projectId: proj.id, stepId: proj.nextActionId },
+      sortKey: 150,
+    });
+  }
+
+  const suggestions = suggestionCandidates
+    .sort((a, b) => a.sortKey - b.sortKey || a.id.localeCompare(b.id))
+    .slice(0, 3);
 
   const rawSections: Array<{ id: TodaySectionId; title: string; items: TodayItem[] }> = [
     {
@@ -791,11 +1089,24 @@ export async function aggregateTodayFeed(
       items: sortedItems.filter((i) => i.timeTag === 'scheduled' && !i.isCompleted),
     },
     {
+      id: 'selected',
+      title: '📌 مختار ليومي',
+      items: sortedItems.filter(
+        (i) =>
+          !i.isCompleted &&
+          Boolean(i.isSelectedForToday) &&
+          i.timeTag !== 'now' &&
+          i.timeTag !== 'overdue' &&
+          i.timeTag !== 'scheduled'
+      ),
+    },
+    {
       id: 'high_priority',
       title: '🔥 أولويات قصوى اليوم',
       items: sortedItems.filter(
         (i) =>
           !i.isCompleted &&
+          !i.isSelectedForToday &&
           i.priority === 'high' &&
           i.timeTag !== 'now' &&
           i.timeTag !== 'overdue' &&
@@ -806,7 +1117,12 @@ export async function aggregateTodayFeed(
       id: 'next_actions',
       title: '➡️ الخطوات التالية للمشاريع',
       items: sortedItems.filter(
-        (i) => !i.isCompleted && i.type === 'project_action' && i.priority !== 'high' && i.timeTag === 'flexible'
+        (i) =>
+          !i.isCompleted &&
+          !i.isSelectedForToday &&
+          i.type === 'project_action' &&
+          i.priority !== 'high' &&
+          i.timeTag === 'flexible'
       ),
     },
     {
@@ -815,7 +1131,9 @@ export async function aggregateTodayFeed(
       items: sortedItems.filter(
         (i) =>
           !i.isCompleted &&
-          i.type !== 'project_action' && i.type !== 'plan_action' &&
+          !i.isSelectedForToday &&
+          i.type !== 'project_action' &&
+          i.type !== 'plan_action' &&
           i.priority !== 'high' &&
           i.timeTag === 'flexible'
       ),
@@ -824,7 +1142,12 @@ export async function aggregateTodayFeed(
       id: 'plans',
       title: '🎯 خطوات الخطط الاستراتيجية',
       items: sortedItems.filter(
-        (i) => !i.isCompleted && i.type === 'plan_action' && i.priority !== 'high' && i.timeTag === 'flexible'
+        (i) =>
+          !i.isCompleted &&
+          !i.isSelectedForToday &&
+          i.type === 'plan_action' &&
+          i.priority !== 'high' &&
+          i.timeTag === 'flexible'
       ),
     },
     {
@@ -846,6 +1169,7 @@ export async function aggregateTodayFeed(
     sections.find((s) => s.id === 'now')?.items[0] ||
     sections.find((s) => s.id === 'overdue')?.items[0] ||
     sections.find((s) => s.id === 'scheduled')?.items[0] ||
+    sections.find((s) => s.id === 'selected')?.items[0] ||
     sections.find((s) => s.id === 'high_priority')?.items[0] ||
     sortedItems.find((i) => !i.isCompleted) ||
     null;
@@ -874,6 +1198,7 @@ export async function aggregateTodayFeed(
     dateStr: targetDateStr,
     items: sortedItems,
     sections,
+    suggestions,
     nextUp,
     totalCount,
     completedCount,
