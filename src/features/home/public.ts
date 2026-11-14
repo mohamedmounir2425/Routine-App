@@ -3,3 +3,4 @@ export { validateRecipeRecord } from './recipes/recipeModel';
 export type { Recipe } from './recipes/recipeModel';
 export { validateInventoryRecord } from './inventory/inventoryModel';
 export type { InventoryItem } from './inventory/inventoryModel';
+export { isShoppingTask, isMaintenanceTask, isHomeTaskDone } from './homeTasks';

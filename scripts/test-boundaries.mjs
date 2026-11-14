@@ -17,6 +17,9 @@ const blocked = [
   ['src/App.tsx', 'src/features/health/hooks/useHealthController.ts'],
   ['src/app/useAppController.ts', 'src/features/health/public.ts'],
   ['C:\\repo\\src\\features\\home\\HomeSpace.tsx', 'C:\\repo\\src\\features\\health\\player\\WorkoutPlayer.tsx'],
+  ['src/features/home/HomeSpace.tsx', 'src/features/work/public.ts'],
+  ['src/features/work/WorkSpace.tsx', 'src/features/today/public.ts'],
+  ['src/features/today/TodayPage.tsx', 'src/features/home/index.ts'],
 ];
 for (const [from, to] of allowed) assert.equal(boundaryError(from, to), null, `${from} -> ${to}`);
 for (const [from, to] of blocked) assert.ok(boundaryError(from, to), `${from} -> ${to}`);

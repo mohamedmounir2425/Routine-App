@@ -3,6 +3,8 @@ import postcss from 'postcss';
 const normalize = value => value.replaceAll('\\', '/');
 const featureOf = file => normalize(file).match(/(?:^|\/)src\/features\/([^/]+)\//)?.[1];
 const publicEntries = new Set(['index.ts', 'public.ts', 'ui.ts']);
+const domainSpaces = new Set(['home', 'work', 'worship', 'health', 'plans']);
+const aggregators = new Set(['today', 'progress']);
 
 /** Shared by the repository check and its negative/positive policy tests. */
 export function boundaryError(importer, target) {
@@ -21,6 +23,15 @@ export function boundaryError(importer, target) {
   if (destination && destination !== owner) {
     const internal = to.split(`/features/${destination}/`)[1];
     if (!publicEntries.has(internal)) return `Use the ${destination} public entry (index.ts, public.ts or ui.ts), not its internal files.`;
+    if (domainSpaces.has(owner) && domainSpaces.has(destination)) {
+      return `Domain space '${owner}' must not depend on peer space '${destination}'; use shared contracts or aggregators.`;
+    }
+    if (domainSpaces.has(owner) && aggregators.has(destination)) {
+      return `Domain space '${owner}' must not depend on aggregator '${destination}'; keep space dependencies one-way.`;
+    }
+    if (internal === 'index.ts' && !/(?:^|\/)src\/App\.tsx$/.test(from)) {
+      return `Feature route entry 'index.ts' of '${destination}' may only be mounted by src/App.tsx; use public.ts or ui.ts for contracts.`;
+    }
   }
   return null;
 }
