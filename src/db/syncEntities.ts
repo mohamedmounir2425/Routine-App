@@ -24,6 +24,29 @@ function simple(cloud: string, local: string, names: string): SyncEntity {
 }
 export const SYNC_ENTITIES: SyncEntity[] = [
   {
+    ...simple('shopping_items', 'shoppingItems', 'title:title category:category storeContext:store_context quantityNeeded:quantity_needed unit:unit quantityText:quantity_text quantityPurchased:quantity_purchased quantityStocked:quantity_stocked isBought:is_bought boughtAt:bought_at priority:priority sourceType:source_type sourceInventoryItemId:source_inventory_item_id legacyTaskId:legacy_task_id notes:notes archivedAt:archived_at createdAt:created_at updatedAt:updated_at'),
+    optional: true,
+    fromCloud: row => ({
+      ...simple('shopping_items', 'shoppingItems', 'title:title category:category storeContext:store_context quantityNeeded:quantity_needed unit:unit quantityText:quantity_text quantityPurchased:quantity_purchased quantityStocked:quantity_stocked isBought:is_bought boughtAt:bought_at priority:priority sourceType:source_type sourceInventoryItemId:source_inventory_item_id legacyTaskId:legacy_task_id notes:notes archivedAt:archived_at createdAt:created_at updatedAt:updated_at').fromCloud(row),
+      quantityNeeded: row.quantity_needed !== null && row.quantity_needed !== undefined ? Number(row.quantity_needed) : null,
+      quantityPurchased: row.quantity_purchased !== null && row.quantity_purchased !== undefined ? Number(row.quantity_purchased) : null,
+      quantityStocked: row.quantity_stocked !== null && row.quantity_stocked !== undefined ? Number(row.quantity_stocked) : 0,
+      boughtAt: row.bought_at ?? null,
+      sourceInventoryItemId: row.source_inventory_item_id ?? null,
+      legacyTaskId: row.legacy_task_id ?? null,
+      archivedAt: row.archived_at ?? null,
+    }),
+  },
+  {
+    ...simple('stock_receipts', 'stockReceipts', 'operationId:operation_id shoppingItemId:shopping_item_id inventoryItemId:inventory_item_id quantityAdded:quantity_added unit:unit location:location expiresOn:expires_on createdAt:created_at'),
+    optional: true,
+    fromCloud: row => ({
+      ...simple('stock_receipts', 'stockReceipts', 'operationId:operation_id shoppingItemId:shopping_item_id inventoryItemId:inventory_item_id quantityAdded:quantity_added unit:unit location:location expiresOn:expires_on createdAt:created_at').fromCloud(row),
+      quantityAdded: Number(row.quantity_added),
+      expiresOn: row.expires_on ?? null,
+    }),
+  },
+  {
     ...simple('inventory_items', 'inventoryItems', 'name:name category:category location:location quantity:quantity unit:unit state:state approximate:approximate packageSize:package_size packageUnit:package_unit expiresOn:expires_on useFirst:use_first lowThreshold:low_threshold notes:notes lastCountedAt:last_counted_at history:history createdAt:created_at updatedAt:updated_at'),
     optional: true,
     fromCloud: row => ({ ...simple('inventory_items', 'inventoryItems', 'name:name category:category location:location quantity:quantity unit:unit state:state approximate:approximate packageSize:package_size packageUnit:package_unit expiresOn:expires_on useFirst:use_first lowThreshold:low_threshold notes:notes lastCountedAt:last_counted_at history:history createdAt:created_at updatedAt:updated_at').fromCloud(row), quantity: row.quantity ?? null, packageSize: row.package_size ?? null, expiresOn: row.expires_on ?? null, lowThreshold: row.low_threshold ?? null, lastCountedAt: row.last_counted_at ?? null }),

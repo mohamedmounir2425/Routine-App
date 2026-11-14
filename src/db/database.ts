@@ -1,7 +1,6 @@
 import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
-import type { Recipe } from '../features/home/public';
-import type { InventoryItem } from '../features/home/public';
+import type { Recipe, InventoryItem, ShoppingItem, StockReceipt } from '../features/home/public';
 import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import { 
@@ -41,7 +40,9 @@ export interface PendingSyncItem {
     | 'workout_schedules'
     | 'day_plans'
     | 'recipes'
-    | 'inventory_items';
+    | 'inventory_items'
+    | 'shopping_items'
+    | 'stock_receipts';
   entityId: string;
   action: 'upsert' | 'delete';
   data: Record<string, unknown> | null;
@@ -96,6 +97,8 @@ export class RoutineDatabase extends Dexie {
   syncConflicts!: Table<SyncConflict, string>;
   recipes!: Table<Recipe, string>;
   inventoryItems!: Table<InventoryItem, string>;
+  shoppingItems!: Table<ShoppingItem, string>;
+  stockReceipts!: Table<StockReceipt, string>;
 
   constructor(name = workspaceDatabaseName(CURRENT_WORKSPACE)) {
     super(name);
@@ -155,7 +158,7 @@ export class RoutineDatabase extends Dexie {
       if (!owner) return;
       const userId = owner[1];
       for (const entity of SYNC_ENTITIES) {
-        if (['recipes', 'inventoryItems'].includes(entity.local)) continue; // Added after v8.
+        if (['recipes', 'inventoryItems', 'shoppingItems', 'stockReceipts'].includes(entity.local)) continue; // Added after v8.
         for (const row of await transaction.table(entity.local).toArray()) {
           if (entity.include && !entity.include(row)) continue;
           const payload = entity.toCloud(userId, row);
@@ -167,6 +170,10 @@ export class RoutineDatabase extends Dexie {
     });
     this.version(9).stores({ recipes: 'id, title, updatedAt, *mealTypes' });
     this.version(10).stores({ inventoryItems: 'id, name, category, location, expiresOn, updatedAt' });
+    this.version(11).stores({
+      shoppingItems: 'id, title, category, storeContext, isBought, sourceInventoryItemId, legacyTaskId, archivedAt, updatedAt',
+      stockReceipts: 'id, &operationId, shoppingItemId, inventoryItemId, createdAt',
+    });
   }
 }
 
