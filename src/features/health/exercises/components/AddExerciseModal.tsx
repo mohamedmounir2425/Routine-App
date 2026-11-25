@@ -1,163 +1,190 @@
-import React, { useState } from 'react';
-import { X } from 'lucide-react';
-import { Exercise, MuscleCategory } from '../../../../types';
+import { useState } from 'react';
+import { Alert, Button, Collapse, Input, InputNumber, Modal, Radio, Select } from 'antd';
+import type { Exercise, MuscleCategory } from '../../../../types';
 
-interface AddExerciseModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddExercise: (newEx: Omit<Exercise, 'id' | 'createdAt'>) => void;
-}
-
-export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
+export function AddExerciseModal({
   isOpen,
   onClose,
   onAddExercise,
-}) => {
-  const [newArabicName, setNewArabicName] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newCategory, setNewCategory] = useState<MuscleCategory>('back');
-  const [newDuration, setNewDuration] = useState(60);
-  const [newRest, setNewRest] = useState(15);
-  const [newDesc, setNewDesc] = useState('');
-  const [newInstructions, setNewInstructions] = useState('');
-  const [newVideoUrl, setNewVideoUrl] = useState('');
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddExercise: (draft: Omit<Exercise, 'id' | 'createdAt'>) => void | Promise<unknown>;
+}) {
+  const [name, setName] = useState('');
+  const [english, setEnglish] = useState('');
+  const [category, setCategory] = useState<MuscleCategory>('mobility');
+  const [mode, setMode] = useState<'time' | 'reps'>('time');
+  const [duration, setDuration] = useState(60);
+  const [reps, setReps] = useState(10);
+  const [rest, setRest] = useState(15);
+  const [description, setDescription] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [video, setVideo] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newArabicName.trim()) return;
-
-    onAddExercise({
-      arabicName: newArabicName.trim(),
-      name: newName.trim() || newArabicName.trim(),
-      category: newCategory,
-      durationSeconds: Number(newDuration) || 60,
-      restAfterSeconds: Number(newRest) || 15,
-      description: newDesc.trim() || 'تمرين مخصص وموصى به',
-      instructions: newInstructions.split('\n').filter(i => i.trim()),
-      targetMuscles: [newCategory === 'back' ? 'أسفل الظهر' : 'عضلات الجسم'],
-      videoUrl: newVideoUrl.trim() || undefined,
-      isFavorite: true,
-    });
-
-    onClose();
-    setNewArabicName('');
-    setNewName('');
-    setNewDesc('');
-    setNewInstructions('');
-    setNewVideoUrl('');
+  const cancel = () => {
+    if (!name || window.confirm('تجاهل مسودة التمرين؟')) onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-right max-h-[92vh] overflow-y-auto my-auto custom-scrollbar">
-        <button
-          onClick={onClose}
-          className="absolute top-4 left-4 sm:top-5 sm:left-5 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <Modal open={isOpen} title="إضافة تمرين" footer={null} onCancel={cancel} maskClosable={false} destroyOnHidden>
+      <form
+        className="space-y-5"
+        onSubmit={async e => {
+          e.preventDefault();
+          if (busy) return;
+          if (!name.trim()) {
+            setNameError('أدخل اسم التمرين');
+            return;
+          }
+          setBusy(true);
+          setError('');
+          setNameError('');
+          try {
+            await onAddExercise({
+              name: english.trim() || name.trim(),
+              arabicName: name.trim(),
+              category,
+              durationSeconds: mode === 'time' ? Math.max(1, duration) : 45,
+              reps: mode === 'reps' ? Math.max(1, reps) : undefined,
+              restAfterSeconds: Math.max(0, rest),
+              description: description.trim(),
+              instructions: instructions
+                .split('\n')
+                .map(s => s.trim())
+                .filter(Boolean),
+              targetMuscles: [],
+              videoUrl: video.trim() || undefined,
+              isFavorite: false,
+            });
+            setName('');
+            setEnglish('');
+            setVideo('');
+            setInstructions('');
+            setDescription('');
+            onClose();
+          } catch {
+            setError('تعذر حفظ التمرين. مسودتك محفوظة هنا.');
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <p className="text-sm opacity-80">اسم التمرين يكفي. أضف التفاصيل عند الحاجة.</p>
+        {error && <Alert title={error} type="error" showIcon />}
 
-        <h3 className="text-xl font-bold text-white font-['Tajawal'] mb-1">
-          إضافة تمرين جديد للمكتبة ➕
-        </h3>
-        <p className="text-xs text-slate-400 mb-6">
-          أدخل بيانات التمرين الموصى به لك من طبيبك أو أخصائي العلاج الطبيعي.
-        </p>
+        <label className="block space-y-1.5">
+          <span className="font-bold">اسم التمرين</span>
+          <Input
+            required
+            autoFocus
+            size="large"
+            status={nameError ? 'error' : undefined}
+            value={name}
+            onChange={e => {
+              setName(e.target.value);
+              if (nameError) setNameError('');
+            }}
+          />
+          {nameError && <p className="text-xs text-red-500">{nameError}</p>}
+        </label>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">اسم التمرين بالعربية *</label>
-            <input
-              type="text"
-              required
-              placeholder="مثال: إطالة عضلة الفخذ الخلفية"
-              value={newArabicName}
-              onChange={(e) => setNewArabicName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+        <Collapse
+          items={[
+            {
+              key: 'more',
+              label: 'تفاصيل إضافية (اختياري)',
+              children: (
+                <div className="space-y-4">
+                  <label className="block">
+                    اسم بالإنجليزية
+                    <Input value={english} onChange={e => setEnglish(e.target.value)} />
+                  </label>
+                  <label className="block">
+                    التصنيف
+                    <Select
+                      className="w-full"
+                      value={category}
+                      onChange={setCategory}
+                      options={[
+                        { value: 'back', label: 'ظهر' },
+                        { value: 'core', label: 'جذع' },
+                        { value: 'mobility', label: 'مرونة وحركة' },
+                        { value: 'neck', label: 'رقبة' },
+                        { value: 'legs', label: 'أرجل' },
+                      ]}
+                    />
+                  </label>
+                  <div className="space-y-2">
+                    <span className="block text-sm">طريقة العد الافتراضية</span>
+                    <Radio.Group
+                      value={mode}
+                      onChange={e => setMode(e.target.value)}
+                      options={[
+                        { value: 'time', label: 'مدة بالثواني' },
+                        { value: 'reps', label: 'تكرارات' },
+                      ]}
+                      optionType="button"
+                    />
+                  </div>
+                  {mode === 'time' ? (
+                    <label className="block">
+                      المدة الافتراضية بالثواني
+                      <InputNumber
+                        className="!w-full"
+                        min={1}
+                        max={3600}
+                        value={duration}
+                        onChange={n => setDuration(n ?? 60)}
+                      />
+                    </label>
+                  ) : (
+                    <label className="block">
+                      عدد التكرارات الافتراضي
+                      <InputNumber
+                        className="!w-full"
+                        min={1}
+                        max={500}
+                        value={reps}
+                        onChange={n => setReps(n ?? 10)}
+                      />
+                    </label>
+                  )}
+                  <label className="block">
+                    الراحة بالثواني (0 بدون راحة)
+                    <InputNumber
+                      className="!w-full"
+                      min={0}
+                      max={600}
+                      value={rest}
+                      onChange={n => setRest(n ?? 0)}
+                    />
+                  </label>
+                  <label className="block">
+                    الوصف
+                    <Input.TextArea value={description} onChange={e => setDescription(e.target.value)} />
+                  </label>
+                  <label className="block">
+                    خطوات التنفيذ (كل خطوة في سطر)
+                    <Input.TextArea value={instructions} onChange={e => setInstructions(e.target.value)} />
+                  </label>
+                  <label className="block">
+                    رابط الفيديو
+                    <Input type="url" value={video} onChange={e => setVideo(e.target.value)} />
+                  </label>
+                </div>
+              ),
+            },
+          ]}
+        />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">التصنيف</label>
-              <select
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value as MuscleCategory)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="back">علاج الظهر</option>
-                <option value="core">تقوية الجذع</option>
-                <option value="mobility">مرونة واستطالة</option>
-                <option value="neck">رقبة وأعلى الظهر</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">المدة (ثواني)</label>
-              <input
-                type="number"
-                min="15"
-                max="300"
-                value={newDuration}
-                onChange={(e) => setNewDuration(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">الراحة (ثواني)</label>
-              <input
-                type="number"
-                min="5"
-                max="60"
-                value={newRest}
-                onChange={(e) => setNewRest(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">خطوات التنفيذ (كل سطر خطوة)</label>
-            <textarea
-              rows={3}
-              placeholder="الخطوة الأولى...&#10;الخطوة الثانية..."
-              value={newInstructions}
-              onChange={(e) => setNewInstructions(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">رابط يوتيوب أو فيديو (اختياري)</label>
-            <input
-              type="url"
-              placeholder="https://www.youtube.com/embed/..."
-              value={newVideoUrl}
-              onChange={(e) => setNewVideoUrl(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="pt-2 flex gap-3">
-            <button
-              type="submit"
-              className="flex-1 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-colors"
-            >
-              حفظ التمرين
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="py-3 px-5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
-            >
-              إلغاء
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Button htmlType="submit" type="primary" size="large" block loading={busy}>
+          حفظ التمرين
+        </Button>
+      </form>
+    </Modal>
   );
-};
+}

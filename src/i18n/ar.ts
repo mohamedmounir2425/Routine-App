@@ -33,6 +33,8 @@ export const ar: TranslationDictionary = {
   spaceNavPrayers: 'الصلوات',
   spaceNavQuran: 'الورد القرآني',
   spaceNavTodayWorkout: 'تمرين اليوم',
+  spaceNavMyPlans: 'خططي',
+  spaceNavNutrition: 'التغذية',
   spaceNavExercises: 'التمارين',
   spaceNavPlans: 'الخطط',
   spaceNavProgress: 'التقدم',

@@ -20,11 +20,10 @@ import {
   LifeTask,
   DayPlanSelectedItem,
 } from '../../types';
-import { getLocalDateString, getTodayDayOfWeek, isPastDate, parseLocalDate } from '../../utils/dateUtils';
+import { getLocalDateString, isPastDate, parseLocalDate } from '../../utils/dateUtils';
 import { calculatePlanProgress, getPlanMilestones } from '../../db/goalPlanQueries';
 import { getActiveProjects } from '../../db/projectQueries';
-import { getSchedulesForDay } from '../../db/workoutScheduleQueries';
-import { getTodayPlanStatus } from '../../db/planQueries';
+import { getWorkoutOccurrences, isWorkoutAvailable, healthRows, routineForSession } from '../health/public';
 import {
   getDayPlan,
   buildTaskRefKey,
@@ -451,114 +450,27 @@ export async function aggregateTodayFeed(
   // 2. HEALTH SPACE AGGREGATION
   // ==========================================
   if (prefs.showHealth) {
-    const targetDate = options?.customDateStr ? parseLocalDate(options.customDateStr) : new Date();
-    const targetDayOfWeek = getTodayDayOfWeek(targetDate);
-
-    // Check workout completion logs
-    const allWorkoutLogs = await db.workoutLogs.toArray();
-    const todayLogs = allWorkoutLogs.filter((l) => {
-      if (!l.completedAt) return false;
-      const logDate = getLocalDateString(new Date(l.completedAt));
-      return logDate === targetDateStr;
-    });
-
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-    // 1. Check modern multi-workout scheduler entries first
-    const customSchedules = await getSchedulesForDay(targetDayOfWeek);
-    const totalCustomConfigured = await db.workoutSchedules.count();
-
-    if (customSchedules.length > 0) {
-      for (const entry of customSchedules) {
-        const routine = await db.routines.get(entry.routineId);
-        const isDone = todayLogs.some((l) => l.routineId === entry.routineId);
-
-        const scheduledTime = entry.scheduledTime || '18:00';
-        const [hours, mins] = scheduledTime.split(':').map(Number);
-        const scheduledMinutes = (hours || 0) * 60 + (mins || 0);
-
-        let timeTag: TodayItemTimeTag = 'scheduled';
-        if (isDone) {
-          timeTag = 'completed';
-        } else if (isTargetToday) {
-          if (nowMinutes >= scheduledMinutes - 15 && nowMinutes <= scheduledMinutes + 60) {
-            timeTag = 'now';
-          } else if (nowMinutes > scheduledMinutes + 60) {
-            timeTag = 'overdue';
-          } else {
-            timeTag = 'scheduled';
-          }
-        } else if (isPastDate(targetDateStr)) {
-          timeTag = 'overdue';
-        }
-
-        const status = deriveItemStatus(isDone, timeTag);
-        const sortKey = computeTodaySortKey(timeTag, isDone, 'high', 'workout', scheduledTime);
-
-        rawItems.push({
-          id: `workout_ws_${entry.id}_${targetDateStr}`,
-          sourceId: entry.routineId,
-          type: 'workout',
-          space: 'health',
-          title: entry.sessionLabel || routine?.name || 'تمرين اليوم لصحة الظهر',
-          subtitle: `${routine?.totalEstimatedMinutes || entry.durationMinutes || 15} دقيقة · ${routine?.exerciseIds?.length || 5} تمارين`,
-          scheduledTime,
-          estimatedMinutes: routine?.totalEstimatedMinutes || entry.durationMinutes || 15,
-          priority: 'high',
-          timeTag,
-          status,
-          isCompleted: isDone,
-          actionType: 'start_workout',
-          actionPayload: { routineId: entry.routineId, routine },
-          sortKey,
-        });
-      }
-    } else if (totalCustomConfigured === 0) {
-      // 2. Fallback to existing 4-week weeklySchedule plan when no custom schedules exist
-      const planStatus = await getTodayPlanStatus();
-
-      if (planStatus.isWorkoutDay && planStatus.routine) {
-        const isDone = todayLogs.some((l) => l.routineId === planStatus.routine?.id);
-        const scheduledTime = '18:00'; // Default optimal spine decompression time
-        const scheduledMinutes = 18 * 60;
-
-        let timeTag: TodayItemTimeTag = 'scheduled';
-        if (isDone) {
-          timeTag = 'completed';
-        } else if (isTargetToday) {
-          if (nowMinutes >= scheduledMinutes - 15 && nowMinutes <= scheduledMinutes + 60) {
-            timeTag = 'now';
-          } else if (nowMinutes > scheduledMinutes + 60) {
-            timeTag = 'overdue';
-          } else {
-            timeTag = 'scheduled';
-          }
-        } else if (isPastDate(targetDateStr)) {
-          timeTag = 'overdue';
-        }
-
-        const status = deriveItemStatus(isDone, timeTag);
-        const sortKey = computeTodaySortKey(timeTag, isDone, 'high', 'workout', scheduledTime);
-
-        rawItems.push({
-          id: `workout_plan_${planStatus.routine.id}_${targetDateStr}`,
-          sourceId: planStatus.routine.id,
-          type: 'workout',
-          space: 'health',
-          title: `تمرين اليوم: ${planStatus.sessionTitle || planStatus.routine.name}`,
-          subtitle: `الأسبوع ${planStatus.weekNumber} · جلسة ${planStatus.sessionCode || 'A'} · ${planStatus.estimatedMinutes} دقيقة`,
-          scheduledTime,
-          estimatedMinutes: planStatus.estimatedMinutes,
-          priority: 'high',
-          timeTag,
-          status,
-          isCompleted: isDone,
-          actionType: 'start_workout',
-          actionPayload: { routineId: planStatus.routine.id, routine: planStatus.routine },
-          sortKey,
-        });
-      }
+    const occurrences = await getWorkoutOccurrences(targetDateStr);
+    const plans = await healthRows('plan');
+    const healthRuns = await healthRows('run');
+    for (const occurrence of occurrences) {
+      const plan = plans.find(p => p.id === occurrence.planId);
+      const session = plan?.sessions.find(s => s.id === occurrence.sessionId);
+      if (!plan || !session) continue;
+      const routine = routineForSession(plan, session, occurrence);
+      const isDone = occurrence.status === 'completed';
+      const skipped = occurrence.status === 'skipped';
+      const scheduledTime = occurrence.time;
+      let timeTag: TodayItemTimeTag = isDone || skipped ? 'completed' : scheduledTime ? 'scheduled' : 'flexible';
+      if (!isDone && !skipped && isPastDate(targetDateStr)) timeTag = 'overdue';
+      const stateLabel = occurrence.status === 'partial' ? 'جزئي' : skipped ? 'متخطى' : occurrence.deferred ? 'مؤجل' : '';
+      rawItems.push({ id: occurrence.id, sourceId: routine.id, type: 'workout', space: 'health',
+        title: routine.name, subtitle: [routine.totalEstimatedMinutes + ' دقيقة', stateLabel].filter(Boolean).join(' · '),
+        scheduledTime, estimatedMinutes: routine.totalEstimatedMinutes, priority: 'high', timeTag,
+        status: skipped ? 'skipped' : occurrence.status === 'partial' ? 'partial' : deriveItemStatus(isDone, timeTag), isCompleted: isDone,
+        actionType: 'start_workout', actionPayload: { routineId: routine.id, routine, canStart: isWorkoutAvailable(occurrence,healthRuns.find(r=>r.id===occurrence.runId),plan) },
+        sortKey: computeTodaySortKey(timeTag, isDone, 'high', 'workout', scheduledTime),
+      });
     }
   }
 
@@ -1076,24 +988,24 @@ export async function aggregateTodayFeed(
     {
       id: 'now',
       title: '⚡ الآن ومتاح للتنفيذ',
-      items: sortedItems.filter((i) => i.timeTag === 'now' && !i.isCompleted),
+      items: sortedItems.filter((i) => i.timeTag === 'now' && !i.isCompleted && i.status !== 'skipped'),
     },
     {
       id: 'overdue',
       title: '⚠️ فات موعدها اليوم',
-      items: sortedItems.filter((i) => i.timeTag === 'overdue' && !i.isCompleted),
+      items: sortedItems.filter((i) => i.timeTag === 'overdue' && !i.isCompleted && i.status !== 'skipped'),
     },
     {
       id: 'scheduled',
       title: '⏰ الجدول الزمني لليوم',
-      items: sortedItems.filter((i) => i.timeTag === 'scheduled' && !i.isCompleted),
+      items: sortedItems.filter((i) => i.timeTag === 'scheduled' && !i.isCompleted && i.status !== 'skipped'),
     },
     {
       id: 'selected',
       title: '📌 مختار ليومي',
       items: sortedItems.filter(
         (i) =>
-          !i.isCompleted &&
+          !i.isCompleted && i.status !== 'skipped' &&
           Boolean(i.isSelectedForToday) &&
           i.timeTag !== 'now' &&
           i.timeTag !== 'overdue' &&
@@ -1105,7 +1017,7 @@ export async function aggregateTodayFeed(
       title: '🔥 أولويات قصوى اليوم',
       items: sortedItems.filter(
         (i) =>
-          !i.isCompleted &&
+          !i.isCompleted && i.status !== 'skipped' &&
           !i.isSelectedForToday &&
           i.priority === 'high' &&
           i.timeTag !== 'now' &&
@@ -1118,7 +1030,7 @@ export async function aggregateTodayFeed(
       title: '➡️ الخطوات التالية للمشاريع',
       items: sortedItems.filter(
         (i) =>
-          !i.isCompleted &&
+          !i.isCompleted && i.status !== 'skipped' &&
           !i.isSelectedForToday &&
           i.type === 'project_action' &&
           i.priority !== 'high' &&
@@ -1130,7 +1042,7 @@ export async function aggregateTodayFeed(
       title: '📋 مهام وروتين اليوم',
       items: sortedItems.filter(
         (i) =>
-          !i.isCompleted &&
+          !i.isCompleted && i.status !== 'skipped' &&
           !i.isSelectedForToday &&
           i.type !== 'project_action' &&
           i.type !== 'plan_action' &&
@@ -1143,12 +1055,15 @@ export async function aggregateTodayFeed(
       title: '🎯 خطوات الخطط الاستراتيجية',
       items: sortedItems.filter(
         (i) =>
-          !i.isCompleted &&
+          !i.isCompleted && i.status !== 'skipped' &&
           !i.isSelectedForToday &&
           i.type === 'plan_action' &&
           i.priority !== 'high' &&
           i.timeTag === 'flexible'
       ),
+    },
+    {
+      id: 'skipped', title: 'الجلسات المتخطاة', items: sortedItems.filter(i=>i.status==='skipped'),
     },
     {
       id: 'completed',
@@ -1171,7 +1086,7 @@ export async function aggregateTodayFeed(
     sections.find((s) => s.id === 'scheduled')?.items[0] ||
     sections.find((s) => s.id === 'selected')?.items[0] ||
     sections.find((s) => s.id === 'high_priority')?.items[0] ||
-    sortedItems.find((i) => !i.isCompleted) ||
+    sortedItems.find((i) => !i.isCompleted && i.status !== 'skipped') ||
     null;
 
   // Compute stats

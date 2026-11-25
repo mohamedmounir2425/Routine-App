@@ -28,11 +28,10 @@ export const LIFE_SPACES_CONFIG: LifeSpaceConfig[] = [
     route: '/health',
     defaultEnabled: true,
     navigation: [
-      { id: 'health-overview', path: '/health', labelKey: 'spaceNavOverview', iconName: 'Compass' },
-      { id: 'health-tasks', path: '/health/tasks', labelKey: 'spaceNavTasks', iconName: 'CheckSquare' },
+      { id: 'health-overview', path: '/health', labelKey: 'navToday', iconName: 'Compass' },
+      { id: 'health-plans', path: '/health/plans', labelKey: 'spaceNavMyPlans', iconName: 'Calendar' },
       { id: 'health-exercises', path: '/health/exercises', labelKey: 'spaceNavExercises', iconName: 'Dumbbell' },
-      { id: 'health-plans', path: '/health/plans', labelKey: 'spaceNavPlans', iconName: 'Calendar' },
-      { id: 'health-progress', path: '/health/progress', labelKey: 'spaceNavProgress', iconName: 'BarChart2' },
+      { id: 'health-nutrition', path: '/health/nutrition', labelKey: 'spaceNavNutrition', iconName: 'BookOpen' },
     ],
   },
   {

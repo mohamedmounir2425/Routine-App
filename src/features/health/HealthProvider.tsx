@@ -1,16 +1,18 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { UserSettings } from '../../types';
+import type { NutritionRecipeAdapter } from '../../types/health';
+import { NutritionRecipeContext } from './nutrition/NutritionContext';
 import { HealthContext } from './HealthContext';
 import { useHealthController } from './hooks/useHealthController';
 import { SpaceBoundary } from '../../shared/ui/SpaceBoundary';
 
 const HealthOverlays = lazy(() => import('./HealthOverlays'));
 
-export function HealthProvider({ settings, isTvMode, children }: {
-  settings: UserSettings; isTvMode: boolean; children: ReactNode;
+export function HealthProvider({ settings, isTvMode, children, recipes }: {
+  settings: UserSettings; isTvMode: boolean; children: ReactNode; recipes: NutritionRecipeAdapter;
 }) {
   const health = useHealthController(settings);
-  return <HealthContext.Provider value={health}>
+  return <NutritionRecipeContext.Provider value={recipes}><HealthContext.Provider value={health}>
     {children}
     {health.playbackLoading && <div role="status" className="fixed inset-x-4 bottom-24 z-[1500] mx-auto max-w-sm rounded-xl bg-slate-900 p-4 text-center text-white shadow-lg">جارٍ تجهيز التمرين…</div>}
     {health.actionError && <div role="alert" className="fixed inset-x-4 bottom-24 z-[1500] mx-auto flex max-w-md items-center justify-between gap-4 rounded-xl bg-red-950 p-4 text-white shadow-lg">
@@ -22,5 +24,5 @@ export function HealthProvider({ settings, isTvMode, children }: {
     </section>}><Suspense fallback={<p role="status" className="fixed inset-x-4 bottom-24 z-[1500] rounded-xl bg-slate-900 p-4 text-center text-white">جارٍ تحميل أدوات التمرين…</p>}>
       <HealthOverlays settings={settings} isTvMode={isTvMode} />
     </Suspense></SpaceBoundary>}
-  </HealthContext.Provider>;
+  </HealthContext.Provider></NutritionRecipeContext.Provider>;
 }

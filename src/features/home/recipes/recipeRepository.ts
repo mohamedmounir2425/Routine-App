@@ -45,3 +45,8 @@ export async function toggleRecipeFavorite(id: string, database = db, owner = ow
     await queue(database, row, 'upsert', owner);
   });
 }
+
+export async function listNutritionRecipes() {
+  assertCurrent(db);
+  return (await db.recipes.toArray()).map(({id,title,isFavorite,isLight})=>({id,title,isFavorite,isLight}));
+}

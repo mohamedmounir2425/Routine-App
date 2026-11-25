@@ -15,6 +15,7 @@ import { workspaceStorage } from '../../db/workspaceScope';
 
 import 'fake-indexeddb/auto';
 import { db } from '../../db/database';
+import { migrateHealth, getWorkoutOccurrences, recordTrainingExecution } from '../health/data/trainingRepository';
 import { aggregateTodayFeed } from './todayAggregator';
 import { 
   executeToggleTask, 
@@ -68,6 +69,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
   await db.projects.clear();
   await db.plans.clear();
   await db.planMilestones.clear();
+  await db.healthRecords.clear();
   await db.workoutSchedules.clear();
   await db.workoutLogs.clear();
   await db.azkarLogs.clear();
@@ -152,6 +154,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
       },
     ]);
 
+    await migrateHealth(db,testDate);
     const workoutResult = await aggregateTodayFeed({
       customDateStr: testDate,
       preferences: {
@@ -561,6 +564,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
   // Scenario 11: Multi-workout same day (08:00 & 18:00) with independent completion
   // ----------------------------------------------------
   try {
+    await db.healthRecords.clear();
     await db.workoutSchedules.clear();
     await db.workoutLogs.clear();
 
@@ -607,6 +611,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
       },
     ]);
 
+    await migrateHealth(db,testDate);
     // Initial aggregation - both should be pending/incomplete
     const feedBefore = await aggregateTodayFeed({
       customDateStr: testDate,
@@ -632,7 +637,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
       strBefore?.scheduledTime === '18:00';
 
     // Complete only the 08:00 Mobility workout
-    await db.workoutLogs.put({
+    await recordTrainingExecution({
       id: 'log-mobility-08',
       routineId: 'routine-mobility-08',
       routineName: 'تمارين الاستطالة الصباحية',
@@ -642,7 +647,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
       totalExercises: 3,
       prePainScore: 4,
       postPainScore: 2,
-    });
+    }, (await getWorkoutOccurrences(testDate)).find(o=>o.time==='08:00'));
 
     // Re-aggregate feed
     const feedAfter = await aggregateTodayFeed({
@@ -1025,6 +1030,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     await db.tasks.clear();
     await db.plans.clear();
     await db.planMilestones.clear();
+    await db.healthRecords.clear();
     await db.workoutSchedules.clear();
     await db.workoutLogs.clear();
     await db.azkarLogs.clear();
@@ -1293,6 +1299,7 @@ export async function runAllDeterministicScenarios(): Promise<TestResult[]> {
     await db.projects.clear();
     await db.azkarLogs.clear();
     await db.workoutLogs.clear();
+    await db.healthRecords.clear();
     await db.workoutSchedules.clear();
     await db.plans.clear();
     await db.planMilestones.clear();

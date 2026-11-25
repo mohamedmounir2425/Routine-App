@@ -22,6 +22,8 @@ export type TodayItemTimeTag =
   | 'completed'; // Finished for today
 
 export type TodayItemStatus =
+  | 'skipped'
+  | 'partial'
   | 'pending'    // Awaiting execution
   | 'now'        // In the active execution window right now
   | 'overdue'    // Scheduled window passed or overdue
@@ -66,6 +68,7 @@ export interface TodayItem {
 }
 
 export type TodaySectionId =
+  | 'skipped'
   | 'now'
   | 'overdue'
   | 'scheduled'

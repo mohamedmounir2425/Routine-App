@@ -6,6 +6,7 @@ import { aggregateTodayFeed } from './todayAggregator';
 import { TodayAggregationResult, TodayItem } from './todayTypes';
 import { executeToggleTask, executeTogglePrayer, executeCompleteProjectAction, executeAddQuranPage } from './todayActions';
 import { getSavedTodayPreferences, saveTodayPreferences } from './todayPreferencesService';
+import { NutritionCard } from '../health/ui';
 import { TodayHeader } from './components/TodayHeader';
 import { TodaySectionList } from './components/TodaySectionList';
 import { TodayDecisionPanel } from './components/TodayDecisionPanel';
@@ -184,6 +185,7 @@ export function TodayPage({ onStartRoutine }: { onStartRoutine?: (routine: Routi
 
   return <div className="today-dashboard">
     <TodayHeader totalCount={decision.essentials.length} completedCount={decision.essentialCompleted} completionRate={decision.essentials.length ? Math.round(decision.essentialCompleted / decision.essentials.length * 100) : 0} spaceBreakdown={data?.spaceBreakdown || { worship: { total:0, completed:0 }, health: { total:0, completed:0 }, work: { total:0, completed:0 }, home: { total:0, completed:0 }, plans: { total:0, completed:0 } }} onOpenQuickAdd={addTask} onOpenPreferences={() => setIsPreferencesOpen(true)} />
+    {preferences.showHealth && <NutritionCard/>}
     {error && <div role="alert" className="today-alert"><span>{error}</span><button onClick={() => void loadFeed()}>{ar ? 'إعادة المحاولة' : 'Retry'}</button></div>}
     {notice && <div role="status" className="today-panel flex items-center justify-between gap-3 text-sm text-emerald-300"><span>{notice}</span><button onClick={() => setNotice('')} aria-label={ar ? 'إخفاء التنبيه' : 'Dismiss notification'}>×</button></div>}
     {insights && <TodayDecisionPanel decision={decision} insights={insights} ar={ar} busy={busy} focus={getPersistedActiveFocusState()}

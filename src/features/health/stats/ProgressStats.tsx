@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flame, Clock, CheckCircle2, HeartHandshake, TrendingDown, Calendar as CalendarIcon, Smile, Meh } from 'lucide-react';
 import { WorkoutLog } from '../../../types';
+import { getLocalDateString } from '../../../utils/dateUtils';
 import { StreakStats } from '../../../db';
 import { SpaceShell } from '../../../components/layout/SpaceShell';
 
@@ -24,8 +25,8 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
   const last14Days = Array.from({ length: 14 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
-    const dStr = d.toISOString().split('T')[0];
-    const hasLog = workoutLogs.some(l => l.completedAt.split('T')[0] === dStr);
+    const dStr = getLocalDateString(d);
+    const hasLog = workoutLogs.some(l => getLocalDateString(new Date(l.completedAt)) === dStr);
     const dayLetter = ['أحد', 'اثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'][d.getDay()];
     return {
       date: d,
@@ -39,8 +40,8 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
   return (
     <SpaceShell
       icon="📊"
-      title="سجل الإنجاز ومؤشرات التحسن"
-      subtitle="متابعة مستمرة لالتزامك وتطور مستوى راحة ظهرك وانخفاض الألم مع التمارين"
+      title="السجل والمتابعة"
+      subtitle="تاريخ جلساتك ومدتها وملاحظاتك. متابعة الخطة تعتمد على المواعيد المسجلة."
       badge={
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-bold text-amber-400">
           <Flame className="w-4 h-4 fill-amber-400" />
@@ -73,7 +74,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
           <div className="text-3xl font-black text-white font-mono">
             {streakStats.totalWorkouts}
           </div>
-          <div className="text-xs text-slate-500 mt-1">جلسة تمرين مكتملة</div>
+          <div className="text-xs text-slate-500 mt-1">جلسة مسجلة؛ كاملة أو جزئية</div>
         </div>
 
         {/* Total Minutes */}
@@ -183,7 +184,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {workoutLogs.slice(0, 8).map(log => {
+            {workoutLogs.map(log => {
               const dateStr = new Date(log.completedAt).toLocaleDateString('ar-EG', {
                 weekday: 'short',
                 month: 'short',
@@ -199,7 +200,8 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
                 >
                   <div>
                     <div className="font-bold text-white text-sm font-['Tajawal']">{log.routineName}</div>
-                    <div className="text-slate-400 text-[11px] mt-0.5">{dateStr}</div>
+                    <div className="text-slate-400 text-[11px] mt-0.5">{dateStr} · {log.exercisesCompleted}/{log.totalExercises} تمارين · {log.trainingPlanId ? (log.occurrenceId?'موعد مسجل':'تنفيذ إضافي') : 'سجل قديم أو تمرين منفرد'}</div>
+                    {log.executionSnapshot && <details className="mt-2"><summary>تفاصيل التنفيذ المحفوظة</summary>{log.executionSnapshot.map((e,i)=><p key={i}>{e.arabicName||e.name} · {e.reps?e.reps+' تكرار':e.durationSeconds+' ثانية'} · راحة {e.restAfterSeconds}ث</p>)}</details>}
                     {log.notes && (
                       <div className="text-slate-300 text-[11px] mt-1 bg-slate-900/60 px-2 py-1 rounded-lg">
                         "{log.notes}"
@@ -213,7 +215,7 @@ export const ProgressStats: React.FC<Props> = ({ streakStats, workoutLogs }) => 
                     </span>
                     {log.postPainScore !== undefined && (
                       <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20 font-semibold">
-                        راحة: {log.postPainScore}/10
+                        تقييم الألم: {log.postPainScore}/10
                       </span>
                     )}
                   </div>

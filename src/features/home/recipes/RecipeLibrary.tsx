@@ -97,6 +97,8 @@ export function RecipeLibrary() {
   const [filters, setFilters] = useState<RecipeFilters>(() => ({ ...defaultRecipeFilters, meal: MEAL_TYPES.find(type => type.id === params.get('meal'))?.id ?? 'all' }));
   const [searchMode, setSearchMode] = useState<'title' | 'ingredients'>('title');
   const [selection, setSelection] = useState<Recipe | 'new' | null>(null);
+  const linkedOpened = useRef(false);
+  useEffect(()=>{if(linkedOpened.current||loading)return;const id=params.get('recipe');if(params.get('new')==='1'){linkedOpened.current=true;setSelection('new');}else if(id){linkedOpened.current=true;const found=recipes.find(r=>r.id===id);if(found)setSelection(found);else setError('الوصفة المرتبطة لم تعد متاحة.');}},[params,recipes,loading]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const search = useRef<import('antd').InputRef>(null);
@@ -150,7 +152,7 @@ export function RecipeLibrary() {
   }, [selection, visible, navigate]);
 
   const favorite = async (id: string) => { try { await toggleRecipeFavorite(id); } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تعديل المفضلة.'); } };
-  const close = () => { setSelection(null); requestAnimationFrame(() => add.current?.focus()); };
+  const close = () => { if(params.get('returnTo')==='nutrition'){navigate('/health/nutrition');return;} setSelection(null); requestAnimationFrame(() => add.current?.focus()); };
 
   useEffect(() => {
     if (loading) return;
@@ -388,6 +390,7 @@ export function RecipeLibrary() {
         </>
       )}
 
+      {params.get('returnTo')==='nutrition'&&<HomeButton onClick={()=>navigate('/health/nutrition')}>العودة إلى نظامي الغذائي</HomeButton>}
       <footer className="recipe-library-footer border-t border-solid border-t-home-border pt-3.5 mt-5 text-[12px] text-[var(--recipe-muted)] flex flex-col gap-1">
         <p>
           {CURRENT_WORKSPACE === 'guest'

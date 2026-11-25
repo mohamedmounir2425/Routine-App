@@ -33,6 +33,8 @@ export const en: TranslationDictionary = {
   spaceNavPrayers: 'Prayers',
   spaceNavQuran: 'Quran',
   spaceNavTodayWorkout: "Today's Workout",
+  spaceNavMyPlans: 'My plans',
+  spaceNavNutrition: 'Nutrition',
   spaceNavExercises: 'Exercises',
   spaceNavPlans: 'Plans',
   spaceNavProgress: 'Progress',

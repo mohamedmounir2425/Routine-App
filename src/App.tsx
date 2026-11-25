@@ -1,14 +1,16 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useMemo } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAppController } from './app/useAppController';
 import { Navbar } from './components/common/Navbar';
 import { SpaceContextBar } from './components/layout/SpaceContextBar';
 import { AuthModal } from './components/auth/AuthModal';
-import { HealthProvider, useHealthIntegration } from './features/health/public';
+import { useHealthIntegration } from './features/health/public';
+import { HealthProvider } from './features/health/ui';
 import { SpacesPage, SpacesOnboardingModal } from './features/spaces';
 import { SpaceBoundary } from './shared/ui/SpaceBoundary';
 import { UIProvider } from './shared/ui/UIProvider';
 import { useTranslation } from './i18n';
+import type { NutritionRecipeAdapter } from './types/health';
 import type { LifeSpaceId } from './types/spaces';
 import { useContextualSwipeNavigation } from './hooks/useContextualSwipeNavigation';
 
@@ -23,6 +25,14 @@ const SettingsView = lazy(() => import('./features/settings').then(module => ({ 
 
 export function App() {
   const app = useAppController();
+  const navigate = useNavigate();
+  const homeEnabled = !!app.settings.enabledSpaces?.includes('home');
+  const recipes = useMemo<NutritionRecipeAdapter>(()=>({
+    enabled: homeEnabled,
+    list: async()=> { if(!homeEnabled) throw new Error('فعّل مساحة المنزل'); return (await import('./features/home/public')).listNutritionRecipes(); },
+    open: id=> { if(homeEnabled) navigate('/home/recipes?recipe='+encodeURIComponent(id)+'&returnTo=nutrition'); },
+    create: ()=> { if(homeEnabled) navigate('/home/recipes?new=1&returnTo=nutrition'); },
+  }),[homeEnabled,navigate]);
   const { language } = useTranslation();
   const { loadError, isLoading, loadAppData } = app;
   if (loadError) {
@@ -49,7 +59,7 @@ export function App() {
 
 
   return <UIProvider mode={app.theme} language={language}>
-    <HealthProvider settings={app.settings} isTvMode={app.isTvMode}><AppContent app={app} /></HealthProvider>
+    <HealthProvider recipes={recipes} settings={app.settings} isTvMode={app.isTvMode}><AppContent app={app} /></HealthProvider>
   </UIProvider>;
 }
 

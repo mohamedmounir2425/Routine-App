@@ -36,8 +36,8 @@ export const ExerciseLibrary: React.FC<Props> = ({
   return (
     <SpaceShell
       icon="🏋️"
-      title="مكتبة التمارين العلاجية"
-      subtitle="تمارين آمنة ومعتمدة في التأهيل والعلاج الطبيعي لتقوية الظهر وتليين العمود الفقري"
+      title="التمارين"
+      subtitle="تمارينك المحفوظة والمفضلة. اختر ما يناسب خطتك."
       actions={
         <button
           onClick={() => setShowAddModal(true)}

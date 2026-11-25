@@ -33,6 +33,7 @@ const SECTION_ICONS: Record<TodaySectionId, { icon: React.FC<{ className?: strin
   next_actions: { icon: FolderGit2, color: 'text-blue-400', badgeBg: 'bg-blue-500/15 text-blue-300 border-blue-500/25' },
   tasks: { icon: CheckSquare, color: 'text-slate-300', badgeBg: 'bg-white/10 text-slate-300 border-white/15' },
   plans: { icon: Target, color: 'text-violet-400', badgeBg: 'bg-violet-500/15 text-violet-300 border-violet-500/25' },
+  skipped: { icon: AlertCircle, color: 'text-slate-400', badgeBg: 'bg-white/10 text-slate-300 border-white/15' },
   completed: { icon: CheckCircle2, color: 'text-emerald-400', badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
 };
 

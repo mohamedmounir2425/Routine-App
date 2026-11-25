@@ -34,6 +34,8 @@ export interface TranslationDictionary {
   spaceNavPrayers: string;
   spaceNavQuran: string;
   spaceNavTodayWorkout: string;
+  spaceNavMyPlans: string;
+  spaceNavNutrition: string;
   spaceNavExercises: string;
   spaceNavPlans: string;
   spaceNavProgress: string;

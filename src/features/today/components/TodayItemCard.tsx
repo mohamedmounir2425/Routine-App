@@ -34,6 +34,7 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
 
   // Render Time / Status badge
   const renderStatusBadge = () => {
+    if(item.status==='skipped'||item.status==='partial')return <span>{item.status==='skipped'?'متخطى':'جزئي'}</span>;
     if (item.isCompleted) {
       return (
         <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
@@ -90,7 +91,7 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
         <button
           type="button"
           onClick={() => onExecuteAction(item)}
-          disabled={item.isCompleted}
+          disabled={item.isCompleted || item.status==='skipped' || item.actionPayload?.canStart===false}
           aria-label={item.isCompleted ? `التمرين منجز: ${item.title}` : `بدء تمرين: ${item.title}`}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${
             item.isCompleted
@@ -99,7 +100,7 @@ export const TodayItemCard: React.FC<TodayItemCardProps> = ({
           }`}
         >
           <Play className="w-3.5 h-3.5 fill-current" />
-          <span>{item.isCompleted ? 'أُنجز التمرين ✓' : 'بدء التمرين'}</span>
+          <span>{item.status==='skipped'?'متخطى':item.isCompleted ? 'أُنجز التمرين ✓' : 'بدء التمرين'}</span>
         </button>
       );
     }

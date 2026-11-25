@@ -19,6 +19,7 @@ export interface DayDecision {
 
 /** Explainable, deterministic rules. No opaque scoring model or automatic rescheduling. */
 export function decideToday(items: TodayItem[], tasks: LifeTask[], plan: DayPlan | undefined, now = new Date(), sessionMinutes?: number) {
+  items = items.filter(item=>item.status!=='skipped'&&(item.isCompleted||item.actionPayload?.canStart!==false));
   const today = getLocalDateString(now);
   const end = new Date(now); end.setHours(23, 59, 59, 999);
   const byId = new Map(tasks.map(task => [task.id, task]));
