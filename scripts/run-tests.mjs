@@ -43,6 +43,8 @@ try {
   extraResults.push(...await inventory.runInventoryTests());
   extraResults.push(...await shopping.runShoppingTests());
   extraResults.push(...await health.runHealthRepositoryTests());
+  const redesign = await server.ssrLoadModule('/src/features/health/data/healthRedesign.test.ts');
+  extraResults.push(...await redesign.runHealthRedesignTests());
   for (const result of extraResults) console.log(`${result.passed ? 'PASS' : 'FAIL'} ${result.name}`);
   if ([...results, ...extraResults].some(result => !result.passed)) process.exitCode = 1;
   console.log(`Checked ${results.length + extraResults.length} scenarios.`);

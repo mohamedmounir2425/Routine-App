@@ -93,3 +93,8 @@ Migration: [add_recipe_library](../../../supabase/migrations/20261101143722_add_
 افصل Inventory/Audits وRecipes وMealPlanning وShopping عن TaskService. نقل المهام القديمة إلى أنواع منظمة يحتاج معاينة، ولا يعتمد على الكلمات في العنوان وحدها. المشاركة اختيارية على القسم أو العنصر؛ امتلاك حساب زوج أو زوجة لا يمنح وصولًا تلقائيًا. أضف الكيانات الجديدة للنسخ المحمولة واختبارات الاستعادة مع كل ميزة.
 
 المراجع: [HomeSpace](../../../src/features/home/HomeSpace.tsx)، [الصيانة](../../../src/features/home/maintenance/HomeMaintenanceView.tsx)، [الروتينات](../../../src/features/home/routines/HomeRoutinesView.tsx)، [lifeOs](../../../src/types/lifeOs.ts).
+
+
+### ربط التغذية الشخصية
+
+التطبيق يركب adapter للصحة يستدعي listNutritionRecipes من public.ts، ويفتح الوصفة بمعرفها في مكتبة المنزل ثم يعيد المستخدم لمسودة التغذية. لا تستورد الصحة واجهات المنزل، ولا تُنسخ الوصفات، ولا يؤدي الربط أو تسجيل الالتزام لتغيير المخزون أو المشتريات. التغذية والوزن خاصان بالحساب وليسا بيانات أسرة.
