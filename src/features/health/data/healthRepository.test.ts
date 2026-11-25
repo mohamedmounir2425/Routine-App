@@ -8,7 +8,7 @@ export async function runHealthRepositoryTests() {
   await initializeDatabase();
   const initial = await loadHealthSnapshot();
   check('Health loads its catalog, routines and schedule through its own repository',
-    initial.exercises.length > 0 && initial.routines.length > 0 && initial.weeklySchedule.length === 7);
+    initial.exercises.length > 0 && initial.routines.length > 0 && initial.weeklySchedule.length === await db.weeklySchedule.count());
 
   const toArray = db.exercises.toArray;
   try {

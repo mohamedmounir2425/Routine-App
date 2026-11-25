@@ -71,11 +71,11 @@ export async function synchronizeVersioned(database: RoutineDatabase, uid: strin
   const versions = new Map(snapshot.versions.map(item => [entityKey(item.entity_table, item.entity_id), { ...item, revision: Number(item.revision) }]));
   for (const entity of SYNC_ENTITIES) if (!entity.optional && !Array.isArray(snapshot.tables[entity.cloud])) throw new Error('استجابة ناقصة من ' + entity.cloud);
   // Parents before milestones/tasks. Deletion cascades are acknowledged safely by the server.
-  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans','recipes','inventory_items'];
+  const order = ['profiles','custom_routines','weekly_schedule','workout_logs','azkar_logs','projects','plans','plan_milestones','life_tasks','workout_schedules','day_plans','recipes','inventory_items','shopping_items','stock_receipts','health_records'];
   for (const name of order) {
     const entity = SYNC_ENTITIES.find(item => item.cloud === name)!;
     if (entity.optional && !Array.isArray(snapshot.tables[name])) {
-      if ((local.rows[name] as SyncRow[]).length || [...local.baselines.values()].some(item => item.table === name) || [...local.pending.values()].some(item => item.table === name)) failures.push('المخزون محفوظ على الجهاز؛ يلزم تفعيل جدول المخزون في Supabase لإكمال مزامنته.');
+      if ((local.rows[name] as SyncRow[]).length || [...local.baselines.values()].some(item => item.table === name) || [...local.pending.values()].some(item => item.table === name)) failures.push(name === 'health_records' ? 'خطط الصحة والتغذية محفوظة على الجهاز؛ يلزم تطبيق ترحيل health_records لإكمال مزامنتها.' : 'بعض بيانات المنزل محفوظة محليًا؛ يلزم تحديث مخطط Supabase لإكمال مزامنتها.');
       continue;
     }
     const localRows = new Map<string, SyncRow>((local.rows[name] as SyncRow[]).filter(row => !entity.include || entity.include(row)).map(row => [String(entity.toCloud(uid, row).id), row]));

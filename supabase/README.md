@@ -27,3 +27,6 @@ Migration 20261101140907_versioned_sync_mutations.sql is applied. The transactio
 Recipe library migration: 20261101143722_add_recipe_library.sql. It adds recipes with owner-only SELECT, revokes direct writes, validates nested recipe JSON and extends versioned RPC whitelists/snapshots. tests/recipe_library_integration.sql passed against LifeOS and rolled back all synthetic fixtures.
 
 Inventory migration: 20261101181201_add_inventory_audits.sql is applied. inventory_items stores per-batch stock and its history in one CAS entity. Owner-only SELECT, RPC-only writes, quantity/state constraints and history validation are enforced. tests/inventory_integration.sql passed against LifeOS; all synthetic fixtures were rolled back.
+
+
+Health redesign (2026-11-15): `20261115085728_health_training_and_nutrition.sql` is prepared but NOT applied to the hosted project. It adds owner-scoped `health_records` to the existing CAS protocol. The integration test `tests/health_training_nutrition_integration.sql` passed on a temporary local PostgreSQL 17 database with synthetic Auth dependencies and rolled back all fixtures. Hosted acceptance remains pending.

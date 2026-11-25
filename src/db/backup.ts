@@ -1,5 +1,6 @@
 import { workspaceStorage, workspaceStorageEntries, CURRENT_WORKSPACE } from './workspaceScope';
 import { db } from './database';
+import { validateHealthRecord } from './healthValidation';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
 import {
   validateRecipeRecord,
@@ -10,7 +11,7 @@ import {
 
 // Authentication tokens and the device/account-specific sync queue are never portable data.
 export const BACKUP_TABLES = {
-  exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
+  healthRecords: 'healthRecords', exercises: 'exercises', routines: 'routines', logs: 'workoutLogs', schedule: 'weeklySchedule',
   settings: 'settings', azkarLogs: 'azkarLogs', tasks: 'tasks', projects: 'projects',
   plans: 'plans', planMilestones: 'planMilestones', workoutSchedules: 'workoutSchedules',
   dayPlans: 'dayPlans', recipes: 'recipes', inventoryItems: 'inventoryItems',
@@ -33,6 +34,7 @@ export async function exportCompleteBackup(): Promise<string> {
 }
 
 function validateRecord(key: string, record: unknown): asserts record is Record<string, unknown> {
+  if (key === 'healthRecords') validateHealthRecord(record);
   if (key === 'inventoryItems') validateInventoryRecord(record);
   if (key === 'recipes') validateRecipeRecord(record);
   if (key === 'shoppingItems') validateShoppingRecord(record);

@@ -1,4 +1,5 @@
 import type { LifeTask, HomeProject, Routine, DayPlan, UserSettings } from '../types';
+import { validateHealthRecord } from './healthValidation';
 import { DEFAULT_USER_SETTINGS } from './seedData';
 import { taskToCloud, taskFromCloud, projectToCloud, projectFromCloud, routineToCloud, routineFromCloud, dayPlanToCloud, dayPlanFromCloud, settingsToCloud, type CloudTask } from './cloudMappers';
 
@@ -23,6 +24,11 @@ function simple(cloud: string, local: string, names: string): SyncEntity {
   };
 }
 export const SYNC_ENTITIES: SyncEntity[] = [
+  {
+    cloud:'health_records', local:'healthRecords', optional:true, localKey:row=>String(row.id),
+    toCloud:(uid,row)=>({id:uid+':'+row.id,user_id:uid,kind:row.kind,payload:row.data}),
+    fromCloud:row=>{const data=row.payload as SyncRow;const record={id:row.kind==='preferences'?'health-preferences':data.id,kind:row.kind,data};validateHealthRecord(record);return record as unknown as SyncRow;},
+  },
   {
     ...simple('shopping_items', 'shoppingItems', 'title:title category:category storeContext:store_context quantityNeeded:quantity_needed unit:unit quantityText:quantity_text quantityPurchased:quantity_purchased quantityStocked:quantity_stocked isBought:is_bought boughtAt:bought_at priority:priority sourceType:source_type sourceInventoryItemId:source_inventory_item_id legacyTaskId:legacy_task_id notes:notes archivedAt:archived_at createdAt:created_at updatedAt:updated_at'),
     optional: true,

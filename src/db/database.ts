@@ -1,5 +1,6 @@
 import { workspaceStorage } from './workspaceScope';
 import Dexie, { type Table } from 'dexie';
+import type { HealthRecord } from '../types/health';
 import type { Recipe, InventoryItem, ShoppingItem, StockReceipt } from '../features/home/public';
 import { CURRENT_WORKSPACE, workspaceDatabaseName } from './workspaceScope';
 import { SYNC_ENTITIES, entityKey, syncFingerprint } from './syncEntities';
@@ -20,7 +21,6 @@ import { DayPlan } from '../types/tasks';
 import { 
   INITIAL_EXERCISES, 
   INITIAL_ROUTINES, 
-  INITIAL_WEEKLY_SCHEDULE, 
   DEFAULT_USER_SETTINGS, 
   ALL_PLAN_ROUTINES 
 } from './seedData';
@@ -42,7 +42,8 @@ export interface PendingSyncItem {
     | 'recipes'
     | 'inventory_items'
     | 'shopping_items'
-    | 'stock_receipts';
+    | 'stock_receipts'
+    | 'health_records';
   entityId: string;
   action: 'upsert' | 'delete';
   data: Record<string, unknown> | null;
@@ -80,6 +81,7 @@ export interface SyncConflict {
 }
 
 export class RoutineDatabase extends Dexie {
+  healthRecords!: Table<HealthRecord, string>;
   exercises!: Table<Exercise, string>;
   routines!: Table<Routine, string>;
   weeklySchedule!: Table<WeeklyScheduleItem, number>;
@@ -158,7 +160,7 @@ export class RoutineDatabase extends Dexie {
       if (!owner) return;
       const userId = owner[1];
       for (const entity of SYNC_ENTITIES) {
-        if (['recipes', 'inventoryItems', 'shoppingItems', 'stockReceipts'].includes(entity.local)) continue; // Added after v8.
+        if (!['settings','workoutLogs','routines','weeklySchedule','azkarLogs','tasks','projects','plans','planMilestones','workoutSchedules','dayPlans'].includes(entity.local)) continue; // Freeze v8's stores: later schemas are not available in this upgrade transaction.
         for (const row of await transaction.table(entity.local).toArray()) {
           if (entity.include && !entity.include(row)) continue;
           const payload = entity.toCloud(userId, row);
@@ -174,6 +176,7 @@ export class RoutineDatabase extends Dexie {
       shoppingItems: 'id, title, category, storeContext, isBought, sourceInventoryItemId, legacyTaskId, archivedAt, updatedAt',
       stockReceipts: 'id, &operationId, shoppingItemId, inventoryItemId, createdAt',
     });
+    this.version(12).stores({ healthRecords: 'id, kind' });
   }
 }
 
@@ -194,11 +197,6 @@ export async function initializeDatabase(forceRefresh: boolean = false): Promise
       const existingRoutines = new Set(await db.routines.toCollection().primaryKeys());
       for (const routine of [...INITIAL_ROUTINES, ...ALL_PLAN_ROUTINES]) {
         if (!existingRoutines.has(routine.id)) await db.routines.put(routine);
-      }
-      const existingDays = new Set(await db.weeklySchedule.toCollection().primaryKeys());
-      for (const day of INITIAL_WEEKLY_SCHEDULE) {
-        const deleted = CURRENT_WORKSPACE !== 'guest' && (await db.syncBaselines.get(entityKey('weekly_schedule', CURRENT_WORKSPACE.slice(5) + '_day_' + day.dayOfWeek)))?.deleted;
-        if (!existingDays.has(day.dayOfWeek) && !deleted) await db.weeklySchedule.put(day);
       }
       if (!await db.settings.get('current_settings')) await db.settings.put(DEFAULT_USER_SETTINGS);
     });

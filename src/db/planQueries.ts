@@ -1,4 +1,5 @@
 import { Routine, WeeklyScheduleItem, PlanSession } from '../types';
+import { getLocalDateString } from '../utils/dateUtils';
 import { db, getUserSettings, updateUserSettings } from './database';
 import { FOUR_WEEK_PLAN } from './seedData';
 
@@ -160,13 +161,13 @@ export async function calculateStreakStats(): Promise<StreakStats> {
   const lastWorkoutDate = lastWorkout ? lastWorkout.completedAt : null;
 
   const uniqueDates = Array.from(
-    new Set(allLogs.map(l => new Date(l.completedAt).toISOString().split('T')[0]))
+    new Set(allLogs.map(l => getLocalDateString(new Date(l.completedAt))))
   ).sort().reverse();
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = getLocalDateString(yesterday);
 
   const hasWorkedOutToday = uniqueDates.includes(todayStr);
 
@@ -189,7 +190,7 @@ export async function calculateStreakStats(): Promise<StreakStats> {
   }
 
   while (true) {
-    const dStr = checkDate.toISOString().split('T')[0];
+    const dStr = getLocalDateString(checkDate);
     if (uniqueDates.includes(dStr)) {
       currentStreak++;
       checkDate.setDate(checkDate.getDate() - 1);

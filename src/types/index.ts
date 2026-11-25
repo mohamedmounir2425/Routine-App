@@ -1,6 +1,7 @@
 export type MuscleCategory = 'back' | 'core' | 'mobility' | 'neck' | 'legs';
 
 export interface Exercise {
+  sourceExerciseId?: string;
   id: string;
   name: string;
   arabicName: string;
@@ -75,6 +76,10 @@ export interface Routine {
   isDefault?: boolean;
   isCustom?: boolean;
   isMiniRescue?: boolean;  // هل هذا روتين الإنقاذ السريع (5 دقائق)؟
+  trainingPlanId?: string;
+  trainingRunId?: string;
+  occurrenceId?: string;
+  painTracking?: boolean;
   planSessionId?: string;  // ربط مع جلسة الخطة إذا كان روتيناً للخطة
   weekNumber?: number;
   sessionCode?: 'A' | 'B' | 'C' | 'D';
@@ -98,10 +103,16 @@ export interface WorkoutLog {
   routineName: string;
   completedAt: string; // ISO string (e.g. 2026-09-04T22:30:00Z)
   durationMinutes: number;
+  elapsedSeconds?: number;
   exercisesCompleted: number;
   totalExercises: number;
   weekNumber?: number;
   sessionCode?: 'A' | 'B' | 'C' | 'D';
+  trainingPlanId?: string;
+  trainingRunId?: string;
+  occurrenceId?: string;
+  sessionSnapshot?: import('./health').TrainingSession;
+  executionSnapshot?: Exercise[];
   prePainScore?: number;  // 0 (لا يوجد ألم) إلى 10 (ألم شديد)
   postPainScore?: number; // تقييم ما بعد التمرين
   difficultyRating?: 'easy' | 'moderate' | 'challenging' | 'hard'; // تقييم شعور الجلسة (إيموجي)

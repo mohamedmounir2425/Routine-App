@@ -4,7 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../../db/database';
 import type { StreakStats } from '../../../db/planQueries';
 import type { Exercise, Routine, UserSettings, WeeklyScheduleItem, WorkoutLog } from '../../../types';
-import { addExercise, calculateStreakStats, getTodayRoutine, loadHealthSnapshot, loadPlaybackExercises, saveWorkout } from '../data/healthRepository';
+import { addExercise, calculateStreakStats, getTodayRoutine, loadHealthSnapshot, loadPlaybackExercises, saveWorkout, toggleHealthFavorite } from '../data/healthRepository';
+import { getWorkoutOccurrences, isWorkoutAvailable, healthRows, localToday, migrateHealth, playbackForSession, recordTrainingExecution, newId } from '../data/trainingRepository';
+import type { WorkoutOccurrence, TrainingSession } from '../../../types/health';
 import { useCustomRoutines } from './useCustomRoutines';
 import { useReminderScheduler } from './useReminderScheduler';
 
@@ -24,6 +26,8 @@ export function useHealthController(settings: UserSettings) {
   const [isRestDay, setIsRestDay] = useState(false);
   const [weeklyCompletion, setWeeklyCompletion] = useState<Record<number, boolean>>({});
   const [streakStats, setStreakStats] = useState(emptyStreak);
+  const [activeOccurrence, setActiveOccurrence] = useState<WorkoutOccurrence | undefined>();
+  const [activeSession, setActiveSession] = useState<TrainingSession | undefined>();
   const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
   const [activeRoutineExercises, setActiveRoutineExercises] = useState<Exercise[]>([]);
   const [playbackLoading, setPlaybackLoading] = useState(false);
@@ -33,6 +37,7 @@ export function useHealthController(settings: UserSettings) {
   const loadHealthData = useCallback(async () => {
     setLoadError(null);
     try {
+      await migrateHealth();
       const snapshot = await loadHealthSnapshot();
       setExercises(snapshot.exercises); setRoutines(snapshot.routines);
       setWeeklySchedule(snapshot.weeklySchedule); setWorkoutLogs(snapshot.workoutLogs);
@@ -56,7 +61,7 @@ export function useHealthController(settings: UserSettings) {
   }, [settings.enabledSpaces]);
 
   useEffect(() => { if (inHealth) void loadHealthData(); }, [inHealth, loadHealthData]);
-  useReminderScheduler(settings, streakStats.hasWorkedOutToday);
+  useReminderScheduler(settings);
 
   const startRoutinePlayback = useCallback(async (routine: Routine) => {
     const request = ++playbackRequest.current;
@@ -64,8 +69,31 @@ export function useHealthController(settings: UserSettings) {
     try {
       const available = await loadPlaybackExercises();
       if (request !== playbackRequest.current) return;
-      const selected = routine.exerciseIds.map(id => available.find(item => item.id === id)).filter((item): item is Exercise => !!item);
+      let selected = routine.exerciseIds.map(id => available.find(item => item.id === id)).filter((item): item is Exercise => !!item);
+      setActiveOccurrence(undefined); setActiveSession(undefined);
+      if (routine.trainingPlanId) {
+        const plan = (await healthRows('plan')).find(p => p.id === routine.trainingPlanId);
+        if(plan?.archived)throw new Error('الخطة مؤرشفة. أعدها من خططي أولًا.');
+        const session = plan?.sessions.find(s => s.id === routine.planSessionId);
+        if (!session) throw new Error('الجلسة لم تعد متاحة. افتح الخطة لإصلاحها.');
+        const playback = playbackForSession(session, available);
+        if (playback.missing.length && !window.confirm('بعض تمارين الخطة لم تعد في المكتبة. افتح تعديل الخطة لإصلاحها، أو اختر موافق لمتابعة التمارين المتاحة فقط.')) return;
+        selected = playback.exercises; setActiveSession(session);
+        const runs = await healthRows('run');
+        const due = (await getWorkoutOccurrences(localToday())).filter(o => o.planId === plan!.id && o.sessionId === session.id && isWorkoutAvailable(o,runs.find(r=>r.id===o.runId),plan));
+        let occurrence = routine.occurrenceId ? (await getWorkoutOccurrences(localToday())).find(o => o.id === routine.occurrenceId) : undefined;
+        if (routine.occurrenceId && (!occurrence || !isWorkoutAvailable(occurrence,runs.find(r=>r.id===occurrence?.runId),plan))) throw new Error('الموعد غير مستحق الآن. يمكنك تشغيل جلسة إضافية من خططك.');
+        if (!routine.occurrenceId && due.length) {
+          const choice = window.prompt('ربط التنفيذ بموعد اليوم؟ اكتب رقمه أو 0 لتنفيذ إضافي:\n' + due.map((o,i) => (i+1)+'. '+(o.time ?? 'بدون وقت')).join('\n'), '0');
+          if (choice === null) return;
+          if (!/^\d+$/.test(choice) || Number(choice) > due.length) throw new Error('اختر رقم موعد صحيح');
+          occurrence = Number(choice) ? due[Number(choice)-1] : undefined;
+        }
+        setActiveOccurrence(occurrence);
+        routine = { ...routine, occurrenceId: occurrence?.id, trainingRunId: occurrence?.runId };
+      }
       if (!selected.length) throw new Error('لا توجد تمارين متاحة لهذا الروتين.');
+      if (request !== playbackRequest.current) return;
       setExercises(available); setActiveRoutine(routine); setActiveRoutineExercises(selected);
     } catch (error) {
       if (request === playbackRequest.current) setActionError(error instanceof Error ? error.message : 'تعذر بدء التمرين.');
@@ -81,7 +109,7 @@ export function useHealthController(settings: UserSettings) {
   const customRoutines = useCustomRoutines(loadHealthData);
   const closePlayer = () => {
     playbackRequest.current += 1;
-    setPlaybackLoading(false); setActiveRoutine(null); setActiveRoutineExercises([]);
+    setPlaybackLoading(false); setActiveRoutine(null); setActiveRoutineExercises([]); setActiveOccurrence(undefined); setActiveSession(undefined);
   };
   const handlePreviewSingleExercise = (exercise: Exercise) => {
     playbackRequest.current += 1;
@@ -99,14 +127,18 @@ export function useHealthController(settings: UserSettings) {
   }, [activeRoutine]);
 
   const handleFinishWorkout = async (log: Omit<WorkoutLog, 'id'>) => {
-    await saveWorkout(log); closePlayer(); await loadHealthData(); navigate('/progress');
+    if (activeRoutine?.trainingPlanId) await recordTrainingExecution({ ...log, id: newId(),
+      trainingPlanId: activeRoutine.trainingPlanId, trainingRunId: activeOccurrence?.runId,
+      occurrenceId: activeOccurrence?.id, sessionSnapshot: activeSession }, activeOccurrence);
+    else await saveWorkout(log);
+    closePlayer(); await loadHealthData(); navigate('/health');
   };
   const handleToggleFavorite = async (id: string, isFavorite: boolean) => {
-    await db.exercises.update(id, { isFavorite });
+    await toggleHealthFavorite(id, isFavorite);
     setExercises(current => current.map(item => item.id === id ? { ...item, isFavorite } : item));
   };
   const handleAddExercise = async (draft: Omit<Exercise, 'id' | 'createdAt'>) => {
-    const exercise = await addExercise(draft); setExercises(current => [exercise, ...current]);
+    const exercise = await addExercise(draft); setExercises(current => [exercise, ...current]); return exercise;
   };
   const refreshToday = async () => {
     const today = await getTodayRoutine(); setTodayRoutine(today.routine); setIsRestDay(today.isRestDay);
