@@ -209,6 +209,7 @@ export const MOBILITY_EXERCISES: Exercise[] = [
     targetMuscles: ['تفريغ ضغط الفقرات القطنية'],
     videoUrl: 'https://www.youtube.com/embed/dE-kn06mxp8?enablejsapi=1',
     youtubeUrl: 'https://www.youtube.com/shorts/dE-kn06mxp8',
+    animationSlug: 'standing-lumbar-extension',
     isFavorite: true,
     createdAt: new Date().toISOString(),
   },

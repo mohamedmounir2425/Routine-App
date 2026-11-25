@@ -20,6 +20,7 @@ export const BACK_EXERCISES: Exercise[] = [
     targetMuscles: ['عضلة الخصر المربعة (QL)', 'العضلات المائلة'],
     videoUrl: 'https://www.youtube.com/embed/UurF0EhHFLg?enablejsapi=1',
     youtubeUrl: 'https://www.youtube.com/watch?v=UurF0EhHFLg',
+    animationSlug: 'side-plank-knees',
     isFavorite: true,
     createdAt: new Date().toISOString(),
   },

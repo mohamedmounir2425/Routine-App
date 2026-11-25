@@ -31,7 +31,7 @@ export const PlayerModals: React.FC<PlayerModalsProps> = ({
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center">
             <h3 className="text-lg font-bold text-white mb-2 font-['Tajawal']">هل تريد إنهاء الجلسة؟</h3>
             <p className="text-xs text-slate-400 mb-6">
-              لن يتم تسجيل التمرين الحالي في قائمة الإنجاز إذا خرجت الآن.
+              يمكنك حفظ ما أكملته كتنفيذ جزئي من ملخص الجلسة.
             </p>
             <div className="flex gap-3">
               <button
@@ -44,7 +44,7 @@ export const PlayerModals: React.FC<PlayerModalsProps> = ({
                 onClick={onConfirmExit}
                 className="flex-1 py-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30"
               >
-                خروج
+                ملخص وحفظ
               </button>
             </div>
           </div>

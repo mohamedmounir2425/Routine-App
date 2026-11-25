@@ -1,8 +1,52 @@
 import { useState, useEffect, useRef } from 'react';
 import { Routine, Exercise } from '../../../types';
 import { sounds } from '../../../utils/audio';
+import { workspaceStorage } from '../../../db/workspaceScope';
+import { useExerciseSetTracker } from './useExerciseSetTracker';
 
-export type PlayerPhase = 'exercise' | 'rest' | 'completed';
+export type PlayerPhase = 'overview' | 'exercise' | 'rest' | 'completed';
+
+export interface SavedWorkoutSessionState {
+  routineId: string;
+  occurrenceId?: string;
+  currentIndex: number;
+  currentSet: number;
+  currentSide: 'right' | 'left' | 'none';
+  timeLeft: number;
+  setTimeLeft: number;
+  completedIndices: number[];
+  totalElapsedTime: number;
+  updatedAt: string;
+}
+
+const SESSION_STORAGE_PREFIX = 'health_active_player_session_';
+
+export function getSessionStorageKey(routine: Routine) {
+  return `${SESSION_STORAGE_PREFIX}${routine.occurrenceId ?? routine.id}`;
+}
+
+export function readSavedWorkoutSession(routine: Routine): SavedWorkoutSessionState | null {
+  try {
+    const raw = workspaceStorage.getItem(getSessionStorageKey(routine));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedWorkoutSessionState;
+    if (
+      parsed &&
+      parsed.routineId === routine.id &&
+      typeof parsed.currentIndex === 'number' &&
+      Array.isArray(parsed.completedIndices)
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSavedWorkoutSession(routine: Routine) {
+  workspaceStorage.removeItem(getSessionStorageKey(routine));
+}
 
 interface UsePlayerLogicProps {
   routine: Routine;
@@ -11,9 +55,8 @@ interface UsePlayerLogicProps {
   soundEnabled?: boolean;
   voiceCoachEnabled?: boolean;
   workoutVideoAutoplay?: boolean;
+  initialPhase?: PlayerPhase;
 }
-
-import { useExerciseSetTracker } from './useExerciseSetTracker';
 
 export function usePlayerLogic({
   routine,
@@ -22,11 +65,16 @@ export function usePlayerLogic({
   soundEnabled = true,
   voiceCoachEnabled = true,
   workoutVideoAutoplay = true,
+  initialPhase = 'exercise',
 }: UsePlayerLogicProps) {
+  const [savedSession, setSavedSession] = useState<SavedWorkoutSessionState | null>(() =>
+    readSavedWorkoutSession(routine)
+  );
+  const [completedIndices, setCompletedIndices] = useState<Set<number>>(new Set());
   const [sessionExercises, setSessionExercises] = useState<Exercise[]>(exercises);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [phase, setPhase] = useState<PlayerPhase>('exercise');
-  const [timeLeft, setTimeLeft] = useState<number>(exercises[0]?.durationSeconds || 60);
+  const [phase, setPhase] = useState<PlayerPhase>(initialPhase);
+  const [timeLeft, setTimeLeft] = useState<number>(exercises[0]?.durationSeconds ?? 60);
   const [restTimeLeft, setRestTimeLeft] = useState<number>(defaultRestSeconds);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(!soundEnabled);
@@ -39,11 +87,23 @@ export function usePlayerLogic({
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const transitionRef = useRef(false);
+  const advancingRef = useRef(false);
+  const skipExerciseInitRef = useRef(false);
 
-  const handleExerciseFinish = () => {
+  const handleExerciseFinish = (completed = true) => {
+    if (phase !== 'exercise' || transitionRef.current) return;
+    transitionRef.current = true;
+    if (completed) {
+      setCompletedIndices(old => new Set([...old, currentIndex]));
+    }
     if (currentIndex < sessionExercises.length - 1) {
+      const restSec = currentExercise?.restAfterSeconds ?? defaultRestSeconds;
+      if (restSec <= 0) {
+        setCurrentIndex(index => index + 1);
+        return;
+      }
       setPhase('rest');
-      const restSec = currentExercise?.restAfterSeconds || defaultRestSeconds;
       setRestTimeLeft(restSec);
 
       if (!isMuted) {
@@ -59,20 +119,77 @@ export function usePlayerLogic({
 
   const setTracker = useExerciseSetTracker({
     currentExercise,
+    currentIndex,
+    isPaused: isPaused || phase !== 'exercise',
     routine,
     isMuted,
     voiceCoachEnabled,
-    onExerciseComplete: handleExerciseFinish,
+    onExerciseComplete: () => handleExerciseFinish(true),
   });
+
+  // Auto-pause when tab/window goes to background
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden && (phase === 'exercise' || phase === 'rest')) {
+        setIsPaused(true);
+      }
+    };
+    const onPageHide = () => {
+      if (phase === 'exercise' || phase === 'rest') {
+        setIsPaused(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [phase]);
+
+  // Persist active session progress for seamless resume
+  useEffect(() => {
+    if (phase !== 'exercise' && phase !== 'rest') return;
+    const state: SavedWorkoutSessionState = {
+      routineId: routine.id,
+      occurrenceId: routine.occurrenceId,
+      currentIndex,
+      currentSet: setTracker.currentSet,
+      currentSide: setTracker.currentSide,
+      timeLeft,
+      setTimeLeft: setTracker.setTimeLeft,
+      completedIndices: Array.from(completedIndices),
+      totalElapsedTime,
+      updatedAt: new Date().toISOString(),
+    };
+    workspaceStorage.setItem(getSessionStorageKey(routine), JSON.stringify(state));
+    setSavedSession(state);
+  }, [
+    routine,
+    phase,
+    currentIndex,
+    setTracker.currentSet,
+    setTracker.currentSide,
+    setTracker.setTimeLeft,
+    timeLeft,
+    completedIndices,
+    totalElapsedTime,
+  ]);
 
   // Sync YouTube player play/pause state
   useEffect(() => {
     if (!iframeRef.current?.contentWindow) return;
     try {
       if (isPaused) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }),
+          '*'
+        );
       } else if (phase === 'exercise' && workoutVideoAutoplay) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo', args: '' }),
+          '*'
+        );
       }
     } catch {
       // Ignore cross-origin issues
@@ -81,8 +198,15 @@ export function usePlayerLogic({
 
   // Exercise initialization & voice cues
   useEffect(() => {
+    if (phase === 'overview') return;
+    if (skipExerciseInitRef.current) {
+      skipExerciseInitRef.current = false;
+      return;
+    }
     if (currentExercise) {
-      setTimeLeft(currentExercise.durationSeconds || 60);
+      transitionRef.current = false;
+      advancingRef.current = false;
+      setTimeLeft(currentExercise.durationSeconds ?? 60);
       setPhase('exercise');
       setIsPaused(false);
 
@@ -96,7 +220,7 @@ export function usePlayerLogic({
 
   // Countdown timer interval
   useEffect(() => {
-    if (phase === 'completed' || isPaused) {
+    if (phase === 'completed' || phase === 'overview' || isPaused) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
@@ -105,7 +229,6 @@ export function usePlayerLogic({
       setTotalElapsedTime(t => t + 1);
 
       if (phase === 'exercise') {
-        // Only run continuous timer if exercise is continuous and ready countdown finished
         if (setTracker.exerciseMode === 'continuous' && setTracker.readyCountdown === null) {
           setTimeLeft(prev => {
             if (!isMuted) {
@@ -117,7 +240,7 @@ export function usePlayerLogic({
             }
 
             if (prev <= 1) {
-              handleExerciseFinish();
+              handleExerciseFinish(true);
               return 0;
             }
             return prev - 1;
@@ -143,9 +266,45 @@ export function usePlayerLogic({
     };
   }, [phase, isPaused, isMuted, voiceCoachEnabled, currentIndex, setTracker.exerciseMode, setTracker.readyCountdown]);
 
+  const startFreshSession = () => {
+    clearSavedWorkoutSession(routine);
+    setSavedSession(null);
+    setCompletedIndices(new Set());
+    setTotalElapsedTime(0);
+    setCurrentIndex(0);
+    transitionRef.current = false;
+    advancingRef.current = false;
+    setTimeLeft(sessionExercises[0]?.durationSeconds ?? 60);
+    setIsPaused(false);
+    setPhase('exercise');
+  };
 
+  const resumeSavedSession = () => {
+    const saved = readSavedWorkoutSession(routine);
+    if (!saved) {
+      startFreshSession();
+      return;
+    }
+    const safeIndex = Math.min(sessionExercises.length - 1, Math.max(0, saved.currentIndex));
+    skipExerciseInitRef.current = safeIndex !== currentIndex;
+    transitionRef.current = false;
+    advancingRef.current = false;
+    setCompletedIndices(new Set(saved.completedIndices));
+    setTotalElapsedTime(saved.totalElapsedTime ?? 0);
+    setCurrentIndex(safeIndex);
+    setTimeLeft(saved.timeLeft > 0 ? saved.timeLeft : (sessionExercises[safeIndex]?.durationSeconds ?? 60));
+    setTracker.restoreSetState({
+      currentSet: saved.currentSet ?? 1,
+      currentSide: saved.currentSide ?? 'none',
+      setTimeLeft: saved.setTimeLeft,
+    });
+    setIsPaused(false);
+    setPhase('exercise');
+  };
 
   const startNextExercise = () => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     if (currentIndex < sessionExercises.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -154,10 +313,18 @@ export function usePlayerLogic({
   };
 
   const handleSwapExercise = (newEx: Exercise) => {
+    if (!currentExercise) return;
     const updated = [...sessionExercises];
-    updated[currentIndex] = newEx;
+    updated[currentIndex] = {
+      ...newEx,
+      sourceExerciseId: newEx.id,
+      id: currentExercise.id,
+      durationSeconds: currentExercise.durationSeconds,
+      restAfterSeconds: currentExercise.restAfterSeconds,
+      reps: currentExercise.reps,
+    };
     setSessionExercises(updated);
-    setTimeLeft(newEx.durationSeconds || 60);
+    setTimeLeft(newEx.durationSeconds ?? 60);
     setShowSwapModal(false);
     if (!isMuted) {
       sounds.playGoChime();
@@ -173,8 +340,34 @@ export function usePlayerLogic({
     }
   };
 
+  /** Explicit "تم ✓" action: marks current step/exercise completed */
+  const handleCompleteCurrent = () => {
+    if (phase === 'rest') {
+      startNextExercise();
+      return;
+    }
+    if (setTracker.readyCountdown !== null) {
+      setTracker.skipReadyCountdown();
+      return;
+    }
+    if (setTracker.exerciseMode === 'pure_reps') {
+      setTracker.handleCompletePureRepSet();
+      return;
+    }
+    if (setTracker.exerciseMode === 'timed_sets') {
+      setTracker.handleSetFinished();
+      return;
+    }
+    handleExerciseFinish(true);
+  };
+
+  /** Explicit "تخطي" action: skips current exercise without counting it as completed */
   const handleSkip = () => {
-    handleExerciseFinish();
+    if (phase === 'rest') {
+      startNextExercise();
+    } else {
+      handleExerciseFinish(false);
+    }
   };
 
   const handleSkipRest = () => {
@@ -185,11 +378,15 @@ export function usePlayerLogic({
     setRestTimeLeft(prev => prev + sec);
   };
 
-  /** Add seconds to the current exercise timer (continuous mode only).
-   *  Safe to call at any time — ignored during rest, timed_sets, or pure_reps. */
   const handleAddExerciseSeconds = (sec: number) => {
-    if (phase !== 'exercise' || setTracker.exerciseMode !== 'continuous') return;
-    setTimeLeft(prev => prev + sec);
+    if (phase !== 'exercise') return;
+    if (setTracker.readyCountdown !== null) {
+      setTracker.addReadySeconds(sec);
+      return;
+    }
+    if (setTracker.exerciseMode === 'continuous') {
+      setTimeLeft(prev => prev + sec);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -198,14 +395,26 @@ export function usePlayerLogic({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progressPercent = sessionExercises.length > 0
-    ? ((currentIndex + (phase === 'rest' ? 1 : 0)) / sessionExercises.length) * 100
-    : 0;
+  const progressPercent =
+    sessionExercises.length > 0
+      ? ((currentIndex + (phase === 'rest' ? 1 : 0)) / sessionExercises.length) * 100
+      : 0;
 
   return {
+    finishSession: () => setPhase('completed'),
+    startFreshSession,
+    resumeSavedSession,
+    savedSession,
+    clearSavedSession: () => {
+      clearSavedWorkoutSession(routine);
+      setSavedSession(null);
+    },
+    completedCount: completedIndices.size,
+    completedIndices,
     sessionExercises,
     currentIndex,
     phase,
+    setPhase,
     timeLeft,
     restTimeLeft,
     isPaused,
@@ -222,6 +431,7 @@ export function usePlayerLogic({
     progressPercent,
     iframeRef,
     handlePrev,
+    handleCompleteCurrent,
     handleSkip,
     handleSkipRest,
     handleAddRestSeconds,

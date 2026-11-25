@@ -22,6 +22,7 @@ export const CORE_EXERCISES: Exercise[] = [
     targetMuscles: ['عضلات البطن العميقة', 'استقرار القوس القطني', 'حماية الديسك'],
     videoUrl: 'https://www.youtube.com/embed/3-iICBy13ts?enablejsapi=1',
     youtubeUrl: 'https://youtu.be/3-iICBy13ts',
+    animationSlug: 'mcgill-curlup',
     isFavorite: true,
     createdAt: new Date().toISOString(),
   },

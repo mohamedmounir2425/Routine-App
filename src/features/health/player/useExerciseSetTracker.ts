@@ -7,6 +7,8 @@ export type ExerciseMode = 'timed_sets' | 'pure_reps' | 'continuous';
 interface UseExerciseSetTrackerProps {
   currentExercise: Exercise | undefined;
   routine: Routine;
+  currentIndex: number;
+  isPaused: boolean;
   isMuted: boolean;
   voiceCoachEnabled: boolean;
   onExerciseComplete: () => void;
@@ -14,6 +16,8 @@ interface UseExerciseSetTrackerProps {
 
 export function useExerciseSetTracker({
   currentExercise,
+  currentIndex,
+  isPaused,
   routine,
   isMuted,
   voiceCoachEnabled,
@@ -24,28 +28,26 @@ export function useExerciseSetTracker({
   // Determine mode
   const isTimedSets = !!(
     presc &&
-    presc.sets > 1 &&
-    ((presc.holdSeconds && presc.holdSeconds > 0) || (presc.durationSeconds && presc.durationSeconds > 0))
+    (presc.sets > 1 || presc.sides === 'each') &&
+    ((presc.holdSeconds && presc.holdSeconds > 0) || (presc.durationSeconds && presc.durationSeconds > 0)) &&
+    !presc.reps
   );
 
   const isPureReps = !!(
     !isTimedSets &&
-    presc &&
-    presc.sets > 1 &&
-    presc.reps &&
-    !presc.holdSeconds &&
-    !presc.durationSeconds
+    ((presc && presc.sets >= 1 && presc.reps && !presc.holdSeconds && !presc.durationSeconds) ||
+      (!presc && currentExercise?.reps && currentExercise.reps > 0))
   );
 
   const exerciseMode: ExerciseMode = isTimedSets
     ? 'timed_sets'
     : isPureReps
-    ? 'pure_reps'
-    : 'continuous';
+      ? 'pure_reps'
+      : 'continuous';
 
-  const totalSets = presc?.sets || 1;
+  const totalSets = presc?.sets ?? 1;
   const hasSides = presc?.sides === 'each';
-  const targetHoldSeconds = presc?.holdSeconds || presc?.durationSeconds || 15;
+  const targetHoldSeconds = presc?.holdSeconds ?? presc?.durationSeconds ?? currentExercise?.durationSeconds ?? 15;
 
   const [currentSet, setCurrentSet] = useState<number>(1);
   const [currentSide, setCurrentSide] = useState<'right' | 'left' | 'none'>(hasSides ? 'right' : 'none');
@@ -53,75 +55,91 @@ export function useExerciseSetTracker({
   const [setTimeLeft, setSetTimeLeft] = useState<number>(targetHoldSeconds);
   const [readyCountdown, setReadyCountdown] = useState<number | null>(null);
 
-  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyActionRef = useRef<'continuous' | 'timed_set' | null>(null);
   const holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const skipResetRef = useRef(false);
 
   // Reset when exercise changes
   useEffect(() => {
-    if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
     if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
+
+    if (skipResetRef.current) {
+      skipResetRef.current = false;
+      return;
+    }
 
     setCurrentSet(1);
     setCurrentSide(hasSides ? 'right' : 'none');
     setSetTimerRunning(false);
     setSetTimeLeft(targetHoldSeconds);
 
-    // If continuous exercise, start 3-2-1 ready countdown immediately
     if (exerciseMode === 'continuous') {
-      triggerReadyCountdown(() => {
-        // Ready complete
-      });
+      readyActionRef.current = 'continuous';
+      setReadyCountdown(3);
+      if (!isMuted) sounds.playReadyTick(3);
     } else {
+      readyActionRef.current = null;
       setReadyCountdown(null);
     }
 
     return () => {
-      if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
       if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
     };
-  }, [currentExercise?.id]);
+  }, [currentExercise?.id, currentIndex]);
 
-  // Trigger 3, 2, 1 countdown with sounds
-  const triggerReadyCountdown = (onDone: () => void) => {
-    if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
+  // Pause-aware Ready Countdown (3 -> 2 -> 1 -> start)
+  useEffect(() => {
+    if (isPaused || readyCountdown === null) return;
 
-    setReadyCountdown(3);
-    if (!isMuted) sounds.playReadyTick(3);
+    const timer = setTimeout(() => {
+      if (readyCountdown > 1) {
+        const nextVal = readyCountdown - 1;
+        setReadyCountdown(nextVal);
+        if (!isMuted) sounds.playReadyTick(nextVal);
+      } else if (readyCountdown === 1) {
+        setReadyCountdown(0);
+        if (!isMuted) sounds.playGoChime();
+      } else {
+        const action = readyActionRef.current;
+        readyActionRef.current = null;
+        setReadyCountdown(null);
+        if (action === 'timed_set') {
+          setSetTimerRunning(true);
+          setSetTimeLeft(targetHoldSeconds);
+        }
+      }
+    }, readyCountdown === 0 ? 500 : 1000);
 
-    readyTimerRef.current = setTimeout(() => {
-      setReadyCountdown(2);
-      if (!isMuted) sounds.playReadyTick(2);
+    return () => clearTimeout(timer);
+  }, [isPaused, readyCountdown, isMuted, targetHoldSeconds]);
 
-      readyTimerRef.current = setTimeout(() => {
-        setReadyCountdown(1);
-        if (!isMuted) sounds.playReadyTick(1);
+  const skipReadyCountdown = () => {
+    if (readyCountdown === null) return;
+    const action = readyActionRef.current;
+    readyActionRef.current = null;
+    setReadyCountdown(null);
+    if (!isMuted) sounds.playGoChime();
+    if (action === 'timed_set') {
+      setSetTimerRunning(true);
+      setSetTimeLeft(targetHoldSeconds);
+    }
+  };
 
-        readyTimerRef.current = setTimeout(() => {
-          setReadyCountdown(0);
-          if (!isMuted) sounds.playGoChime();
-
-          readyTimerRef.current = setTimeout(() => {
-            setReadyCountdown(null);
-            onDone();
-          }, 600);
-        }, 1000);
-      }, 1000);
-    }, 1000);
+  const addReadySeconds = (sec = 3) => {
+    setReadyCountdown(prev => (prev !== null ? prev + sec : sec));
   };
 
   // Start manual set timer (e.g. Side Plank 15s)
   const handleStartSetHold = () => {
     if (setTimerRunning || readyCountdown !== null) return;
-
-    triggerReadyCountdown(() => {
-      setSetTimerRunning(true);
-      setSetTimeLeft(targetHoldSeconds);
-    });
+    readyActionRef.current = 'timed_set';
+    setReadyCountdown(3);
+    if (!isMuted) sounds.playReadyTick(3);
   };
 
   // Set countdown timer tick
   useEffect(() => {
-    if (!setTimerRunning) {
+    if (isPaused || !setTimerRunning) {
       if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
       return;
     }
@@ -143,7 +161,7 @@ export function useExerciseSetTracker({
     return () => {
       if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
     };
-  }, [setTimerRunning, currentSide, currentSet, isMuted]);
+  }, [isPaused, setTimerRunning, currentSide, currentSet, isMuted]);
 
   // When a timed set/side finishes
   const handleSetFinished = () => {
@@ -151,40 +169,58 @@ export function useExerciseSetTracker({
     if (!isMuted) sounds.playRestChime();
 
     if (hasSides && currentSide === 'right') {
-      // Advance to left side
       setCurrentSide('left');
       setSetTimeLeft(targetHoldSeconds);
       if (!isMuted && voiceCoachEnabled) {
-        sounds.speak('بدّل للجانب الآخر');
+        sounds.speak('بدّل للجانب الأيسر');
+      }
+    } else if (currentSet < totalSets) {
+      setCurrentSet(prev => prev + 1);
+      setCurrentSide(hasSides ? 'right' : 'none');
+      setSetTimeLeft(targetHoldSeconds);
+      if (!isMuted && voiceCoachEnabled) {
+        sounds.speak(`استعد للمجموعة ${currentSet + 1}`);
       }
     } else {
-      // Both sides (or single side) of this set finished
-      if (currentSet < totalSets) {
-        setCurrentSet(prev => prev + 1);
-        setCurrentSide(hasSides ? 'right' : 'none');
-        setSetTimeLeft(targetHoldSeconds);
-        if (!isMuted && voiceCoachEnabled) {
-          sounds.speak(`استعد للمجموعة ${currentSet + 1}`);
-        }
-      } else {
-        // All sets complete!
-        onExerciseComplete();
-      }
+      onExerciseComplete();
     }
   };
 
-  // For pure reps: manual set completion
+  // For pure reps: manual set/side completion
   const handleCompletePureRepSet = () => {
     if (!isMuted) sounds.playGoChime();
 
+    if (hasSides && currentSide === 'right') {
+      setCurrentSide('left');
+      if (!isMuted && voiceCoachEnabled) {
+        sounds.speak('الجانب الأيسر');
+      }
+      return;
+    }
+
     if (currentSet < totalSets) {
       setCurrentSet(prev => prev + 1);
+      setCurrentSide(hasSides ? 'right' : 'none');
       if (!isMuted && voiceCoachEnabled) {
         sounds.speak(`المجموعة ${currentSet + 1}`);
       }
     } else {
       onExerciseComplete();
     }
+  };
+
+  const restoreSetState = (saved: {
+    currentSet: number;
+    currentSide: 'right' | 'left' | 'none';
+    setTimeLeft?: number;
+  }) => {
+    skipResetRef.current = true;
+    setCurrentSet(Math.min(totalSets, Math.max(1, saved.currentSet)));
+    setCurrentSide(hasSides ? (saved.currentSide === 'left' ? 'left' : 'right') : 'none');
+    if (saved.setTimeLeft !== undefined && saved.setTimeLeft > 0) {
+      setSetTimeLeft(saved.setTimeLeft);
+    }
+    setReadyCountdown(null);
   };
 
   return {
@@ -198,7 +234,11 @@ export function useExerciseSetTracker({
     setTimeLeft,
     setTimerRunning,
     readyCountdown,
+    skipReadyCountdown,
+    addReadySeconds,
     handleStartSetHold,
+    handleSetFinished,
     handleCompletePureRepSet,
+    restoreSetState,
   };
 }
